@@ -4,8 +4,8 @@
 
 - [x] 1.1 Download the SportsMOT volleyball sequences into `data/datasets/sportsmot/` (record source, license CC BY-NC 4.0, and split sizes in a README there) and verify the annotation files load with frame and id counts printed
 - [x] 1.2 Clone TrackEval unmodified into `external/` and write `scripts/eval_player_tracking.py`; verify it reproduces a perfect score when fed the ground truth as predictions
-- [ ] 1.3 Run the baseline grid (YOLO26 n / s, 960 / 1280 px, BoT-SORT / ByteTrack, 10 fps) on the validation sequences and record HOTA, IDF1, MOTA, recall, precision and CPU ms/frame in `docs/results/player-tracking.md`; verify every number in the file matches the script output
-- [ ] 1.4 Measure IDF1 and time at 30 / 10 / 5 fps for the best configuration and choose the default rate; record the choice and why
+- [x] 1.3 Run the baseline grid (YOLO26 n / s, 960 / 1280 px, BoT-SORT / ByteTrack, 10 fps) on the validation sequences and record HOTA, IDF1, MOTA, recall, precision and CPU ms/frame in `docs/results/player-tracking.md`; verify every number in the file matches the script output
+- [x] 1.4 Measure IDF1 and time at 30 / 10 / 5 fps for the best configuration and choose the default rate; record the choice and why
 
 ## 2. `vball.players`
 
