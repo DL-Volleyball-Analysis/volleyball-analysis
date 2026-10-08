@@ -31,6 +31,27 @@ stage to say which flights end on the floor and is not in the current change. Pr
 (interior jumps from 2 px noise stay below ~5 px/frame, touches are above ~13); touches closer than about
 0.3 s at 50 fps are not separated. Low quality: median residual > 4 px or depth sd > 0.5 m.
 
+## Camera calibration on labelled images (2026-10-08)
+`scripts/eval_calibration.py`: k6y7r test split (49 images, 640 px), calibrated from the labelled keypoints
+and from court model v2's keypoints with confidence ≥ 0.5. Gates: median reprojection error ≤ 0.5% of the
+image width, focal length relative sd ≤ 5%.
+
+| Keypoints from | Usable | Median reprojection error | p90 | Camera height (median) | Unusable: < 4 floor points / focal undetermined / error above gate |
+|---|---|---|---|---|---|
+| labels | 30 / 49 | 1.03 px (0.16% of width) | 2.40 px | 4.9 m | 10 / 7 / 2 |
+| model v2 | 4 / 49 | 2.19 px (0.34%) | 2.30 px | 7.0 m | 10 / 21 / 14 |
+
+**Reading.** With correct keypoints, calibration works on most views with enough of the court (net height
+picked: 2.43 m in 22, 2.24 m in 8). With v2's keypoints it rarely does: too few confident points, or
+points inconsistent with any camera, which matches v2's systematic attack-line error
+([court-keypoints.md](court-keypoints.md)). 3D trajectories on real footage therefore depend on court
+model v3.
+
+**Focal gate.** A view that shows only one sideline and the net, roughly head-on, puts every visible
+point in one vertical plane; zoom and distance then trade off and many cameras fit to sub-pixel error
+(synthetic: the fit picked f = 2001 px for a true 1600 px). The second gate rejects these instead of
+returning a confident wrong camera (focal sd 37-78% in that case, 0.4% with the whole court).
+
 ## Real footage
-Not measured yet (tasks 1.3, 8.1): calibration reprojection error on the k6y7r test labels and with
-court model predictions, and net-crossing heights on the evaluation clips.
+Not measured yet (task 8.1): net-crossing heights on the evaluation clips, once a court model gives
+usable calibrations on them.

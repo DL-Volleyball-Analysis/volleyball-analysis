@@ -18,8 +18,12 @@ For each shot with enough keypoints, including at least one net-band point off t
 - **THEN** the calibration assumes square pixels and a centred principal point, and is marked as constrained by the floor only
 
 ### Requirement: Calibration quality gate
-A calibration whose reprojection error exceeds the configured threshold SHALL be marked unusable, and no 3D trajectory SHALL be computed from it.
+A calibration whose reprojection error exceeds the configured threshold, or whose focal length is not determined by the keypoints (its relative standard deviation from the fit exceeds the configured threshold), SHALL be marked unusable, and no 3D trajectory SHALL be computed from it.
 
 #### Scenario: Bad keypoints
 - **WHEN** a shot's keypoints are inconsistent and the error is above the threshold
 - **THEN** the shot's flights are reported as not reconstructed, with the reason
+
+#### Scenario: Exact but ambiguous fit
+- **WHEN** only one sideline and the net are visible, seen roughly head-on, so the keypoints fit cameras with very different focal lengths equally well
+- **THEN** the calibration is unusable with the reason "focal length poorly constrained", even though its reprojection error is small

@@ -4,7 +4,7 @@
 
 - [x] 1.1 Implement homography-initialised calibration refined on all keypoints (both net heights, lower error kept) and verify synthetic tests recover a known camera's focal length within 2% and position within 0.2 m from noisy keypoints
 - [x] 1.2 Implement the floor-only fallback and the quality gate and verify tests for each status
-- [ ] 1.3 Measure median reprojection error on the k6y7r test labels and with court model v2 predictions; record both in `docs/results/trajectory.md` and verify against the script output
+- [x] 1.3 Measure median reprojection error on the k6y7r test labels and with court model v2 predictions; record both in `docs/results/trajectory.md` and verify against the script output
 
 ## 2. Flights (`vball.trajectory`)
 

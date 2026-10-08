@@ -44,6 +44,29 @@ def test_floor_only_when_no_net_point_is_visible():
     assert abs(cal.camera.focal / TRUE.focal - 1) < 0.05
 
 
+@pytest.mark.parametrize("seed", range(3))
+def test_one_sideline_and_the_net_seen_head_on_is_flagged_not_guessed(seed):
+    # far sideline + net above point 2: all six points lie in one vertical plane that the camera faces,
+    # so zoom and distance trade off; the fit is exact (sub-pixel) but the focal length is not known
+    pts = keypoints(TRUE, noise=0.5, seed=seed)
+    pts[[0, 5, 6, 7, 8, 9, 12, 13]] = np.nan  # keep 1, 2, 3, 4 and 10, 11
+    cal = calibrate(pts, SIZE)
+    assert cal.status == "unusable" and "focal length poorly constrained" in cal.reason
+    assert cal.reprojection_px < 2.0  # the reprojection gate alone would have accepted it
+
+
+def test_focal_length_is_well_constrained_with_the_whole_court():
+    cal = calibrate(keypoints(TRUE, noise=1.0), SIZE)
+    assert cal.focal_sd < 0.01
+
+
+def test_collinear_floor_points_without_the_net_are_unusable():
+    pts = keypoints(TRUE)
+    pts[[0, 5, 6, 7, 8, 9, 10, 11, 12, 13]] = np.nan
+    cal = calibrate(pts, SIZE)
+    assert cal.status == "unusable" and "one line" in cal.reason
+
+
 def test_too_few_floor_points_is_unusable():
     pts = keypoints(TRUE)
     pts[[0, 1, 2, 3, 4, 5, 6]] = np.nan  # three floor points left
