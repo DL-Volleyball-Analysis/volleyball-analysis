@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vball"
+version = "0.1.0"
+description = "Volleyball video analysis: ball tracking, court registration, landing and scoring"
+requires-python = ">=3.11"
+dependencies = ["numpy", "pandas", "scipy", "opencv-python-headless", "onnxruntime"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

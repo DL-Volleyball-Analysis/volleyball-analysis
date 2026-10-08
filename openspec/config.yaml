@@ -1,0 +1,22 @@
+schema: spec-driven
+
+context: |
+  Volleyball match analysis from single-camera video. Two code bases:
+  the `vball` Python package (src/vball, all analysis logic) and the web app
+  (external/volleyball_analysis_webapp, branch `redesign`: FastAPI backend + worker + React frontend).
+  The web app imports `vball`; it never keeps its own copy of analysis code.
+  GPU training runs on Google Colab; the local machine (Apple M1 Pro, CPU) does inference only.
+  Single-user local deployment: no accounts, no cloud services.
+  Accuracy must be reported honestly: label-free proxies are never presented as accuracy;
+  a metric without labelled data is reported as "not measured".
+  All documents (docs/prd, OpenSpec artifacts, READMEs) are written in English.
+
+rules:
+  proposal:
+    - Link the PRD section the change implements (docs/prd/<file>.md).
+    - State what is out of scope.
+  design:
+    - Name the module that owns each new responsibility; analysis logic goes in src/vball, not in the web app.
+  tasks:
+    - Every task names its verification (test, command or observable behaviour).
+    - Tests and docs land in the same group as the code they cover.

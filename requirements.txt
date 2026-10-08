@@ -1,0 +1,8 @@
+numpy
+pandas
+scipy
+opencv-python-headless
+onnxruntime
+tqdm
+ultralytics      # court keypoint model (YOLO pose)
+roboflow         # dataset download only

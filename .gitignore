@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+.DS_Store
+models/
+data/
+outputs/
+external/
+papers/
+*.egg-info/
+.pytest_cache/
+# personal application material, never committed
+private/
+# local agent notes (personal plans and paths), not published
+CLAUDE.md
