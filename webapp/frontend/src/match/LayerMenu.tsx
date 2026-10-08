@@ -1,9 +1,10 @@
 import type { Layers } from './OverlayCanvas'
 
-export function LayerMenu({ layers, onChange, courtAvailable }: {
+export function LayerMenu({ layers, onChange, courtAvailable, playersAvailable = false }: {
   layers: Layers
   onChange: (l: Layers) => void
   courtAvailable: boolean
+  playersAvailable?: boolean
 }) {
   return (
     <fieldset className="flex flex-wrap gap-x-5 gap-y-1 text-[13px] [&_input]:accent-[var(--accent)]">
@@ -21,6 +22,16 @@ export function LayerMenu({ layers, onChange, courtAvailable }: {
         />
         Court lines
         {!courtAvailable && <span>(available once the court is found)</span>}
+      </label>
+      <label className={`flex items-center gap-1.5 ${playersAvailable ? '' : 'text-ink-muted'}`}>
+        <input
+          type="checkbox"
+          checked={playersAvailable && layers.players}
+          disabled={!playersAvailable}
+          onChange={(e) => onChange({ ...layers, players: e.target.checked })}
+        />
+        Players
+        {!playersAvailable && <span>(available once players are tracked)</span>}
       </label>
     </fieldset>
   )

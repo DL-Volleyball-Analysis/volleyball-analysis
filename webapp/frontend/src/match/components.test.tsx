@@ -83,9 +83,9 @@ describe('StagePanel', () => {
 describe('LayerMenu', () => {
   test('toggles the ball trail; court lines disabled until a court exists', async () => {
     const onChange = vi.fn()
-    render(<LayerMenu layers={{ ball: true, court: false }} onChange={onChange} courtAvailable={false} />)
+    render(<LayerMenu layers={{ ball: true, court: false, players: false }} onChange={onChange} courtAvailable={false} />)
     await userEvent.click(screen.getByLabelText('Ball trail'))
-    expect(onChange).toHaveBeenCalledWith({ ball: false, court: false })
+    expect(onChange).toHaveBeenCalledWith({ ball: false, court: false, players: false })
     expect(screen.getByRole('checkbox', { name: /Court lines/ })).toBeDisabled()
   })
 })
@@ -98,4 +98,15 @@ describe('RallyList scrolling', () => {
     rerender(<RallyList rallies={list} currentIndex={2} onSelect={() => {}} />)
     expect(spy).not.toHaveBeenCalled()
   })
+})
+
+test('the players layer waits for player tracking and then toggles', async () => {
+  const onChange = vi.fn()
+  const layers = { ball: true, court: false, players: false }
+  const { rerender } = render(<LayerMenu layers={layers} onChange={onChange} courtAvailable={false} />)
+  expect(screen.getByRole('checkbox', { name: /Players/ })).toBeDisabled()
+  expect(screen.getByText('(available once players are tracked)')).toBeInTheDocument()
+  rerender(<LayerMenu layers={layers} onChange={onChange} courtAvailable={false} playersAvailable />)
+  await userEvent.click(screen.getByRole('checkbox', { name: /Players/ }))
+  expect(onChange).toHaveBeenCalledWith({ ball: true, court: false, players: true })
 })

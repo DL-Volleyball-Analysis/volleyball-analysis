@@ -1,5 +1,5 @@
 // Pure helpers for drawing on top of the video (unit tested; the canvas code stays thin).
-import type { BallWindow } from '../api/types'
+import type { BallWindow, PlayerWindow } from '../api/types'
 
 export type Letterbox = { scale: number; x: number; y: number }
 
@@ -27,4 +27,13 @@ export function trailPoints(windows: readonly BallWindow[], frame: number, lengt
     }
   }
   return out.sort((a, b) => a.frame - b.frame)
+}
+
+export type PlayerBox = PlayerWindow['boxes'][number]
+
+/** Player boxes at one frame, from windows that may overlap (each track once). */
+export function boxesAt(windows: readonly PlayerWindow[], frame: number): PlayerBox[] {
+  const seen = new Map<number, PlayerBox>()
+  for (const w of windows) for (const b of w.boxes) if (b.frame === frame) seen.set(b.track_id, b)
+  return [...seen.values()].sort((a, b) => a.track_id - b.track_id)
 }

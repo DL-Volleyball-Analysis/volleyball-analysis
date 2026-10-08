@@ -21,8 +21,8 @@
 
 ## 4. Overlay (web app)
 
-- [ ] 4.1 Draw player boxes with track ids on the overlay canvas from windowed player data and add a "Players" toggle (off by default); verify overlay tests with the fake canvas and that toggling stops drawing
-- [ ] 4.2 Verify by screenshot that boxes sit on the players after a resize, in both themes
+- [x] 4.1 Draw player boxes with track ids on the overlay canvas from windowed player data and add a "Players" toggle (off by default); verify overlay tests with the fake canvas and that toggling stops drawing
+- [x] 4.2 Verify by screenshot that boxes sit on the players after a resize, in both themes
 
 ## 5. Fine-tuning (only if 1.3 misses the PRD targets)
 

@@ -47,7 +47,7 @@ function MatchView({ id }: { id: string }) {
   const rallies = ralliesQ.data ?? NO_RALLIES
   const pos = useRallyAt(rallies)
   const correction = useCorrectRally(id)
-  const [layers, setLayers] = useState<Layers>({ ball: true, court: false })
+  const [layers, setLayers] = useState<Layers>({ ball: true, court: false, players: false })
   const [panel, setPanel] = useState<Panel>('rallies')
   const tags = useTags(id).data ?? NO_TAGS
   const addTag = useAddTag(id)
@@ -85,6 +85,7 @@ function MatchView({ id }: { id: string }) {
   const duration = v.frames && v.fps ? v.frames / v.fps : 0
   const demo = rallies.some((r) => r.source === 'demo')
   const courtAvailable = stages.data?.find((s) => s.name === 'court')?.status === 'done'
+  const playersAvailable = stages.data?.find((s) => s.name === 'players')?.status === 'done'
   const running = v.job && (v.job.status === 'queued' || v.job.status === 'running')
 
   return (
@@ -112,7 +113,7 @@ function MatchView({ id }: { id: string }) {
           <div className="min-w-0">
             <VideoStage video={v} layers={layers} />
             <div className="border-t border-line px-3 py-2">
-              <LayerMenu layers={layers} onChange={setLayers} courtAvailable={courtAvailable} />
+              <LayerMenu layers={layers} onChange={setLayers} courtAvailable={courtAvailable} playersAvailable={playersAvailable} />
             </div>
           </div>
           <aside className="border-t border-line lg:border-t-0 lg:border-l">
