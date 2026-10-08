@@ -1,0 +1,4 @@
+# training outputs and data stay out of git (weights are ignored at the root)
+runs/
+datasets/
+Volleyball_Action_Dataset/
