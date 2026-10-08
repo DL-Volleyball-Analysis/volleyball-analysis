@@ -22,6 +22,8 @@ export const STAGE_LABEL: Record<StageName, string> = {
   decode: 'Reading the video',
   court: 'Finding the court',
   ball: 'Tracking the ball',
+  players: 'Tracking the players',
+  trajectory: 'Reconstructing 3D flights',
   events: 'Finding contacts and landings',
   rallies: 'Scoring rallies',
 }

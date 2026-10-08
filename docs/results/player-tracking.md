@@ -62,3 +62,18 @@ Time for a 2-hour match = 7,200 s × detection rate × ms per detected frame (M1
 the time. At 5 fps the gaps between detections are too long and tracks break (ID switches more than
 double). The PRD's time budget (a 2-hour match in ≤ 1 h for this stage) is **not met**: 1.9 h. Options:
 YOLO26n at 10 fps (59 ms per frame, ~1.2 h, IDF1 0.388), a GPU, or running the stage only inside rallies.
+
+## Stage time in the web app (2026-10-08)
+`scripts/time_player_stage.py`: the players stage's own configuration (YOLO26s, 960 px, BoT-SORT, 10 fps)
+on the 5 evaluation clips, decoding included (M1 Pro CPU):
+
+| Clip | Frames | fps | Time | × real time |
+|---|---|---|---|---|
+| broadcast_back_rally | 226 | 30 | 9.8 s | 1.30 |
+| broadcast_back_view | 420 | 30 | 15.4 s | 1.10 |
+| broadcast_side_high_men | 153 | 30 | 5.5 s | 1.08 |
+| broadcast_side_high_women | 178 | 30 | 6.5 s | 1.09 |
+| broadcast_side_rally | 421 | 50 | 9.7 s | 1.15 |
+
+Overall 1.14 × real time: a 2-hour match takes about **2.3 h** for this stage, more than the 1.9 h
+estimated from detection time alone (decoding every frame adds the rest). PRD budget (≤ 1 h): not met.

@@ -188,6 +188,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/videos/{vid}/players": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Player Window
+         * @description Player boxes (image pixels) and court positions between start and end seconds.
+         */
+        get: operations["player_window_videos__vid__players_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/videos/{vid}/flights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Flights
+         * @description 3D ball flights overlapping [start, end] seconds, with a court position for every frame.
+         *     Videos with demo rallies get demo flights built from those rallies (source 'demo').
+         */
+        get: operations["flights_videos__vid__flights_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/videos/{vid}/ball/coverage": {
         parameters: {
             query?: never;
@@ -352,6 +393,48 @@ export interface components {
             /** File */
             file: string;
         };
+        /** Flight */
+        Flight: {
+            /** Start S */
+            start_s: number;
+            /** End S */
+            end_s: number;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "model" | "demo";
+            /**
+             * Quality
+             * @enum {string}
+             */
+            quality: "ok" | "low";
+            /** Reasons */
+            reasons: string[];
+            /** Fit Px */
+            fit_px: number | null;
+            /** Start Speed Mps */
+            start_speed_mps: number;
+            /** Apex M */
+            apex_m: number | null;
+            net_crossing: components["schemas"]["NetCrossing"] | null;
+            landing: components["schemas"]["Landing"] | null;
+            /** Samples */
+            samples: components["schemas"]["FlightSample"][];
+        };
+        /** FlightSample */
+        FlightSample: {
+            /** T */
+            t: number;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+            /** Z */
+            z: number;
+            /** Observed */
+            observed: boolean;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -377,9 +460,9 @@ export interface components {
              * From Stage
              * @enum {string}
              */
-            from_stage: "decode" | "court" | "ball" | "events" | "rallies";
+            from_stage: "decode" | "court" | "ball" | "players" | "trajectory" | "events" | "rallies";
             /** Stage */
-            stage: ("decode" | "court" | "ball" | "events" | "rallies") | null;
+            stage: ("decode" | "court" | "ball" | "players" | "trajectory" | "events" | "rallies") | null;
             /** Progress */
             progress: number;
             /** Error */
@@ -396,7 +479,53 @@ export interface components {
              * @default decode
              * @enum {string}
              */
-            from_stage: "decode" | "court" | "ball" | "events" | "rallies";
+            from_stage: "decode" | "court" | "ball" | "players" | "trajectory" | "events" | "rallies";
+        };
+        /** Landing */
+        Landing: {
+            /** X M */
+            x_m: number;
+            /** Y M */
+            y_m: number;
+        };
+        /** NetCrossing */
+        NetCrossing: {
+            /** Height M */
+            height_m: number;
+            /** Y M */
+            y_m: number;
+        };
+        /** PlayerBox */
+        PlayerBox: {
+            /** Frame */
+            frame: number;
+            /** Track Id */
+            track_id: number;
+            /** X1 */
+            x1: number;
+            /** Y1 */
+            y1: number;
+            /** X2 */
+            x2: number;
+            /** Y2 */
+            y2: number;
+            /** Interpolated */
+            interpolated: boolean;
+            /** Court X */
+            court_x: number | null;
+            /** Court Y */
+            court_y: number | null;
+            /** Side */
+            side: ("a" | "b") | null;
+        };
+        /** PlayerWindow */
+        PlayerWindow: {
+            /** Fps */
+            fps: number;
+            /** Placed */
+            placed: boolean;
+            /** Boxes */
+            boxes: components["schemas"]["PlayerBox"][];
         };
         /** Rally */
         Rally: {
@@ -492,7 +621,7 @@ export interface components {
              * Name
              * @enum {string}
              */
-            name: "decode" | "court" | "ball" | "events" | "rallies";
+            name: "decode" | "court" | "ball" | "players" | "trajectory" | "events" | "rallies";
             /**
              * Status
              * @enum {string}
@@ -1005,6 +1134,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BallWindow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    player_window_videos__vid__players_get: {
+        parameters: {
+            query?: {
+                start?: number;
+                end?: number | null;
+            };
+            header?: never;
+            path: {
+                vid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerWindow"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    flights_videos__vid__flights_get: {
+        parameters: {
+            query?: {
+                start?: number;
+                end?: number | null;
+            };
+            header?: never;
+            path: {
+                vid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Flight"][];
                 };
             };
             /** @description Validation Error */

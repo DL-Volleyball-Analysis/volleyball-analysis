@@ -57,3 +57,49 @@ def test_every_frame_when_detecting_at_full_rate():
     df = track_frames(frames(3), src_fps=30, cfg=TrackerConfig(det_fps=30), step=step)
     assert calls == [0, 1, 2]
     assert df["frame"].tolist() == [1] and not df["interpolated"].any()
+
+
+# --- on-court filter and positions (synthetic homography: 50 px per metre, court origin at (100, 600),
+# image y grows downwards, so court y goes up the image) ---
+import numpy as np  # noqa: E402
+
+from vball.players import place_on_court  # noqa: E402
+
+H_SYN = np.array([[50.0, 0, 100], [0, -50.0, 600], [0, 0, 1]])
+
+
+def box_at(frame, tid, x_m, y_m):
+    """A 40 x 90 px box whose bottom-centre stands at court (x_m, y_m)."""
+    u, v = 100 + 50 * x_m, 600 - 50 * y_m
+    return {"frame": frame, "track_id": tid, "x1": u - 20, "y1": v - 90, "x2": u + 20, "y2": v,
+            "conf": 0.9, "interpolated": False}
+
+
+def test_referee_outside_the_margins_is_dropped_and_server_behind_the_end_line_kept():
+    df = pd.DataFrame([
+        box_at(0, 1, 4.5, 4.5),    # player on side A
+        box_at(0, 2, 13.0, 2.0),   # player on side B
+        box_at(0, 3, -6.0, 4.0),   # server 6 m behind the end line: kept
+        box_at(0, 4, 9.0, -4.5),   # first referee beside the post, 4.5 m outside the sideline: dropped
+        box_at(0, 5, 9.0, 16.0),   # crowd: dropped
+    ])
+    out = place_on_court(df, lambda f: H_SYN)
+    assert sorted(out["track_id"]) == [1, 2, 3]
+    pos = out.set_index("track_id")
+    assert pos.loc[1, "side"] == "a" and pos.loc[2, "side"] == "b" and pos.loc[3, "side"] == "a"
+    assert abs(pos.loc[3, "court_x"] + 6.0) < 1e-6 and abs(pos.loc[2, "court_y"] - 2.0) < 1e-6
+    assert out["placed"].all()
+
+
+def test_player_on_the_end_line_has_x_near_zero():
+    out = place_on_court(pd.DataFrame([box_at(0, 1, 0.0, 3.0)]), lambda f: H_SYN)
+    assert abs(out.loc[0, "court_x"]) < 0.05
+
+
+def test_frames_without_a_court_mapping_are_kept_unplaced():
+    df = pd.DataFrame([box_at(0, 1, 4.5, 4.5), box_at(1, 4, 9.0, -4.5), box_at(1, 1, 4.6, 4.5)])
+    out = place_on_court(df, lambda f: H_SYN if f == 0 else None)
+    frame1 = out[out["frame"] == 1]
+    assert len(frame1) == 2  # the referee is not filtered without a mapping
+    assert not frame1["placed"].any() and frame1["court_x"].isna().all() and (frame1["side"] == "").all()
+    assert out[out["frame"] == 0]["placed"].all()

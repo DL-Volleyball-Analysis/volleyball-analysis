@@ -5,14 +5,24 @@ linearly between sampled frames, so every frame of the video has boxes. The dete
 ultralytics' YOLO person detector with its built-in tracker (BoT-SORT or ByteTrack); tests inject a
 fake one through `step`.
 
-Output: DataFrame[frame, track_id, x1, y1, x2, y2, conf, interpolated] in original image pixels.
-On-court filtering and court positions are added later from a court mapping (add-player-tracking).
+`track_frames` output: DataFrame[frame, track_id, x1, y1, x2, y2, conf, interpolated] in original image
+pixels. `place_on_court` then adds the court position of each box's feet (bottom-centre) from the frame's
+court mapping and drops people outside the court plus margins (referees, bench, crowd):
+
+  court_x, court_y  metres in the court frame of vball.court (NaN without a mapping)
+  side              "a" (x < 9 m) / "b" side of the net, "" without a mapping
+  placed            True when the frame had a court mapping (position and filter applied)
+
+Stored by the web app as players.csv.gz with these columns. Teams are not assigned here: which team
+plays on which side changes between sets and belongs to rally scoring.
 """
 from dataclasses import dataclass
 from typing import Callable, Iterable
 
 import numpy as np
 import pandas as pd
+
+from .court import LENGTH, WIDTH, side_of_net, to_court
 
 COLUMNS = ["frame", "track_id", "x1", "y1", "x2", "y2", "conf", "interpolated"]
 PERSON = 0  # COCO class id
@@ -95,3 +105,32 @@ def interpolate_tracks(df: pd.DataFrame, n_frames: int, max_gap: int | None = No
     res = pd.concat(out, ignore_index=True)
     res = res[(res["frame"] >= 0) & (res["frame"] < n_frames)]
     return res.sort_values(["frame", "track_id"], ignore_index=True)[COLUMNS]
+
+
+SIDE_MARGIN_M = 3.0  # beyond the sidelines (free zone)
+END_MARGIN_M = 7.0   # behind the end lines, where servers stand
+
+
+def place_on_court(df: pd.DataFrame, homography_at: Callable[[int], np.ndarray | None],
+                   side_margin: float = SIDE_MARGIN_M, end_margin: float = END_MARGIN_M) -> pd.DataFrame:
+    """Court position of each box's feet and the on-court filter.
+
+    homography_at(frame) gives the court -> image homography of that frame, or None when the frame has
+    no court mapping: such rows are kept unfiltered with `placed` False and no position."""
+    out = df.copy()
+    out["court_x"], out["court_y"], out["side"], out["placed"] = np.nan, np.nan, "", False
+    keep = np.ones(len(out), bool)
+    for frame, idx in out.groupby("frame").groups.items():
+        H = homography_at(int(frame))
+        if H is None:
+            continue
+        rows = out.loc[idx]
+        feet = np.column_stack([(rows["x1"] + rows["x2"]) / 2, rows["y2"]])
+        xy = to_court(H, feet)
+        out.loc[idx, "court_x"], out.loc[idx, "court_y"] = xy[:, 0], xy[:, 1]
+        out.loc[idx, "side"] = [side_of_net(x) for x in xy[:, 0]]
+        out.loc[idx, "placed"] = True
+        inside = ((xy[:, 0] >= -end_margin) & (xy[:, 0] <= LENGTH + end_margin)
+                  & (xy[:, 1] >= -side_margin) & (xy[:, 1] <= WIDTH + side_margin))
+        keep[out.index.get_indexer(idx)] = inside
+    return out[keep].reset_index(drop=True)

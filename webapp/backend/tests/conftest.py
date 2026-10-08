@@ -60,3 +60,19 @@ def client():
 
     import main
     return TestClient(main.app)
+
+
+@pytest.fixture(autouse=True)
+def fake_players(monkeypatch):
+    """Replace YOLO + BoT-SORT: two tracks in every frame, one standing on court and one far outside it
+    (bottom-centres at image (150, 100) and (300, 20)). Consumes the frame generator like the real one."""
+    import pipeline
+
+    def track_frames(frames, src_fps, cfg=None, step=None):
+        rows = []
+        for i, _ in enumerate(frames):
+            rows.append((i, 1, 130.0, 60.0, 170.0, 100.0, 0.9, False))
+            rows.append((i, 2, 280.0, 0.0, 320.0, 20.0, 0.8, False))
+        return pd.DataFrame(rows, columns=["frame", "track_id", "x1", "y1", "x2", "y2", "conf", "interpolated"])
+
+    monkeypatch.setattr(pipeline.players, "track_frames", track_frames)

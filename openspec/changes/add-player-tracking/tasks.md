@@ -9,15 +9,15 @@
 
 ## 2. `vball.players`
 
-- [ ] 2.1 Implement detection + tracking at a configurable rate with linear box interpolation between samples; verify unit tests with a fake detector for id continuity and interpolation
-- [ ] 2.2 Implement the on-court filter, court position and side of net from a court mapping, and the "unavailable" path without one; verify tests with a synthetic homography (referee outside the margins dropped, server behind the end line kept)
-- [ ] 2.3 Document the module and the `players.csv.gz` columns in its docstring and verify the tests pass
+- [x] 2.1 Implement detection + tracking at a configurable rate with linear box interpolation between samples; verify unit tests with a fake detector for id continuity and interpolation
+- [x] 2.2 Implement the on-court filter, court position and side of net from a court mapping, and the "unavailable" path without one; verify tests with a synthetic homography (referee outside the margins dropped, server behind the end line kept)
+- [x] 2.3 Document the module and the `players.csv.gz` columns in its docstring and verify the tests pass
 
 ## 3. Pipeline and API (web app)
 
-- [ ] 3.1 Add the `players` stage between `ball` and `events`, bump the events stage version, and verify backend tests for stage order, reuse and the no-court path
-- [ ] 3.2 Add `GET /videos/{id}/players?start=&end=` and verify API tests for windowing and the 404 before the stage ran; regenerate frontend types
-- [ ] 3.3 Measure the stage time on the 5 evaluation clips and verify it against the PRD budget (scaled to a 2-hour match); record it
+- [x] 3.1 Add the `players` stage between `ball` and `events`, bump the events stage version, and verify backend tests for stage order, reuse and the no-court path
+- [x] 3.2 Add `GET /videos/{id}/players?start=&end=` and verify API tests for windowing and the 404 before the stage ran; regenerate frontend types
+- [x] 3.3 Measure the stage time on the 5 evaluation clips and verify it against the PRD budget (scaled to a 2-hour match); record it
 
 ## 4. Overlay (web app)
 

@@ -24,8 +24,8 @@
 
 ## 5. Pipeline and API (web app)
 
-- [ ] 5.1 Add the `trajectory` stage after `players`, bump the events version, and verify backend tests for order, reuse and the unusable-calibration path
-- [ ] 5.2 Add `GET /videos/{id}/flights?start=&end=` and verify API tests; regenerate frontend types
+- [x] 5.1 Add the `trajectory` stage after `players`, bump the events version, and verify backend tests for order, reuse and the unusable-calibration path
+- [x] 5.2 Add `GET /videos/{id}/flights?start=&end=` and verify API tests; regenerate frontend types
 
 ## 6. 2D tactics board
 
