@@ -1,8 +1,9 @@
-"""SQLite storage: videos, analysis jobs and rallies.
+"""SQLite storage: videos, analysis jobs, rallies, rosters and action tags.
 
 The API and the worker are separate processes, so the job queue lives here (WAL mode) instead
 of in API memory. Rallies keep the model's winner and the user's correction side by side; the
-corrections double as labels for measuring scoring accuracy.
+corrections double as labels for measuring scoring accuracy. Rosters and tags are user data: re-analysis
+never touches them, and tags are keyed by video time, not by rally (see vball.stats).
 """
 import sqlite3
 import uuid
@@ -43,6 +44,24 @@ CREATE TABLE IF NOT EXISTS rallies (
     source TEXT NOT NULL DEFAULT 'model',  -- model | demo
     PRIMARY KEY (video_id, idx)
 );
+CREATE TABLE IF NOT EXISTS rosters (
+    video_id TEXT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+    team TEXT NOT NULL,                -- 'a' | 'b'
+    number INTEGER NOT NULL,
+    name TEXT,
+    PRIMARY KEY (video_id, team, number)
+);
+CREATE TABLE IF NOT EXISTS tags (
+    id TEXT PRIMARY KEY,
+    video_id TEXT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+    time_s REAL NOT NULL,
+    kind TEXT NOT NULL,                -- attack | serve
+    team TEXT NOT NULL,                -- 'a' | 'b'
+    number INTEGER NOT NULL,
+    outcome TEXT,                      -- user outcome; NULL = inferred (vball.stats)
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS tags_by_video ON tags(video_id, time_s);
 """
 
 FINISHED = ("done", "failed")
@@ -178,3 +197,53 @@ class Database:
                 (winner, video_id, idx),
             ).rowcount
         return n > 0
+
+    # rosters
+    def get_roster(self, video_id: str) -> list[dict]:
+        with self.connect() as c:
+            rows = c.execute(
+                "SELECT team, number, name FROM rosters WHERE video_id = ? ORDER BY team, number", (video_id,)
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def replace_roster(self, video_id: str, players: list[dict]) -> None:
+        with self.connect() as c:
+            c.execute("DELETE FROM rosters WHERE video_id = ?", (video_id,))
+            c.executemany(
+                "INSERT INTO rosters (video_id, team, number, name) VALUES (?, ?, ?, ?)",
+                [(video_id, p["team"], p["number"], p.get("name")) for p in players],
+            )
+
+    def ensure_on_roster(self, video_id: str, team: str, number: int) -> None:
+        with self.connect() as c:
+            c.execute("INSERT OR IGNORE INTO rosters (video_id, team, number) VALUES (?, ?, ?)",
+                      (video_id, team, number))
+
+    # tags
+    def add_tag(self, video_id: str, time_s: float, kind: str, team: str, number: int,
+                outcome: str | None) -> dict:
+        tag = {"id": uuid.uuid4().hex[:12], "video_id": video_id, "time_s": time_s, "kind": kind,
+               "team": team, "number": number, "outcome": outcome, "created_at": now()}
+        with self.connect() as c:
+            c.execute("INSERT INTO tags (id, video_id, time_s, kind, team, number, outcome, created_at) "
+                      "VALUES (:id, :video_id, :time_s, :kind, :team, :number, :outcome, :created_at)", tag)
+        return tag
+
+    def list_tags(self, video_id: str) -> list[dict]:
+        with self.connect() as c:
+            rows = c.execute("SELECT * FROM tags WHERE video_id = ? ORDER BY time_s, id", (video_id,)).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_tag(self, video_id: str, tag_id: str) -> dict | None:
+        with self.connect() as c:
+            row = c.execute("SELECT * FROM tags WHERE video_id = ? AND id = ?", (video_id, tag_id)).fetchone()
+        return dict(row) if row else None
+
+    def update_tag(self, video_id: str, tag_id: str, **fields) -> None:
+        cols = ", ".join(f"{k} = ?" for k in fields)
+        with self.connect() as c:
+            c.execute(f"UPDATE tags SET {cols} WHERE video_id = ? AND id = ?", (*fields.values(), video_id, tag_id))
+
+    def delete_tag(self, video_id: str, tag_id: str) -> bool:
+        with self.connect() as c:
+            return c.execute("DELETE FROM tags WHERE video_id = ? AND id = ?", (video_id, tag_id)).rowcount > 0

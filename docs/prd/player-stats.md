@@ -24,6 +24,7 @@ rallies and (soon) who won each point, but not who attacked or served.
 | Attack error | attempt hit out or into the net, or blocked for a point |
 | Attack efficiency | (kills − errors) / attempts |
 | Kill rate | kills / attempts |
+| (our rule) | attempts whose outcome is still unknown (rally without a winner) are left out of both ratios and the line is marked incomplete |
 | Ace / serve error | serve that wins / loses the point directly |
 
 ## Requirements

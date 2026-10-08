@@ -15,6 +15,7 @@ evaluation scripts, and the planning documents. The public page is
 | Court registration | 14-point keypoint model (court lines + net band). v2: 0.49 m median error on held-out k6y7r images (target 0.3 m); v3 (bigger model, VNL data) training. | [docs/results/court-keypoints.md](docs/results/court-keypoints.md) |
 | Player tracking | Planned: pretrained YOLO26 + BoT-SORT / ByteTrack, measured on SportsMOT volleyball first. | [openspec/changes/add-player-tracking](openspec/changes/add-player-tracking) |
 | 3D trajectory | Calibration and ballistic fit implemented and measured on synthetic rallies: 0.05 m median error on a serve, spikes flagged low quality. Not yet on real footage. | [docs/results/trajectory.md](docs/results/trajectory.md) |
+| Player statistics | Attack and serve tags in the review app; attack efficiency, kill rate, aces and serve errors per player and set, CSV export (phase 1: coach tags). | [docs/prd/player-stats.md](docs/prd/player-stats.md) |
 | Landing / scoring | Scoring rules implemented (`vball.scoring`); rally detection planned. | [docs/prd/rally-scoring.md](docs/prd/rally-scoring.md) |
 | Action recognition (capstone) | YOLOv11m mAP@0.5 0.945 on the validation split. | [docs/results/action-recognition.md](docs/results/action-recognition.md) |
 
@@ -39,6 +40,7 @@ src/vball/          analysis package
   calibration.py      camera focal length and pose from court + net keypoints
   trajectory/         flights between touches, ballistic 3D fit, synthetic rallies
   scoring.py          rally winners -> running score (indoor set rules)
+  stats.py            attack / serve tags -> outcomes and player statistics
   metrics.py          ball-track metrics (label-free proxies + labelled F1)
 scripts/            entry points (dataset build, evaluation, comparisons)
 webapp/             web app: FastAPI API + worker (backend/), React UI (frontend/); see webapp/README.md

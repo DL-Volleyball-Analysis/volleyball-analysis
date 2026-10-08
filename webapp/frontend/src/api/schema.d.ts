@@ -245,6 +245,86 @@ export interface paths {
         patch: operations["correct_rally_videos__vid__rallies__idx__patch"];
         trace?: never;
     };
+    "/videos/{vid}/roster": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Roster */
+        get: operations["get_roster_videos__vid__roster_get"];
+        /**
+         * Put Roster
+         * @description Replace both teams' rosters; rejected (unchanged) when a number appears twice in a team.
+         */
+        put: operations["put_roster_videos__vid__roster_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/videos/{vid}/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Tags */
+        get: operations["list_tags_videos__vid__tags_get"];
+        put?: never;
+        /**
+         * Add Tag
+         * @description Tag an attack or a serve; a number not on the roster is added to it. Returns all tags.
+         */
+        post: operations["add_tag_videos__vid__tags_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/videos/{vid}/tags/{tag_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Tag */
+        delete: operations["delete_tag_videos__vid__tags__tag_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Tag */
+        patch: operations["patch_tag_videos__vid__tags__tag_id__patch"];
+        trace?: never;
+    };
+    "/videos/{vid}/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Stats
+         * @description Statistics from the tags and the current rallies (winner corrections included), computed on request.
+         */
+        get: operations["get_stats_videos__vid__stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -352,6 +432,23 @@ export interface components {
             /** Winner */
             winner: ("a" | "b") | null;
         };
+        /** Roster */
+        Roster: {
+            /** Players */
+            players: components["schemas"]["RosterPlayer"][];
+        };
+        /** RosterPlayer */
+        RosterPlayer: {
+            /**
+             * Team
+             * @enum {string}
+             */
+            team: "a" | "b";
+            /** Number */
+            number: number;
+            /** Name */
+            name?: string | null;
+        };
         /** Score */
         Score: {
             /** Set No */
@@ -412,6 +509,114 @@ export interface components {
             summary: {
                 [key: string]: unknown;
             };
+        };
+        /** StatLine */
+        StatLine: {
+            /**
+             * Team
+             * @enum {string}
+             */
+            team: "a" | "b";
+            /** Number */
+            number: number | null;
+            /** Name */
+            name: string | null;
+            /** Set No */
+            set_no: number | null;
+            /** Attempts */
+            attempts: number;
+            /** Kills */
+            kills: number;
+            /** Attack Errors */
+            attack_errors: number;
+            /** Efficiency */
+            efficiency: number | null;
+            /** Kill Rate */
+            kill_rate: number | null;
+            /** Serves */
+            serves: number;
+            /** Aces */
+            aces: number;
+            /** Serve Errors */
+            serve_errors: number;
+            /** Unknown */
+            unknown: number;
+            /** Incomplete */
+            incomplete: boolean;
+        };
+        /** Stats */
+        Stats: {
+            /** Lines */
+            lines: components["schemas"]["StatLine"][];
+            /** Rallies */
+            rallies: number;
+            /** Tagged Rallies */
+            tagged_rallies: number;
+            /** Outside */
+            outside: number;
+        };
+        /** TagIn */
+        TagIn: {
+            /** Time S */
+            time_s: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "attack" | "serve";
+            /**
+             * Team
+             * @enum {string}
+             */
+            team: "a" | "b";
+            /** Number */
+            number: number;
+            /** Outcome */
+            outcome?: ("kill" | "ace" | "error" | "in_play") | null;
+        };
+        /** TagOut */
+        TagOut: {
+            /** Id */
+            id: string;
+            /** Time S */
+            time_s: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "attack" | "serve";
+            /**
+             * Team
+             * @enum {string}
+             */
+            team: "a" | "b";
+            /** Number */
+            number: number;
+            /** Outcome */
+            outcome: ("kill" | "ace" | "error" | "in_play") | null;
+            /**
+             * Effective Outcome
+             * @enum {string}
+             */
+            effective_outcome: "kill" | "ace" | "error" | "in_play" | "unknown" | "outside";
+            /** Inferred */
+            inferred: boolean;
+            /** Rally Idx */
+            rally_idx: number | null;
+        };
+        /**
+         * TagPatch
+         * @description Fields to change; `outcome: null` clears the user's outcome (back to inferred).
+         */
+        TagPatch: {
+            /** Time S */
+            time_s?: number | null;
+            /** Team */
+            team?: ("a" | "b") | null;
+            /** Number */
+            number?: number | null;
+            /** Outcome */
+            outcome?: ("kill" | "ace" | "error" | "in_play") | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -900,6 +1105,240 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Rally"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_roster_videos__vid__roster_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Roster"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_roster_videos__vid__roster_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Roster"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Roster"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tags_videos__vid__tags_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_tag_videos__vid__tags_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TagIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_tag_videos__vid__tags__tag_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vid: string;
+                tag_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_tag_videos__vid__tags__tag_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vid: string;
+                tag_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TagPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stats_videos__vid__stats_get: {
+        parameters: {
+            query?: {
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path: {
+                vid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description JSON, or CSV with format=csv */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Stats"];
+                    "text/csv": unknown;
                 };
             };
             /** @description Validation Error */

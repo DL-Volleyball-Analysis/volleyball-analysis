@@ -41,10 +41,11 @@ counts and ratios, plus `unknown` (tags with unknown outcome). Ratios are `None`
 totals are sums of the player counts, ratios recomputed from the sums (never averaged).
 
 ### Tagging interaction
-`T` starts an attack tag and `S` a serve tag at the playhead (playback pauses); the team is chosen with
-`1` / `2` (A / B, as in winner correction), the number is typed, `Enter` saves, `Esc` cancels. Tags show as
-marks on a "Tags" timeline lane; selecting one opens it in the inspector for outcome override or delete.
-Three key presses for the common case: `T`, number, `Enter` when the team defaults to the side last tagged.
+`T` starts an attack tag and `S` a serve tag at the playhead (playback pauses) in a small entry field;
+digits type the player number, `A` / `B` switch the team (letters, because digits are the number: `1` / `2`
+cannot both pick a team and type number 12), `Enter` saves, `Esc` cancels. The team defaults to the team
+last tagged. Tags show as marks on a "Tags" timeline lane; selecting one opens it in the inspector for
+outcome override or delete. Three key presses for the common case: `T`, number, `Enter`.
 
 ### API
 - `GET/PUT /videos/{id}/roster` — both teams' numbers and names.

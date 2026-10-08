@@ -68,6 +68,11 @@ export function createClock() {
       video.currentTime = Math.max(0, t)
       tick(video.currentTime, true)
     },
+    pause() {
+      video?.pause()
+    },
+    /** The video's exact current time (the store's time is stepped during playback). */
+    exactTime: () => video?.currentTime ?? time,
     togglePlay() {
       if (!video) return
       if (video.paused) void video.play()

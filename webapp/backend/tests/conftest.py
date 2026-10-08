@@ -23,7 +23,7 @@ def data_dir(tmp_path_factory):
 def empty_db(data_dir):
     import main
     with main.db.connect() as c:
-        c.executescript("DELETE FROM rallies; DELETE FROM jobs; DELETE FROM videos;")
+        c.executescript("DELETE FROM tags; DELETE FROM rosters; DELETE FROM rallies; DELETE FROM jobs; DELETE FROM videos;")
 
 
 @pytest.fixture(scope="session")

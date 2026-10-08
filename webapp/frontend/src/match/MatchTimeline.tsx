@@ -1,26 +1,30 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { useBallCoverage } from '../api/queries'
-import type { Rally } from '../api/types'
+import type { Rally, Tag } from '../api/types'
 import { isIn } from '../court/geometry'
 import { useClock } from '../playback/clock'
+import { tagLabel } from '../stats/tagText'
 import { formatDuration } from '../ui/format'
 import { needsReview, reasonText } from './rallyText'
 import { rulerStep, timeAt } from './timeline'
 
-const LANES = ['Rallies', 'Ball', 'Landings', 'Review'] as const
+const LANES = ['Rallies', 'Ball', 'Landings', 'Tags', 'Review'] as const
 const LABEL_PX = 56 // room per ruler label, so labels never overlap on narrow screens
 
 /**
- * Editor-style timeline: a ruler and four lanes (rallies by winner, ball detection coverage,
- * landings, rallies to review) with a playhead. The playhead moves in an animation frame from the
+ * Editor-style timeline: a ruler and five lanes (rallies by winner, ball detection coverage,
+ * landings, attack / serve tags, rallies to review) with a playhead. The playhead moves in an animation frame from the
  * video's own time, outside React; click or drag on a lane to seek.
  */
-export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSelect }: {
+export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSelect, tags = [], selectedTag, onSelectTag }: {
   videoId: string
   rallies: readonly Rally[]
   duration: number
   currentIndex: number
   onSelect: (r: Rally) => void
+  tags?: readonly Tag[]
+  selectedTag?: string | null
+  onSelectTag?: (t: Tag) => void
 }) {
   const clock = useClock()
   const track = useRef<HTMLDivElement>(null)
@@ -140,6 +144,25 @@ export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSele
               </span>
             )
           })}
+        </div>
+
+        {/* Tags: the player number (S before it for a serve) in the team's colour; outside rallies dimmed */}
+        <div className="relative h-6 border-b border-line" data-testid="lane-tags">
+          {tags.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              data-testid="tag-mark"
+              title={tagLabel(t)}
+              aria-label={tagLabel(t)}
+              aria-pressed={t.id === selectedTag}
+              onClick={() => onSelectTag?.(t)}
+              className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[2px] px-0.5 font-mono text-[11px] font-semibold leading-none ${t.team === 'a' ? 'text-team-a' : 'text-team-b'} ${t.id === selectedTag ? 'outline-2 outline-offset-1 outline-accent' : ''} ${t.rally_idx == null ? 'opacity-50' : ''}`}
+              style={{ left: pct(t.time_s) }}
+            >
+              {t.kind === 'serve' ? 'S' : ''}{t.number}
+            </button>
+          ))}
         </div>
 
         {/* Review: low-confidence rallies */}

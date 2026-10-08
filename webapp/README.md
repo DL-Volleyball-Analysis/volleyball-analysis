@@ -31,6 +31,7 @@ frontend/       React + Vite + TypeScript
   src/playback/   playback clock (time outside React state), rally at playhead
   src/library/    library page: upload, live progress, score summary
   src/match/      match page: scoreboard, video + overlay canvas, rally list/timeline, shortcuts
+  src/stats/      tagging (entry, shortcuts, inspector), statistics tab, roster editor
   src/court/      court geometry and the to-scale court map
   src/ui/         small shared pieces; theme.css holds the design tokens
 docs/architecture/ARCHITECTURE.md
@@ -61,7 +62,16 @@ cd frontend && npm test && npm run build
 Frontend tests include WCAG contrast checks of the theme tokens (`src/theme.test.ts`).
 
 ## Keyboard (match page)
-J / K previous / next rally · Space play / pause · 1 / 2 winner A / B · 0 clear correction
+J / K previous / next rally · Space play / pause · 1 / 2 winner A / B · 0 clear correction ·
+T / S tag an attack / serve at the playhead (then the player number, A / B to switch team, Enter)
+
+## Statistics
+The Stats tab turns attack and serve tags into per-player and per-team statistics, per set or for the
+match, with a CSV export: attempts, kills, errors, attack efficiency = (kills − errors) / decided attempts,
+kill rate, serves, aces and serve errors. The last tag of a rally takes its outcome from the rally's
+winner (corrections included) unless set by hand; earlier tags are in play. Tags of rallies without a
+winner are left out of the ratios and the line is marked incomplete. Tags are stored by time, so they
+survive re-analysis. Rules and tests: `vball.stats` (`tests/test_stats.py`).
 
 ## License
 MIT. Court keypoint data: Roboflow Universe sets (CC BY 4.0).

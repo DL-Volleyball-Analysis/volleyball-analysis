@@ -2,7 +2,7 @@
 // that prefix refreshes its stages, rallies and ball data together.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
-import type { Rally, StageName, Team } from './types'
+import type { Rally, RosterPlayer, StageName, Tag, TagIn, TagPatch, Team } from './types'
 
 export const BALL_WINDOW_S = 30
 
@@ -13,6 +13,9 @@ export const keys = {
   rallies: (id: string) => ['video', id, 'rallies'] as const,
   ball: (id: string, window: number) => ['video', id, 'ball', window] as const,
   coverage: (id: string, bins: number) => ['video', id, 'coverage', bins] as const,
+  roster: (id: string) => ['video', id, 'roster'] as const,
+  tags: (id: string) => ['video', id, 'tags'] as const,
+  stats: (id: string) => ['video', id, 'stats'] as const,
 }
 
 /** Ball data is fetched in fixed windows so a long match is never loaded at once. */
@@ -80,6 +83,42 @@ export function useCorrectRally(id: string) {
     onSuccess: (rallies) => {
       qc.setQueryData(keys.rallies(id), rallies)
       qc.invalidateQueries({ queryKey: keys.videos })
+      // tag outcomes and statistics follow the rally winners
+      qc.invalidateQueries({ queryKey: keys.tags(id) })
+      qc.invalidateQueries({ queryKey: keys.stats(id) })
+    },
+  })
+}
+
+export const useRoster = (id: string) => useQuery({ queryKey: keys.roster(id), queryFn: () => api.roster(id) })
+export const useTags = (id: string) => useQuery({ queryKey: keys.tags(id), queryFn: () => api.tags(id) })
+export const useStats = (id: string) => useQuery({ queryKey: keys.stats(id), queryFn: () => api.stats(id) })
+
+/** Tag mutations return the full tag list; statistics and the roster (new numbers) are refetched. */
+function useTagMutation<V>(id: string, fn: (v: V) => Promise<Tag[]>) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: (tags) => {
+      qc.setQueryData(keys.tags(id), tags)
+      qc.invalidateQueries({ queryKey: keys.stats(id) })
+      qc.invalidateQueries({ queryKey: keys.roster(id) })
+    },
+  })
+}
+
+export const useAddTag = (id: string) => useTagMutation(id, (tag: TagIn) => api.addTag(id, tag))
+export const usePatchTag = (id: string) =>
+  useTagMutation(id, ({ tagId, patch }: { tagId: string; patch: TagPatch }) => api.patchTag(id, tagId, patch))
+export const useDeleteTag = (id: string) => useTagMutation(id, (tagId: string) => api.deleteTag(id, tagId))
+
+export function usePutRoster(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (players: RosterPlayer[]) => api.putRoster(id, players),
+    onSuccess: (roster) => {
+      qc.setQueryData(keys.roster(id), roster)
+      qc.invalidateQueries({ queryKey: keys.stats(id) }) // names
     },
   })
 }

@@ -1,5 +1,7 @@
 // Thin fetch wrapper for the backend. In dev, Vite proxies /api to the FastAPI server.
-import type { BallCoverage, BallWindow, Job, Rally, StageInfo, StageName, Team, Video } from './types'
+import type {
+  BallCoverage, BallWindow, Job, Rally, RosterPlayer, StageInfo, StageName, Stats, Tag, TagIn, TagPatch, Team, Video,
+} from './types'
 
 const BASE = '/api'
 
@@ -56,6 +58,15 @@ export const api = {
   correctRally: (id: string, idx: number, winner: Team | null) =>
     request<Rally[]>(`/videos/${id}/rallies/${idx}`, json('PATCH', { winner })),
   deleteVideo: (id: string) => request<void>(`/videos/${id}`, { method: 'DELETE' }),
+  roster: (id: string) => request<{ players: RosterPlayer[] }>(`/videos/${id}/roster`),
+  putRoster: (id: string, players: RosterPlayer[]) =>
+    request<{ players: RosterPlayer[] }>(`/videos/${id}/roster`, json('PUT', { players })),
+  tags: (id: string) => request<Tag[]>(`/videos/${id}/tags`),
+  addTag: (id: string, tag: TagIn) => request<Tag[]>(`/videos/${id}/tags`, json('POST', tag)),
+  patchTag: (id: string, tagId: string, patch: TagPatch) => request<Tag[]>(`/videos/${id}/tags/${tagId}`, json('PATCH', patch)),
+  deleteTag: (id: string, tagId: string) => request<Tag[]>(`/videos/${id}/tags/${tagId}`, { method: 'DELETE' }),
+  stats: (id: string) => request<Stats>(`/videos/${id}/stats`),
+  statsCsvUrl: (id: string) => `${BASE}/videos/${id}/stats?format=csv`,
   fileUrl: (id: string) => `${BASE}/videos/${id}/file`,
   jobStreamUrl: (id: string) => `${BASE}/videos/${id}/jobs/stream`,
 }

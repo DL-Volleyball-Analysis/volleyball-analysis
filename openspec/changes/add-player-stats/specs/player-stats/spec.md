@@ -44,9 +44,10 @@ the rally SHALL be in play. When the rally has no effective winner, the last tag
 
 ### Requirement: Statistics
 For each player and each team, for the match and for each set, the system SHALL report attack attempts,
-kills, errors, attack efficiency = (kills − errors) / attempts and kill rate = kills / attempts, and serves,
-aces and serve errors. Ratios with no attempts SHALL be empty, not zero. Statistics that include a tag with
-an unknown outcome SHALL be marked incomplete with the number of such tags.
+kills, errors, attack efficiency = (kills − errors) / decided attempts and kill rate = kills / decided
+attempts, where decided attempts are the attempts whose outcome is known, and serves, aces and serve errors.
+Ratios with no decided attempts SHALL be empty, not zero. Statistics that include a tag with an unknown
+outcome SHALL be marked incomplete with the number of such tags.
 
 #### Scenario: Efficiency
 - **WHEN** a player has 10 attacks with 4 kills and 2 errors
@@ -55,6 +56,10 @@ an unknown outcome SHALL be marked incomplete with the number of such tags.
 #### Scenario: Undecided rally
 - **WHEN** a player's only attack is the last tag of a rally without a winner
 - **THEN** the player's statistics show 1 attempt, empty ratios, and are marked incomplete (1 unknown)
+
+#### Scenario: Unknown outcome does not count as a miss
+- **WHEN** a player has 4 attacks: 1 kill, 2 errors and 1 with an unknown outcome
+- **THEN** attack efficiency is (1 − 2) / 3 = −0.333, attempts show 4, and the line is marked incomplete
 
 ### Requirement: Statistics view and export
 The match page SHALL show the statistics per player and per team with a set filter, and SHALL export them
