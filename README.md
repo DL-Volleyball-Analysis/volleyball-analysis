@@ -4,10 +4,8 @@ Turning one camera's volleyball match recording into a reviewable record: ball p
 coordinates, rallies and the score. Continuation of the NTOU senior capstone
 "Volleyball Match Analysis System Based on Deep Learning"; work in progress.
 
-This repository holds the analysis package (`vball`), the training and evaluation scripts, and the
-planning documents. The web app is
-[volleyball_analysis_webapp](https://github.com/DL-Volleyball-Analysis/volleyball_analysis_webapp)
-(branch `redesign`), the public page is
+This repository holds the analysis package (`vball`), the web app (`webapp/`), the training and
+evaluation scripts, and the planning documents. The public page is
 [volleyvision-website](https://github.com/DL-Volleyball-Analysis/volleyvision-website).
 
 ## Status
@@ -16,7 +14,7 @@ planning documents. The web app is
 | Ball tracking | VballNet V4c: 2.7× fewer false jumps than the capstone's FastV1 on 5 broadcast clips (proxy, no labels). Weak on wide high-angle shots (~28% detection). | [docs/results/ball-tracking.md](docs/results/ball-tracking.md) |
 | Court registration | 14-point keypoint model (court lines + net band). v2: 0.49 m median error on held-out k6y7r images (target 0.3 m); v3 (bigger model, VNL data) training. | [docs/results/court-keypoints.md](docs/results/court-keypoints.md) |
 | Player tracking | Planned: pretrained YOLO26 + BoT-SORT / ByteTrack, measured on SportsMOT volleyball first. | [openspec/changes/add-player-tracking](openspec/changes/add-player-tracking) |
-| 3D trajectory | Planned: camera calibration from court + net keypoints, ballistic fit per flight. | [openspec/changes/add-ball-trajectory-3d](openspec/changes/add-ball-trajectory-3d) |
+| 3D trajectory | Calibration and ballistic fit implemented and measured on synthetic rallies: 0.05 m median error on a serve, spikes flagged low quality. Not yet on real footage. | [docs/results/trajectory.md](docs/results/trajectory.md) |
 | Landing / scoring | Scoring rules implemented (`vball.scoring`); rally detection planned. | [docs/prd/rally-scoring.md](docs/prd/rally-scoring.md) |
 | Action recognition (capstone) | YOLOv11m mAP@0.5 0.945 on the validation split. | [docs/results/action-recognition.md](docs/results/action-recognition.md) |
 
@@ -38,9 +36,13 @@ src/vball/          analysis package
   court_geometry.py   geometric court registration (experimental fallback)
   court_keypoints.py  14-point court keypoint layout, flip index, label completion
   players.py          player detection + tracking with interpolation
+  calibration.py      camera focal length and pose from court + net keypoints
+  trajectory/         flights between touches, ballistic 3D fit, synthetic rallies
   scoring.py          rally winners -> running score (indoor set rules)
   metrics.py          ball-track metrics (label-free proxies + labelled F1)
 scripts/            entry points (dataset build, evaluation, comparisons)
+webapp/             web app: FastAPI API + worker (backend/), React UI (frontend/); see webapp/README.md
+training/           capstone training code: action recognition, jersey numbers
 notebooks/          Colab training notebooks (GPU work runs on Colab)
 tests/              pytest
 docs/               PRD, results, design notes
@@ -63,7 +65,8 @@ Ball tracking needs [fast-volleyball-tracking-inference](https://github.com/asig
 .venv/bin/python scripts/inspect_court_keypoints.py data/datasets/<set>
 .venv/bin/python scripts/build_court_dataset.py --no-drive          # dataset zip for Colab
 .venv/bin/python scripts/eval_player_tracking.py --gt-as-tracker    # tracking evaluation sanity check
-.venv/bin/python -m pytest tests
+.venv/bin/python scripts/eval_trajectory_synthetic.py              # 3D fit on synthetic rallies
+.venv/bin/python -m pytest tests                                    # web app: see webapp/README.md
 ```
 
 ## Data and licences
