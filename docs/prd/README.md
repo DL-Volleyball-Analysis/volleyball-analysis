@@ -14,6 +14,7 @@ This PRD answers *why, for whom, and what counts as success*. How the system mus
 | [landing-page.md](landing-page.md) | public landing page (volleyvision-website) |
 | [player-tracking.md](player-tracking.md) | player detection, tracking, court positions |
 | [tactics-board.md](tactics-board.md) | 3D ball trajectory, 2D / 3D tactics board |
+| [player-stats.md](player-stats.md) | attack efficiency and serve statistics from coach tags |
 
 Background: analysis of the capstone web app in [`docs/webapp_redesign.md`](../webapp_redesign.md); organisation-wide repo plan in [`docs/repo-organization.md`](../repo-organization.md).
 
@@ -70,6 +71,7 @@ A metric without labelled data is reported as "not measured", never replaced by 
 | Site | landing page with honest claims and the new UI | landing-page · OpenSpec `refresh-landing-page` |
 | Players | detect and track on-court players, positions in metres (baseline first, train only if needed) | player-tracking · OpenSpec `add-player-tracking` |
 | Trajectory | camera calibration, 3D ball flights, 2D / 3D tactics board | tactics-board · OpenSpec `add-ball-trajectory-3d` |
+| Stats | rosters, attack / serve tags, attack efficiency (phase 1: coach tags) | player-stats · OpenSpec `add-player-stats` |
 
 M1 and M2 run in parallel; M3 needs M1's court coordinates. The site refresh removes false claims now and adds screenshots after M2.
 
