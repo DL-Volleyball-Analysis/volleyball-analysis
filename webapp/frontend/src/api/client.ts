@@ -1,6 +1,6 @@
 // Thin fetch wrapper for the backend. In dev, Vite proxies /api to the FastAPI server.
 import type {
-  BallCoverage, BallWindow, Job, Rally, RosterPlayer, StageInfo, StageName, Stats, Tag, TagIn, TagPatch, Team, Video,
+  BallCoverage, BallWindow, Flight, Job, PlayerWindow, Rally, RosterPlayer, StageInfo, StageName, Stats, Tag, TagIn, TagPatch, Team, Video,
 } from './types'
 
 const BASE = '/api'
@@ -47,6 +47,9 @@ export const api = {
   rallies: (id: string) => request<Rally[]>(`/videos/${id}/rallies`),
   ball: (id: string, start: number, end: number) =>
     request<BallWindow>(`/videos/${id}/ball?start=${start}&end=${end}`),
+  flights: (id: string, start: number, end: number) => request<Flight[]>(`/videos/${id}/flights?start=${start}&end=${end}`),
+  players: (id: string, start: number, end: number) =>
+    request<PlayerWindow>(`/videos/${id}/players?start=${start}&end=${end}`),
   ballCoverage: (id: string, bins: number) => request<BallCoverage>(`/videos/${id}/ball/coverage?bins=${bins}`),
   upload: (file: File) => {
     const body = new FormData()

@@ -29,12 +29,12 @@
 
 ## 6. 2D tactics board
 
-- [ ] 6.1 Build the top-down board (ground tracks from 3D, height colour with labels, landing marks, players when present, dashed low-quality flights) as a tab on the match page and verify component tests
-- [ ] 6.2 Place the ball marker from the playback clock in an animation frame and verify it follows the playhead without React commits (profiler test)
+- [x] 6.1 Build the top-down board (ground tracks from 3D, height colour with labels, landing marks, players when present, dashed low-quality flights) as a tab on the match page and verify component tests
+- [x] 6.2 Place the ball marker from the playback clock in an animation frame and verify it follows the playhead without React commits (profiler test)
 
 ## 7. 3D tactics board
 
-- [ ] 7.1 Add three.js as a lazy-loaded tab with orbit controls, court, net and flights; verify the main bundle size is unchanged and the tab loads on demand
+- [x] 7.1 Add three.js as a lazy-loaded tab with orbit controls, court, net and flights; verify the main bundle size is unchanged and the tab loads on demand
 - [ ] 7.2 Verify by screenshot in both themes that flights and the ball marker match the video at three playback times
 
 ## 8. Real-footage checks

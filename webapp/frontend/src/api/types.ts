@@ -22,3 +22,6 @@ export type Outcome = NonNullable<Tag['outcome']>
 export type RosterPlayer = S['RosterPlayer']
 export type Stats = S['Stats']
 export type StatLine = S['StatLine']
+export type Flight = S['Flight']
+export type FlightSample = S['FlightSample']
+export type PlayerWindow = S['PlayerWindow']

@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router'
 import { useJobStream } from '../api/jobStream'
 import { useAddTag, useCorrectRally, useDeleteTag, usePatchTag, useRallies, useStages, useTags, useVideo } from '../api/queries'
 import type { Rally, Tag, TagKind, Team } from '../api/types'
+import { BoardPanel } from '../board/BoardPanel'
 import { CourtMap } from '../court/CourtMap'
 import { ClockContext, createClock, useClock } from '../playback/clock'
 import { useRallyAt } from '../playback/useRallyAt'
@@ -28,9 +29,10 @@ import { useReviewShortcuts } from './useReviewShortcuts'
 const NO_RALLIES: Rally[] = []
 const NO_TAGS: Tag[] = []
 
-type Panel = 'rallies' | 'stats' | 'court' | 'stages'
+type Panel = 'rallies' | 'board' | 'stats' | 'court' | 'stages'
 const PANELS: { id: Panel; label: string }[] = [
   { id: 'rallies', label: 'Rallies' },
+  { id: 'board', label: 'Board' },
   { id: 'stats', label: 'Stats' },
   { id: 'court', label: 'Landings' },
   { id: 'stages', label: 'Analysis' },
@@ -135,6 +137,11 @@ function MatchView({ id }: { id: string }) {
               <Tabs tabs={PANELS} value={panel} onChange={setPanel} label="Match details" />
               <section id="panel-rallies" role="tabpanel" aria-labelledby="tab-rallies" className={`pt-3 ${panelClass(panel === 'rallies')}`}>
                 <RallyList rallies={rallies} currentIndex={pos.index} onSelect={seekTo} />
+              </section>
+              <section id="panel-board" role="tabpanel" aria-labelledby="tab-board" className={`pt-3 ${panelClass(panel === 'board')}`}>
+                {panel === 'board' && (
+                  <BoardPanel videoId={v.id} rally={rallies[pos.index]} trajectory={stages.data?.find((s) => s.name === 'trajectory')} />
+                )}
               </section>
               <section id="panel-stats" role="tabpanel" aria-labelledby="tab-stats" className={`pt-3 ${panelClass(panel === 'stats')}`}>
                 {panel === 'stats' && <StatsPanel videoId={v.id} />}

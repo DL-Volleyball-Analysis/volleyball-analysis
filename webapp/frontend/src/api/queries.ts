@@ -16,6 +16,8 @@ export const keys = {
   roster: (id: string) => ['video', id, 'roster'] as const,
   tags: (id: string) => ['video', id, 'tags'] as const,
   stats: (id: string) => ['video', id, 'stats'] as const,
+  flights: (id: string, start: number, end: number) => ['video', id, 'flights', start, end] as const,
+  players: (id: string, start: number, end: number) => ['video', id, 'players', start, end] as const,
 }
 
 /** Ball data is fetched in fixed windows so a long match is never loaded at once. */
@@ -122,3 +124,11 @@ export function usePutRoster(id: string) {
     },
   })
 }
+
+/** 3D flights of a time range (a rally); 404 until the trajectory stage has run. */
+export const useFlights = (id: string, start: number, end: number, enabled = true) =>
+  useQuery({ queryKey: keys.flights(id, start, end), queryFn: () => api.flights(id, start, end), enabled, retry: false })
+
+/** Player boxes and court positions of a time range; 404 until the players stage has run. */
+export const usePlayers = (id: string, start: number, end: number, enabled = true) =>
+  useQuery({ queryKey: keys.players(id, start, end), queryFn: () => api.players(id, start, end), enabled, retry: false })

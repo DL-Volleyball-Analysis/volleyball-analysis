@@ -32,6 +32,7 @@ frontend/       React + Vite + TypeScript
   src/library/    library page: upload, live progress, score summary
   src/match/      match page: scoreboard, video + overlay canvas, rally list/timeline, shortcuts
   src/stats/      tagging (entry, shortcuts, inspector), statistics tab, roster editor
+  src/board/      tactics board: 2D (SVG) and 3D (three.js, loaded when opened) ball flights
   src/court/      court geometry and the to-scale court map
   src/ui/         small shared pieces; theme.css holds the design tokens
 docs/architecture/ARCHITECTURE.md
@@ -64,6 +65,13 @@ Frontend tests include WCAG contrast checks of the theme tokens (`src/theme.test
 ## Keyboard (match page)
 J / K previous / next rally · Space play / pause · 1 / 2 winner A / B · 0 clear correction ·
 T / S tag an attack / serve at the playhead (then the player number, A / B to switch team, Enter)
+
+## Tactics board
+The Board tab shows the 3D ball flights of the rally at the playhead, from above (2D) or as a rotatable
+3D court. Height is the depth of one hue with labels at the apex and the net crossing; low-quality
+flights are dashed with their reason on hover or focus; frames the camera did not see are dotted. Flights
+come from the trajectory stage, which needs a calibrated camera (court keypoints); videos with demo rallies
+show demo flights, labelled as such.
 
 ## Statistics
 The Stats tab turns attack and serve tags into per-player and per-team statistics, per set or for the
