@@ -12,3 +12,6 @@ papers/
 private/
 # local agent notes (personal plans and paths), not published
 CLAUDE.md
+# model weights (ultralytics downloads them to the working directory)
+*.pt
+*.onnx

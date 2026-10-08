@@ -3,7 +3,7 @@ schema: spec-driven
 context: |
   Volleyball match analysis from single-camera video. Two code bases:
   the `vball` Python package (src/vball, all analysis logic) and the web app
-  (external/volleyball_analysis_webapp, branch `redesign`: FastAPI backend + worker + React frontend).
+  (webapp/ in the same repository: FastAPI backend + worker + React frontend).
   The web app imports `vball`; it never keeps its own copy of analysis code.
   GPU training runs on Google Colab; the local machine (Apple M1 Pro, CPU) does inference only.
   Single-user local deployment: no accounts, no cloud services.

@@ -1,0 +1,50 @@
+/* Design tokens (design.md "Visual design, revision 2"). Every colour carries its role and its
+   contrast on the surface it sits on; src/theme.test.ts enforces the text floor of 4.5:1.
+   - page: the grey the editor window sits on; window: the editor's own white surface
+   - ink: headings and primary text; ink-muted: secondary text and captions
+   - mute: marks and rules only, never text
+   - lanes: one saturation and lightness, a hue per kind; teams keep their own two colours
+   Light is the default; dark applies only when the viewer picks it (data-theme="dark"). */
+:root {
+  color-scheme: light;
+  --bg: #f4f4f5;          /* page */
+  --window: #ffffff;      /* editor window, tables */
+  --panel: #f7f7f8;       /* window headers, inspector labels, timeline gutter */
+  --line: #e2e2e6;        /* rules inside windows */
+  --ink: #111114;         /* 18.8:1 on window */
+  --ink-muted: #5f5f67;   /* 6.3:1 on window, 5.8:1 on page */
+  --mute: #8a8a92;        /* 3.4:1 on window: marks only */
+  --accent: #1f5bd8;      /* focus, selection, progress, links */
+  --on-accent: #ffffff;
+  --team-a: #0f766e;
+  --team-b: #9f1239;
+  --review: #9a5b00;
+  --lane-ball: #1f7fa8;   /* hue 198 */
+  --lane-landing: #7a5ac8;/* hue 260 */
+  --court: #ffffff;
+  --court-line: #111114;
+  --free-zone: #ececee;
+  --shadow-window: 0 1px 0 rgb(0 0 0 / 0.04), 0 12px 30px -10px rgb(0 0 0 / 0.18);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #131417;
+  --window: #1b1c20;
+  --panel: #202126;
+  --line: #2e2f35;
+  --ink: #f2f2f4;
+  --ink-muted: #a7a8b0;
+  --mute: #6e6f77;
+  --accent: #8ea8ff;
+  --on-accent: #101114;
+  --team-a: #2db3a3;
+  --team-b: #f0708f;
+  --review: #f2b544;
+  --lane-ball: #5ab8e0;
+  --lane-landing: #a98cf0;
+  --court: #1b1c20;
+  --court-line: #c9cad0;
+  --free-zone: #131417;
+  --shadow-window: 0 1px 0 rgb(0 0 0 / 0.3), 0 12px 30px -10px rgb(0 0 0 / 0.6);
+}

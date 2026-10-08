@@ -1,0 +1,341 @@
+"""Volleyball analysis API.
+
+Run: uvicorn --app-dir backend main:app --reload   (plus `python backend/worker.py` for analysis)
+Heavy work never runs in this process: endpoints only queue jobs and read stage results.
+"""
+import asyncio
+import json
+import os
+import shutil
+import uuid
+from functools import lru_cache
+from pathlib import Path
+from typing import Literal
+
+import numpy as np
+import pandas as pd
+from fastapi import FastAPI, HTTPException, Query, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, StreamingResponse
+from pydantic import BaseModel
+from vball.scoring import running_score
+
+import pipeline
+from database import FINISHED, Database
+from settings import DB_PATH, RESULTS, UPLOADS, VIDEO_SUFFIXES
+
+app = FastAPI(title="Volleyball Analysis API", version="2.0.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=os.environ.get("VBALL_CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").split(","),
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+db = Database(DB_PATH)
+
+Team = Literal["a", "b"]
+Stage = Literal["decode", "court", "ball", "events", "rallies"]
+
+
+class Job(BaseModel):
+    id: str
+    video_id: str
+    status: Literal["queued", "running", "done", "failed"]
+    from_stage: Stage
+    stage: Stage | None
+    progress: float
+    error: str | None
+    created_at: str
+    updated_at: str
+
+
+class ScoreSummary(BaseModel):
+    """Score after the last rally, for the library list."""
+    set_no: int
+    a: int
+    b: int
+    sets_a: int
+    sets_b: int
+    rallies: int
+    corrected: int
+    demo: bool
+
+
+class Video(BaseModel):
+    id: str
+    name: str
+    fps: float | None
+    frames: int | None
+    width: int | None
+    height: int | None
+    created_at: str
+    job: Job | None
+    score: ScoreSummary | None
+
+
+class StageInfo(BaseModel):
+    name: Stage
+    status: Literal["pending", "done", "todo", "unavailable"]
+    version: str | None = None
+    message: str | None = None
+    summary: dict = {}
+
+
+class Score(BaseModel):
+    set_no: int
+    a: int
+    b: int
+    sets_a: int
+    sets_b: int
+    set_over: bool
+
+
+class Rally(BaseModel):
+    idx: int
+    start_s: float
+    end_s: float
+    winner: Team | None
+    winner_override: Team | None
+    effective_winner: Team | None
+    reason: str | None
+    confidence: float | None
+    landing_x: float | None
+    landing_y: float | None
+    source: Literal["model", "demo"]
+    score: Score
+
+
+class BallWindow(BaseModel):
+    fps: float
+    frame: list[int]
+    x: list[float | None]   # image pixels, None when the ball is not detected
+    y: list[float | None]
+
+
+class BallCoverage(BaseModel):
+    duration_s: float
+    coverage: list[float]   # fraction of frames with a detection, per equal time bin
+
+
+class ImportRequest(BaseModel):
+    path: str
+
+
+class JobRequest(BaseModel):
+    from_stage: Stage = "decode"
+
+
+class RallyPatch(BaseModel):
+    winner: Team | None
+
+
+def video_or_404(vid: str) -> dict:
+    v = db.get_video(vid)
+    if v is None:
+        raise HTTPException(404, "video not found")
+    return v
+
+
+def effective_winners(rows: list[dict]) -> list[str | None]:
+    """The user's correction wins over the model's winner."""
+    return [r["winner_override"] or r["winner"] for r in rows]
+
+
+def score_summary(vid: str) -> ScoreSummary | None:
+    rows = db.list_rallies(vid)
+    if not rows:
+        return None
+    last = running_score(effective_winners(rows))[-1]
+    return ScoreSummary(set_no=last.set_no, a=last.a, b=last.b, sets_a=last.sets_a, sets_b=last.sets_b,
+                        rallies=len(rows), corrected=sum(r["winner_override"] is not None for r in rows),
+                        demo=any(r["source"] == "demo" for r in rows))
+
+
+def video_out(v: dict) -> Video:
+    return Video(**v, job=db.latest_job(v["id"]), score=score_summary(v["id"]))
+
+
+def register(name: str, path: Path) -> Video:
+    try:
+        meta = pipeline.video_meta(path)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    v = db.add_video(name, str(path), meta)
+    db.add_job(v["id"], "decode")  # analysis starts right after upload
+    return video_out(v)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.get("/videos", response_model=list[Video])
+def list_videos():
+    return [video_out(v) for v in db.list_videos()]
+
+
+@app.post("/videos", response_model=Video, status_code=201)
+def upload_video(file: UploadFile):
+    suffix = Path(file.filename or "").suffix.lower()
+    if suffix not in VIDEO_SUFFIXES:
+        raise HTTPException(400, f"unsupported file type {suffix!r}")
+    UPLOADS.mkdir(parents=True, exist_ok=True)
+    dest = UPLOADS / f"{uuid.uuid4().hex}{suffix}"
+    with dest.open("wb") as f:
+        shutil.copyfileobj(file.file, f, length=8 << 20)
+    try:
+        return register(Path(file.filename).stem, dest)
+    except HTTPException:
+        dest.unlink(missing_ok=True)
+        raise
+
+
+@app.post("/videos/import", response_model=Video, status_code=201)
+def import_video(req: ImportRequest):
+    """Register a video already on this machine without copying it (local use)."""
+    path = Path(req.path).expanduser().resolve()
+    if not path.is_file() or path.suffix.lower() not in VIDEO_SUFFIXES:
+        raise HTTPException(400, "not a video file on this machine")
+    return register(path.stem, path)
+
+
+@app.get("/videos/{vid}", response_model=Video)
+def get_video(vid: str):
+    return video_out(video_or_404(vid))
+
+
+@app.delete("/videos/{vid}", status_code=204)
+def delete_video(vid: str):
+    v = video_or_404(vid)
+    db.delete_video(vid)
+    path = Path(v["path"])
+    if path.parent.resolve() == UPLOADS.resolve():  # never delete imported originals
+        path.unlink(missing_ok=True)
+    shutil.rmtree(RESULTS / vid, ignore_errors=True)
+
+
+@app.get("/videos/{vid}/file")
+def video_file(vid: str):
+    """The video itself; FileResponse handles Range requests, so seeking works."""
+    path = Path(video_or_404(vid)["path"])
+    if not path.exists():
+        raise HTTPException(404, "video file missing on disk")
+    return FileResponse(path)
+
+
+@app.post("/videos/{vid}/jobs", response_model=Job, status_code=201)
+def start_job(vid: str, req: JobRequest):
+    video_or_404(vid)
+    if db.active_job(vid):
+        raise HTTPException(409, "analysis already queued or running")
+    return db.add_job(vid, req.from_stage)
+
+
+@app.get("/videos/{vid}/jobs/latest", response_model=Job | None)
+def latest_job(vid: str):
+    video_or_404(vid)
+    return db.latest_job(vid)
+
+
+@app.get("/videos/{vid}/jobs/stream")
+async def job_stream(vid: str, request: Request):
+    """Server-sent events with the latest job state; closes when the job finishes."""
+    video_or_404(vid)
+
+    async def events():
+        last = None
+        while not await request.is_disconnected():
+            job = db.latest_job(vid)
+            payload = json.dumps(job)
+            if payload != last:
+                yield f"data: {payload}\n\n"
+                last = payload
+            if job is None or job["status"] in FINISHED:
+                break
+            await asyncio.sleep(0.5)
+
+    return StreamingResponse(events(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/videos/{vid}/stages", response_model=list[StageInfo])
+def stages(vid: str):
+    video_or_404(vid)
+    out = []
+    for name in pipeline.STAGES:
+        res = pipeline.load_stage(RESULTS / vid, name)
+        if res is None:
+            out.append(StageInfo(name=name, status="pending"))
+            continue
+        res = dict(res)
+        out.append(StageInfo(name=name, status=res.pop("status"), version=res.pop("version", None),
+                             message=res.pop("message", None), summary=res))
+    return out
+
+
+@lru_cache(maxsize=8)
+def _ball_track(csv: str, mtime: float) -> pd.DataFrame:
+    return pd.read_csv(csv)
+
+
+@app.get("/videos/{vid}/ball", response_model=BallWindow)
+def ball_window(vid: str, start: float = Query(0, ge=0), end: float | None = Query(None, ge=0)):
+    """Ball positions between start and end seconds (whole video if end is omitted)."""
+    v = video_or_404(vid)
+    csv = RESULTS / vid / "ball.csv"
+    if not csv.exists():
+        raise HTTPException(404, "ball tracking not run yet")
+    df = _ball_track(str(csv), csv.stat().st_mtime)
+    fps = v["fps"] or 30.0
+    lo, hi = int(start * fps), (int(end * fps) if end is not None else None)
+    w = df[(df["frame"] >= lo) & ((df["frame"] <= hi) if hi is not None else True)]
+
+    def col(c):
+        a = w[c].to_numpy(float)
+        return [None if np.isnan(x) else round(float(x), 1) for x in a]
+
+    return BallWindow(fps=fps, frame=w["frame"].astype(int).tolist(), x=col("x"), y=col("y"))
+
+
+MAX_COVERAGE_BINS = 2000
+
+
+@app.get("/videos/{vid}/ball/coverage", response_model=BallCoverage)
+def ball_coverage(vid: str, bins: int = Query(200, ge=1, le=MAX_COVERAGE_BINS)):
+    """Where tracking found the ball, summarised over the whole video (for the timeline's ball lane)."""
+    v = video_or_404(vid)
+    csv = RESULTS / vid / "ball.csv"
+    if not csv.exists():
+        raise HTTPException(404, "ball tracking not run yet")
+    df = _ball_track(str(csv), csv.stat().st_mtime)
+    frames = int(df["frame"].max()) + 1 if len(df) else 0
+    if frames == 0:
+        return BallCoverage(duration_s=0, coverage=[0.0] * bins)
+    which = np.minimum((df["frame"].to_numpy() * bins) // frames, bins - 1)
+    seen = np.bincount(which, weights=df["visible"].to_numpy(float), minlength=bins)
+    total = np.bincount(which, minlength=bins)
+    cov = np.divide(seen, total, out=np.zeros(bins), where=total > 0)
+    return BallCoverage(duration_s=frames / (v["fps"] or 30.0), coverage=[round(float(c), 3) for c in cov])
+
+
+def rallies_out(vid: str) -> list[Rally]:
+    rows = db.list_rallies(vid)
+    eff = effective_winners(rows)
+    return [Rally(**r, effective_winner=w, score=Score(**s.__dict__))
+            for r, w, s in zip(rows, eff, running_score(eff))]
+
+
+@app.get("/videos/{vid}/rallies", response_model=list[Rally])
+def list_rallies(vid: str):
+    video_or_404(vid)
+    return rallies_out(vid)
+
+
+@app.patch("/videos/{vid}/rallies/{idx}", response_model=list[Rally])
+def correct_rally(vid: str, idx: int, patch: RallyPatch):
+    """Set (or clear, with null) the user's winner for one rally; returns all rallies with new scores."""
+    video_or_404(vid)
+    if not db.set_rally_override(vid, idx, patch.winner):
+        raise HTTPException(404, "rally not found")
+    return rallies_out(vid)

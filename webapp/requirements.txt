@@ -1,0 +1,12 @@
+# Backend API + worker. Analysis code comes from the `vball` package at the repository root:
+#   pip install -e . -r webapp/requirements.txt
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+numpy
+pandas
+opencv-python-headless
+
+# tests
+pytest>=8
+httpx>=0.27
