@@ -122,3 +122,8 @@ number. Checked by eye on the rendered back view (Tokyo 2020, no usable court) a
   identities between players, and the vote keeps the old number. Two tracks were also both voted #7 and two #27.
 Next: split a track where its readings change consistently (an identity switch) before voting, and measure
 number accuracy per player once a clip has labelled numbers.
+Tried and reverted: refusing a number when a second number is read in at least 25% of a track's readings. On
+the back view it removed the correct #27 of the libero (whose track had picked up a second player's readings)
+and left the wrong #27 on the blocker, whose readings were mostly 27 because #14 faced away. The fix needs
+time-local voting (each frame labelled by the readings within about a second of it), so a label follows an
+identity switch or falls back to the tracking id.
