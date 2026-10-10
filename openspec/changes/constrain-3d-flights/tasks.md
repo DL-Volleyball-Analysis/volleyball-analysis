@@ -19,7 +19,7 @@
 ## 4. Web app
 
 - [x] 4.1 Trajectory stage passes player positions, stores dropped / anchors / bound reasons; bump the version; verify backend tests
-- [ ] 4.2 Tactics board shows anchored ends and the reasons; verify component tests; re-render the evaluation clip
+- [x] 4.2 Tactics board shows anchored ends and the reasons; verify component tests; re-render the evaluation clip
 
 ## 5. Docs
 

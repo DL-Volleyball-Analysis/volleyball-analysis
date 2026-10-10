@@ -421,6 +421,16 @@ export interface components {
             landing: components["schemas"]["Landing"] | null;
             /** Samples */
             samples: components["schemas"]["FlightSample"][];
+            /**
+             * Anchors
+             * @default []
+             */
+            anchors: ("start" | "end")[];
+            /**
+             * Dropped
+             * @default 0
+             */
+            dropped: number;
         };
         /** FlightSample */
         FlightSample: {

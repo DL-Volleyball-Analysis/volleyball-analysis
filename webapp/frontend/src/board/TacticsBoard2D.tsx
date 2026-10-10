@@ -39,8 +39,18 @@ function FlightPath({ f, i }: { f: Flight; i: number }) {
         </text>
       )}
       {f.landing && <LandingMark x={f.landing.x_m} y={f.landing.y_m} />}
+      {f.samples.length > 0 && f.anchors.map((end) => {
+        const s = end === 'start' ? f.samples[0] : f.samples[f.samples.length - 1]
+        return <AnchorMark key={end} x={s.x} y={s.y} />
+      })}
     </g>
   )
+}
+
+/** A touch the 3D fit tied to a player's court position (change constrain-3d-flights). */
+function AnchorMark({ x, y }: { x: number; y: number }) {
+  const r = 0.32
+  return <path d={`M${x},${y - r}L${x + r},${y}L${x},${y + r}L${x - r},${y}Z`} fill="none" stroke="var(--ink)" strokeWidth={1.5} {...HAIR} data-testid="anchor" />
 }
 
 function LandingMark({ x, y }: { x: number; y: number }) {

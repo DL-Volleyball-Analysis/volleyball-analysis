@@ -20,7 +20,7 @@ function flight(patch: Partial<Flight> = {}, x0 = 2, x1 = 14, t0 = 1): Flight {
   }))
   return {
     start_s: t0, end_s: t0 + 1, source: 'model', quality: 'ok', reasons: [], fit_px: 1.2, start_speed_mps: 13,
-    apex_m: 3, net_crossing: { height_m: 2.9, y_m: 4.5 }, landing: null, samples, ...patch,
+    apex_m: 3, net_crossing: { height_m: 2.9, y_m: 4.5 }, landing: null, samples, anchors: [], dropped: 0, ...patch,
   }
 }
 
@@ -134,5 +134,13 @@ describe('board panel', () => {
     fakeApi({})
     withClock(<BoardPanel videoId="v1" />)
     expect(screen.getByText(/Move the playhead into a rally/)).toBeInTheDocument()
+  })
+
+  test('touches tied to a player are marked and named', () => {
+    withClock(<TacticsBoard2D flights={[flight({ anchors: ['start', 'end'] }), flight({ anchors: ['end'] }, 3, 9, 3)]} />)
+    expect(screen.getAllByTestId('anchor')).toHaveLength(3)
+    const [first, second] = screen.getAllByTestId('flight')
+    expect(first).toHaveAccessibleName(/both ends tied to a player/)
+    expect(second).toHaveAccessibleName(/end tied to a player/)
   })
 })

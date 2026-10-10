@@ -38,6 +38,7 @@ export function flightLabel(f: Flight, i: number): string {
   if (f.apex_m != null) parts.push(`apex ${f.apex_m.toFixed(1)} m`)
   if (f.net_crossing) parts.push(`crosses the net at ${f.net_crossing.height_m.toFixed(1)} m`)
   if (f.landing) parts.push(`lands at x ${f.landing.x_m.toFixed(1)} m, y ${f.landing.y_m.toFixed(1)} m`)
+  if (f.anchors.length) parts.push(`${f.anchors.length === 2 ? 'both ends' : f.anchors[0] === 'start' ? 'start' : 'end'} tied to a player`)
   if (f.quality === 'low') parts.push(`low quality: ${f.reasons.join(', ')}`)
   return parts.join(', ')
 }

@@ -53,6 +53,7 @@ export function BoardPanel({ videoId, rally, trajectory }: { videoId: string; ra
         <span>- - - low quality</span>
         <span>· · · not seen by the camera</span>
         <span>● landed in · × out</span>
+        <span>◇ touch tied to a player</span>
       </figcaption>
     </figure>
   )
