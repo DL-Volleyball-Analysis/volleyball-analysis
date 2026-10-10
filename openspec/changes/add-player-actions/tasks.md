@@ -12,7 +12,7 @@
 ## 2. `vball.actions` and `vball.jersey`
 
 - [x] 2.1 Implement assignment of action boxes to tracks and merging into events; verify tests for the spike scenario, a box without a player and the confidence threshold
-- [ ] 2.2 Implement digit composition and the per-track vote; verify tests for two-digit numbers, an unclear vote and too few readings
+- [x] 2.2 Implement digit composition and the per-track vote; verify tests for two-digit numbers, an unclear vote and too few readings
 
 ## 3. Pipeline and API (web app)
 
