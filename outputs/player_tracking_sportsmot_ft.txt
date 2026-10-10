@@ -1,0 +1,25 @@
+10 eval_sequence(v_9MHDmAMxO5I_c004, player_yolo26s_sportsmot_960_botsort_10fps) 0.1303 sec
+11 eval_sequence(v_9MHDmAMxO5I_c006, player_yolo26s_sportsmot_960_botsort_10fps) 0.0730 sec
+12 eval_sequence(v_9MHDmAMxO5I_c009, player_yolo26s_sportsmot_960_botsort_10fps) 0.1430 sec
+13 eval_sequence(v_cC2mHWqMcjk_c007, player_yolo26s_sportsmot_960_botsort_10fps) 0.1927 sec
+14 eval_sequence(v_cC2mHWqMcjk_c008, player_yolo26s_sportsmot_960_botsort_10fps) 0.1529 sec
+15 eval_sequence(v_cC2mHWqMcjk_c009, player_yolo26s_sportsmot_960_botsort_10fps) 0.1203 sec
+All sequences for player_yolo26s_sportsmot_960_botsort_10fps finished in 1.58 seconds
+                     HOTA   IDF1   MOTA  recall  precision  IDSW  ms_per_detected_frame
+seq                                                                                    
+v_0kUtTtmLaJA_c004  0.576  0.574  0.930   0.959      0.979    54                 94.320
+v_0kUtTtmLaJA_c005  0.611  0.656  0.907   0.945      0.970    34                 93.818
+v_0kUtTtmLaJA_c006  0.475  0.493  0.881   0.920      0.977    64                 94.214
+v_0kUtTtmLaJA_c007  0.687  0.801  0.952   0.974      0.982    12                 94.329
+v_0kUtTtmLaJA_c008  0.596  0.645  0.920   0.966      0.964    31                 94.177
+v_0kUtTtmLaJA_c010  0.714  0.826  0.946   0.966      0.987    22                 97.056
+v_4-EmEtrturE_c009  0.871  0.963  0.989   0.989      1.000     1                 97.923
+v_9MHDmAMxO5I_c002  0.661  0.752  0.924   0.958      0.973    18                 98.272
+v_9MHDmAMxO5I_c003  0.663  0.768  0.887   0.921      0.970    14                 97.424
+v_9MHDmAMxO5I_c004  0.579  0.670  0.752   0.887      0.873    26                 98.215
+v_9MHDmAMxO5I_c006  0.620  0.730  0.895   0.945      0.958    20                 97.770
+v_9MHDmAMxO5I_c009  0.606  0.645  0.929   0.964      0.973    46                 97.192
+v_cC2mHWqMcjk_c007  0.596  0.628  0.964   0.980      0.988    33                 94.614
+v_cC2mHWqMcjk_c008  0.693  0.756  0.942   0.970      0.979    19                 97.046
+v_cC2mHWqMcjk_c009  0.718  0.775  0.975   0.981      0.998    17                 98.045
+COMBINED_SEQ        0.636  0.690  0.919   0.956      0.970   411                 97.056

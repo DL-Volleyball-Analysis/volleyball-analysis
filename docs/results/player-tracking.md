@@ -119,3 +119,21 @@ Players stage version 3 (team and role columns, 12-player cap). Checked by eye o
 Not yet the acceptance criterion (no officials boxed, every player boxed). The player-only detector (task 1) is the
 main remedy. Note: `other_tracks` in the stage summary counts tracks with any frame marked other (the cap works per
 frame), so it overstates how many tracks are officials.
+
+## Player-only detector, fine-tuned on SportsMOT (2026-10-11, change filter-on-court-players)
+`notebooks/train_player_detector.ipynb` on Kaggle (T4): YOLO26s from the COCO weights, 960 px, one class, on the 15
+SportsMOT volleyball training sequences (every 3rd frame; match video v_Dk3EpDDa3o0 held out for validation:
+mAP@0.5 0.995). Evaluated on the 15 val sequences with `scripts/eval_player_tracking.py` (BoT-SORT, 10 fps; raw
+output `outputs/player_tracking_sportsmot_ft.txt`):
+
+| Detector | HOTA | IDF1 | MOTA | Recall | Precision | ID switches |
+|---|---|---|---|---|---|---|
+| YOLO26s, COCO weights (previous) | 0.467 | 0.484 | 0.316 | 0.875 | 0.614 | 522 |
+| same, ideal on-court filter (upper bound) | 0.572 | 0.622 | 0.850 | 0.874 | 0.982 | 508 |
+| **YOLO26s fine-tuned on SportsMOT (installed)** | **0.636** | **0.690** | **0.919** | **0.956** | **0.970** | **411** |
+
+Both IDF1 and precision improve, so it replaces the COCO detector (`models/player_yolo26s_sportsmot.pt`). It even
+beats the ideal-filter upper bound: besides leaving out officials and spectators, it detects players more steadily,
+so identities break less often. The recall target (0.95) is met; IDF1 is 0.01 short of 0.70. By eye on the five
+re-rendered clips no referee, line judge, ball boy, bench member or camera operator is boxed, including the back
+view without a usable court, and every player on court is. The colour role check and the cap stay as fallbacks.

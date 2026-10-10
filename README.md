@@ -43,7 +43,7 @@ Every number comes from a script and a labelled split, or is named a proxy or sy
 | Component | Result | Evidence |
 |---|---|---|
 | Court registration | 0.10 m median court-position error on held-out broadcast clips (96% within 0.3 m); 0.49 m on held-out gym images. A floor-net consistency check flags wrong courts. | labelled test images · [court-keypoints.md](docs/results/court-keypoints.md) |
-| Player tracking | IDF1 0.484, HOTA 0.467 on SportsMOT volleyball (target IDF1 0.70); 39% of detections are people off court. | labelled benchmark · [player-tracking.md](docs/results/player-tracking.md) |
+| Player tracking | IDF1 0.690, HOTA 0.636, precision 0.970 on SportsMOT volleyball with a detector fine-tuned to box players only (no referees, line judges or spectators). | labelled benchmark · [player-tracking.md](docs/results/player-tracking.md) |
 | Ball tracking | VballNet V4c: 3.08 false jumps per 100 frames, 68.7% of frames detected on 5 broadcast clips; ~28% detection on wide high-angle shots. | label-free proxy · [ball-tracking.md](docs/results/ball-tracking.md) |
 | 3D trajectory | 0.05 m median error on a synthetic serve; spikes flagged low quality. Real footage waits for a better court model: impossible fits are dropped, not drawn. | synthetic · [trajectory.md](docs/results/trajectory.md) |
 | Action recognition (YOLOv11m) | In the pipeline: action events per player and suggested attack / serve tags. mAP@0.5 0.957 on the test split, receive weakest (0.863); test frames come from the same matches as training, so not an unseen-match score. | labelled test split · [actions.md](docs/results/actions.md) |

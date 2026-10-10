@@ -31,8 +31,9 @@ COURT_MODELS = {"gym": MODELS / "court_kpt.pt", "broadcast": MODELS / "court_kpt
 ACTION_MODEL = MODELS / "action_yolo11m.pt"
 JERSEY_MODEL = MODELS / "jersey_digits_yolo26s.pt"
 ACTION_FPS, JERSEY_FPS = 10.0, 2.0
-# best measured on SportsMOT volleyball (docs/results/player-tracking.md); weights download on first use
-PLAYER_CFG = players.TrackerConfig(model=str(MODELS / "yolo26s.pt"), imgsz=960, tracker="botsort.yaml", det_fps=10.0)
+# YOLO26s fine-tuned on SportsMOT volleyball training sequences (players only): IDF1 0.690, precision 0.970 on
+# SportsMOT volleyball val, against 0.484 / 0.614 for the COCO weights (docs/results/player-tracking.md)
+PLAYER_CFG = players.TrackerConfig(model=str(MODELS / "player_yolo26s_sportsmot.pt"), imgsz=960, tracker="botsort.yaml", det_fps=10.0)
 
 SHOT_CUT_CORRELATION = 0.6  # HSV histogram correlation below this between frames = camera cut
 
