@@ -12,8 +12,8 @@ evaluation scripts, and the planning documents. The public page is
 | Component | State | Evidence |
 |---|---|---|
 | Ball tracking | VballNet V4c: 2.7× fewer false jumps than the capstone's FastV1 on 5 broadcast clips (proxy, no labels). Weak on wide high-angle shots (~28% detection). | [docs/results/ball-tracking.md](docs/results/ball-tracking.md) |
-| Court registration | 14-point keypoint model (court lines + net band). v2: 0.49 m median error on held-out k6y7r images (target 0.3 m); v3 (bigger model, VNL data) training. | [docs/results/court-keypoints.md](docs/results/court-keypoints.md) |
-| Player tracking | Planned: pretrained YOLO26 + BoT-SORT / ByteTrack, measured on SportsMOT volleyball first. | [openspec/changes/add-player-tracking](openspec/changes/add-player-tracking) |
+| Court registration | 14-point keypoint model, per-shot registration in the pipeline with a floor-net consistency check. v2: 0.49 m on held-out images; v3 interim 0.17 m on held-out broadcast clips but 7.91 m on gym images (box convention bug, v3b training). | [docs/results/court-keypoints.md](docs/results/court-keypoints.md) |
+| Player tracking | YOLO26s + BoT-SORT at 10 fps in the pipeline, with on-court filtering: IDF1 0.484 on SportsMOT volleyball (target 0.70); 39% of boxes are people off court. | [docs/results/player-tracking.md](docs/results/player-tracking.md) |
 | 3D trajectory | Calibration, ballistic fit, the trajectory stage and the 2D / 3D tactics board are built; 0.05 m median error on a synthetic serve, spikes flagged low quality. Real footage waits for court model v3 (v2 calibrates 4 / 49 test views). | [docs/results/trajectory.md](docs/results/trajectory.md) |
 | Player statistics | Attack and serve tags in the review app; attack efficiency, kill rate, aces and serve errors per player and set, CSV export (phase 1: coach tags). | [docs/prd/player-stats.md](docs/prd/player-stats.md) |
 | Landing / scoring | Scoring rules implemented (`vball.scoring`); rally detection planned. | [docs/prd/rally-scoring.md](docs/prd/rally-scoring.md) |

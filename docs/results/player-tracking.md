@@ -77,3 +77,18 @@ on the 5 evaluation clips, decoding included (M1 Pro CPU):
 
 Overall 1.14 × real time: a 2-hour match takes about **2.3 h** for this stage, more than the 1.9 h
 estimated from detection time alone (decoding every frame adds the rest). PRD budget (≤ 1 h): not met.
+
+## Interpolation across long gaps (2026-10-10)
+Rendering analysed videos showed empty boxes: tracks lost by the tracker and picked up again much later were
+interpolated straight through the frames where the person was not seen. `track_frames` now bridges at most
+three sampling intervals (`MAX_GAP_SAMPLES`). Rerun of the best setting (YOLO26s, 960 px, BoT-SORT, 10 fps):
+
+| | HOTA | IDF1 | MOTA | Recall | Precision | ID switches |
+|---|---|---|---|---|---|---|
+| before (any gap bridged) | 0.456 | 0.470 | 0.240 | 0.889 | 0.581 | 515 |
+| **after (≤ 3 intervals)** | **0.467** | **0.484** | **0.316** | 0.875 | **0.614** | 522 |
+| after, ideal on-court filter (upper bound) | 0.572 | 0.622 | 0.850 | 0.874 | 0.982 | 508 |
+
+The ghost boxes were counted as false positives: precision +3.3 points, MOTA +0.08, at a small recall cost
+(some long gaps had been bridged correctly). The PRD targets are still missed. Raw output:
+`outputs/player_tracking/yolo26s_960_botsort_10fps_gap3*.txt`.
