@@ -3,7 +3,7 @@
 ## 1. Player-only detector
 
 - [x] 1.1 Write `scripts/build_sportsmot_detection.py` (15 train sequences, every 3rd frame, one class, split by sequence) and verify tests for the label conversion
-- [ ] 1.2 Upload the SportsMOT volleyball training set as a private Kaggle dataset and write `notebooks/train_player_detector.ipynb` (Colab / Kaggle); verify a local smoke run
+- [x] 1.2 Write `notebooks/train_player_detector.ipynb` (Colab / Kaggle); verify a local smoke run of the converter (done 2026-10-11; instead of a private Kaggle dataset the notebook streams the 15 sequences from Hugging Face, so nothing is re-uploaded)
 - [ ] 1.3 Train on Kaggle; evaluate with `scripts/eval_player_tracking.py` on the 15 val sequences; record against the baseline and install only if IDF1 and precision both improve
 
 ## 2. Cap and role

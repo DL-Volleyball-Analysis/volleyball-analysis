@@ -19,7 +19,8 @@
 `scripts/build_sportsmot_detection.py` turns the 15 training sequences into a YOLO detection set (one class,
 every 3rd frame: consecutive frames are near duplicates), split by sequence into train / valid (13 / 2); the 15
 val sequences stay untouched for the tracking evaluation. YOLO26s from the COCO weights, 960 px, on Kaggle
-(`notebooks/train_player_detector.ipynb`, same Colab/Kaggle pattern as the digit notebook). Evaluation reuses
+(`notebooks/train_player_detector.ipynb`, same Colab/Kaggle pattern as the digit notebook). The notebook streams
+`train.tar` from Hugging Face and extracts only the 15 volleyball sequences, so the data are never re-uploaded. Evaluation reuses
 `scripts/eval_player_tracking.py` with the new weights.
 
 ### Cap
