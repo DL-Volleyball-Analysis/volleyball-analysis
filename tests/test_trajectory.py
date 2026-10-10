@@ -111,3 +111,22 @@ def test_derived_values_match_the_analytic_ones():
 def test_no_landing_when_the_flight_ends_in_the_air():
     f = FlightFit(0, 20, np.array([5.0, 4.0, 2.0]), np.array([3.0, 0.0, 5.0]), FPS, 0.0, 0.0)
     assert f.derived()["landing"] is None
+
+
+
+def test_physically_impossible_flights_are_dropped_with_the_reason():
+    from vball.trajectory import implausible
+    frames = np.arange(0, 20)
+    fast = FlightFit(0, 19, np.array([2.0, 4.0, 2.5]), np.array([60.0, 0.0, 2.0]), FPS, 1.0, 0.1)
+    assert "start speed" in implausible(fast, fast.at(frames))
+    away = FlightFit(0, 19, np.array([2.0, 300.0, 2.5]), np.array([5.0, 0.0, 2.0]), FPS, 1.0, 0.1)
+    assert implausible(away, away.at(frames)) == "path leaves the hall"
+    normal = FlightFit(0, 19, np.array([2.0, 4.0, 2.5]), np.array([12.0, 0.5, 3.0]), FPS, 1.0, 0.1)
+    assert implausible(normal, normal.at(frames)) is None
+    # a wrong camera: the true detections refitted through a camera 3x too wide give an impossible path
+    r = render(CAM, TOUCHES, DURATIONS, FPS)
+    wrong = look_at([9.0, -14.0, 7.5], [9.0, 4.5, 0.5], 1600.0 / 3, SIZE)
+    rejected = []
+    kept = reconstruct(wrong, r.uv, FPS, rejected=rejected)
+    assert rejected and all(len(x) == 3 for x in rejected)
+    assert len(kept) + len(rejected) == len(segment(r.uv))

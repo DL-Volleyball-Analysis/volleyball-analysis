@@ -172,7 +172,7 @@ def trajectory_stage(video: Path, out: Path, prev: dict, tick) -> dict:
         return {"status": "done", "flights": 0, "calibrated_shots": 0,
                 "message": "The camera could not be calibrated because the court was not found, so there are no 3D flights."}
     uv = ball_uv(out, n)
-    flights, unusable = [], []
+    flights, unusable, rejected = [], [], []
     for k, shot in enumerate(shots):
         tick(k / len(shots))
         cal, reason = None, "no court keypoints for calibration"
@@ -190,16 +190,22 @@ def trajectory_stage(video: Path, out: Path, prev: dict, tick) -> dict:
             unusable.append(reason)
             continue
         a, b = shot["start_frame"], shot["end_frame"]
-        for rec in trajectory.reconstruct(cal.camera, uv[a:b + 1], fps):
+        for rec in trajectory.reconstruct(cal.camera, uv[a:b + 1], fps, rejected=rejected):
             f = rec["fit"]
             flights.append({"start_frame": a + f.start, "end_frame": a + f.end, "p0": f.p0.tolist(), "v0": f.v0.tolist(),
                             "fit_px": f.fit_px, "depth_sd_m": f.depth_sd_m, "quality": f.quality, "reasons": f.reasons,
                             "derived": rec["derived"], "calibration": cal.status})
     (out / "flights.json").write_text(json.dumps(flights))
     res = {"status": "done", "flights": len(flights), "calibrated_shots": len(shots) - len(unusable),
-           "low_quality": sum(f["quality"] == "low" for f in flights)}
+           "low_quality": sum(f["quality"] == "low" for f in flights), "rejected": len(rejected)}
+    notes = []
     if unusable:
-        res["message"] = f"{len(unusable)} of {len(shots)} camera shots could not be calibrated ({unusable[0]})."
+        notes.append(f"{len(unusable)} of {len(shots)} camera shots could not be calibrated ({unusable[0]}).")
+    if rejected:
+        notes.append(f"{len(rejected)} flights were left out as physically impossible ({rejected[0][2]}), "
+                     "a sign that the camera calibration is off.")
+    if notes:
+        res["message"] = " ".join(notes)
     return res
 
 
@@ -214,7 +220,7 @@ def rallies(video: Path, out: Path, prev: dict, tick) -> dict:
 FUNCS = {"decode": decode, "court": court, "ball": ball_stage, "players": players_stage,
          "trajectory": trajectory_stage, "events": events, "rallies": rallies}
 VERSIONS = {"decode": "1", "court": "1", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-2",  # -2: interpolation bridges short gaps only
-            "trajectory": "1", "events": "0.3", "rallies": "0.1"}
+            "trajectory": "2", "events": "0.3", "rallies": "0.1"}
 
 
 def stage_file(results: Path, stage: str) -> Path:

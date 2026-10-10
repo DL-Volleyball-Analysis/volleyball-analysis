@@ -34,6 +34,10 @@ Each reconstructed flight SHALL report, where they apply: the landing point wher
 ### Requirement: Honest uncertainty
 A flight whose fit error exceeds the configured threshold, or which is too short to constrain depth, SHALL be marked low quality, and its derived values SHALL carry that flag.
 
+#### Scenario: Impossible flight
+- **WHEN** a fitted flight starts faster than any volleyball is hit (40 m/s) or its path leaves the hall
+- **THEN** it is not reported as a flight, and the stage reports how many flights were left out and why
+
 #### Scenario: Flight toward the camera
 - **WHEN** a flight moves mostly along the camera's line of sight
 - **THEN** it is marked low quality with the reason "depth poorly constrained"

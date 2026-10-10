@@ -119,7 +119,8 @@ def render(vid: str, path: Path, out: Path) -> Path:
             p1, p2 = (int(row.x1), int(row.y1)), (int(row.x2), int(row.y2))
             cv2.rectangle(img, p1, p2, EDGE, max(2, int(3 * scale)))
             cv2.rectangle(img, p1, p2, col, max(1, int(1.5 * scale)))
-            text(img, str(int(row.track_id)), (p1[0], p1[1] - int(6 * scale)), 0.5 * scale)
+            # a tracking id, not the shirt number (jersey numbers are not read yet)
+            text(img, f"ID {int(row.track_id)}", (p1[0], p1[1] - int(6 * scale)), 0.5 * scale)
             if row.placed and not np.isnan(row.court_x):
                 people.append((row.court_x, row.court_y, side))
 
@@ -141,7 +142,7 @@ def render(vid: str, path: Path, out: Path) -> Path:
         img[:bar.shape[0]] = (img[:bar.shape[0]] * 0.35).astype(np.uint8)
         court_txt = COURT_STATUS.get(status, "no court model") if court else "court: not available"
         placed = "positions on the map" if people else "no court positions (court not usable)"
-        text(img, f"{i / fps:5.1f} s   ball: VballNet V4c   players: YOLO26s + BoT-SORT, {placed}   {court_txt}",
+        text(img, f"{i / fps:5.1f} s   ball: VballNet V4c   players: YOLO26s + BoT-SORT (ID = tracking id), {placed}   {court_txt}",
              (int(14 * scale), int(29 * scale)), 0.62 * scale)
         writer.write(img)
     cap.release()

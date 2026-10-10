@@ -35,6 +35,11 @@ class FlightConfig:
     max_gap: int = 6           # missing frames that end a flight
     min_detections: int = 8    # shorter flights are not reconstructed
     max_fit_px: float = 4.0    # quality: median reprojection residual
+    # physically impossible flights are dropped, not drawn as "low quality": a dashed line through the
+    # stands still misleads. Fastest recorded spikes and serves are about 35 m/s.
+    max_speed_mps: float = 40.0
+    hall_margin_m: float = 10.0  # beyond the court on every side
+    max_height_m: float = 20.0
     max_depth_sd_m: float = 0.5  # quality: position sd along the camera ray (mid-flight)
 
 
@@ -210,14 +215,42 @@ def fit(cam: Camera, uv: np.ndarray, flight: Flight, fps: float,
                      "low" if reasons else "ok", reasons)
 
 
-def reconstruct(cam: Camera, uv: np.ndarray, fps: float, cfg: FlightConfig = FlightConfig()) -> list[dict]:
+def implausible(f: "FlightFit", positions: np.ndarray, cfg: FlightConfig = FlightConfig()) -> str | None:
+    """Why a fitted flight cannot be a volleyball flight, or None. (Low quality is about uncertainty; this is
+    about impossibility: a wrong camera or false detections can fit a path through the stands.)"""
+    from ..court import LENGTH, WIDTH
+    if np.linalg.norm(f.v0) > cfg.max_speed_mps:
+        return f"start speed {np.linalg.norm(f.v0):.0f} m/s"
+    m = cfg.hall_margin_m
+    x, y, z = positions[:, 0], positions[:, 1], positions[:, 2]
+    if (x < -m).any() or (x > LENGTH + m).any() or (y < -m).any() or (y > WIDTH + m).any():
+        return "path leaves the hall"
+    if (z < -0.5).any() or (z > cfg.max_height_m).any():
+        return "path below the floor or too high"
+    return None
+
+
+def reconstruct(cam: Camera, uv: np.ndarray, fps: float, cfg: FlightConfig = FlightConfig(),
+                rejected: list | None = None) -> list[dict]:
     """Segment a track and fit every flight. Each item: the fit, positions for every frame of the
-    flight with an observed flag, and the derived values."""
+    flight with an observed flag, and the derived values. Physically impossible fits are left out; when a
+    list is passed as `rejected`, their (start, end, reason) are appended to it."""
     uv = np.asarray(uv, float)
     out = []
     for fl in segment(uv, cfg):
-        f = fit(cam, uv, fl, fps, cfg)
+        try:
+            f = fit(cam, uv, fl, fps, cfg)
+        except ValueError as e:  # no starting point (a camera whose rays miss the court heights)
+            if rejected is not None:
+                rejected.append((fl.start, fl.end, str(e)))
+            continue
         frames = np.arange(fl.start, fl.end + 1)
-        out.append({"fit": f, "frames": frames, "positions": f.at(frames),
+        positions = f.at(frames)
+        why = implausible(f, positions, cfg)
+        if why:
+            if rejected is not None:
+                rejected.append((fl.start, fl.end, why))
+            continue
+        out.append({"fit": f, "frames": frames, "positions": positions,
                     "observed": ~np.isnan(uv[frames]).any(axis=1), "derived": f.derived()})
     return out
