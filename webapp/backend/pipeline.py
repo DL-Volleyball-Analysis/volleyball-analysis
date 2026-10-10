@@ -11,7 +11,7 @@ from typing import Callable
 import cv2
 import numpy as np
 import pandas as pd
-from vball import actions, ball, court_registration, jersey, players, trajectory
+from vball import actions, ball, court_registration, jersey, players, teams, trajectory
 from vball.calibration import calibrate
 from vball.court_keypoints import detect as detect_keypoints
 from vball.paths import MODELS
@@ -152,10 +152,12 @@ def players_stage(video: Path, out: Path, prev: dict, tick) -> dict:
     df = players.track_frames(frames(), fps, PLAYER_CFG)
     size = (prev["decode"].get("width"), prev["decode"].get("height"))
     df = players.place_on_court(df, court_homography_at(prev.get("court"), size))
+    df = players.roles(df, team_assignments(video, df))
     df.to_csv(out / "players.csv.gz", index=False, float_format="%.2f")
     placed = bool(df["placed"].any()) if len(df) else False
+    others = df.loc[df["role"] == "other", "track_id"].nunique() if len(df) else 0
     res = {"status": "done", "model": PLAYER_CFG.label(), "tracks": int(df["track_id"].nunique()) if len(df) else 0,
-           "rows": int(len(df)), "placed": placed}
+           "rows": int(len(df)), "placed": placed, "other_tracks": int(others)}
     if not placed:
         res["message"] = "The court was not found, so everyone in view is kept and no court positions are given."
     return res
@@ -206,6 +208,8 @@ def actions_stage(video: Path, out: Path, prev: dict, tick) -> dict:
     a_step, j_step = players.sample_every(fps, ACTION_FPS), players.sample_every(fps, JERSEY_FPS)
     detect = action_detector()
     read = digit_detector() if JERSEY_MODEL.exists() else None
+    if "role" in tracks:
+        tracks = tracks[tracks["role"] == "player"]  # officials and staff are not given actions or numbers
     seen = tracks[~tracks["interpolated"].astype(bool)] if len(tracks) else tracks
     by_frame = {f: g for f, g in seen.groupby("frame")} if read and len(seen) else {}
     rows, readings = [], {}
@@ -246,6 +250,32 @@ def actions_stage(video: Path, out: Path, prev: dict, tick) -> dict:
     return res
 
 
+def team_assignments(video: Path, df: pd.DataFrame, per_track: int = 10) -> dict:
+    """vball.teams on torso colours of up to `per_track` detected (not interpolated) boxes per track."""
+    seen = df[~df["interpolated"].astype(bool)] if len(df) else df
+    if not len(seen):
+        return {}
+    picks = {}
+    for tid, g in seen.groupby("track_id"):
+        for r in g.iloc[np.linspace(0, len(g) - 1, min(per_track, len(g))).astype(int)].itertuples():
+            picks.setdefault(int(r.frame), []).append((int(tid), (r.x1, r.y1, r.x2, r.y2)))
+    hists: dict[int, list] = {}
+    cap, i, last = cv2.VideoCapture(str(video)), 0, max(picks)
+    while i <= last:
+        ok, frame = cap.read() if i in picks else (cap.grab(), None)
+        if not ok:
+            break
+        for tid, box in picks.get(i, []):
+            crop = teams.torso_crop(frame, box)
+            if crop is not None and crop.size:
+                hists.setdefault(tid, []).append(teams.colour_hist(crop))
+        i += 1
+    cap.release()
+    n_frames = df["frame"].nunique()
+    coverage = (df.groupby("track_id")["frame"].nunique() / max(n_frames, 1)).to_dict()
+    return teams.assign({t: np.array(h) for t, h in hists.items()}, coverage)
+
+
 def ball_uv(out: Path, n_frames: int) -> np.ndarray:
     """(n_frames, 2) ball image positions, NaN where the ball was not detected."""
     import pandas as pd
@@ -276,7 +306,7 @@ def trajectory_stage(video: Path, out: Path, prev: dict, tick) -> dict:
     if (out / "players.csv.gz").exists():
         p = pd.read_csv(out / "players.csv.gz")
         if "placed" in p and p["placed"].any():
-            p = p[p["placed"].astype(bool)]
+            p = p[p["placed"].astype(bool) & ((p["role"] == "player") if "role" in p else True)]
             placed = {int(f): g[["court_x", "court_y"]].to_numpy(float) for f, g in p.groupby("frame")}
     flights, unusable, rejected = [], [], []
     for k, shot in enumerate(shots):
@@ -328,7 +358,7 @@ def rallies(video: Path, out: Path, prev: dict, tick) -> dict:
 
 FUNCS = {"decode": decode, "court": court, "ball": ball_stage, "players": players_stage, "actions": actions_stage,
          "trajectory": trajectory_stage, "events": events, "rallies": rallies}
-VERSIONS = {"decode": "1", "court": "2", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-2",  # -2: interpolation bridges short gaps only
+VERSIONS = {"decode": "1", "court": "2", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-3",  # -3: team and role columns, 12-player cap
             "actions": "1", "trajectory": "3", "events": "0.3", "rallies": "0.1"}
 
 

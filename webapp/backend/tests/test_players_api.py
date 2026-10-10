@@ -63,3 +63,17 @@ def test_homography_lookup_by_shot():
     at = pipeline.court_homography_at(court, (320, 180))
     assert at(5) is not None and at(12) is None and at(30) is None
     assert pipeline.court_homography_at(None)(0) is None
+
+
+def test_people_marked_other_are_returned_but_flagged(client, clip, fake_ball, monkeypatch):
+    import pipeline
+    from vball.teams import Assignment
+    # track 2 (far outside the court in the fake tracker) looks like neither team: a referee
+    monkeypatch.setattr(pipeline, "team_assignments", lambda video, df: {1: Assignment("a", False), 2: Assignment(None, True)})
+    v = upload(client, clip)
+    assert run_worker_once()["status"] == "done"
+    p = {s["name"]: s for s in client.get(f"/videos/{v['id']}/stages").json()}["players"]
+    assert p["summary"]["other_tracks"] == 1
+    boxes = client.get(f"/videos/{v['id']}/players", params={"start": 0, "end": 0.5}).json()["boxes"]
+    roles = {b["track_id"]: (b["role"], b["team"]) for b in boxes}
+    assert roles == {1: ("player", "a"), 2: ("other", None)}

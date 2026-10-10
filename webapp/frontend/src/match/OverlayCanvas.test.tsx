@@ -22,8 +22,9 @@ beforeEach(() => {
   fakeApi({
     'GET /api/videos/v1/ball': () => ({ body: { fps: 25, frame: [8, 9, 10], x: [100, 110, 120], y: [50, 52, 54] } }),
     'GET /api/videos/v1/players': () => ({ body: { fps: 25, placed: false, boxes: [
-      { frame: 10, track_id: 7, x1: 200, y1: 100, x2: 260, y2: 300, interpolated: false, court_x: null, court_y: null, side: null },
-      { frame: 11, track_id: 8, x1: 0, y1: 0, x2: 10, y2: 10, interpolated: true, court_x: null, court_y: null, side: null },
+      { frame: 10, track_id: 7, x1: 200, y1: 100, x2: 260, y2: 300, interpolated: false, court_x: null, court_y: null, side: null, role: 'player' },
+      { frame: 10, track_id: 9, x1: 400, y1: 100, x2: 460, y2: 300, interpolated: false, court_x: null, court_y: null, side: null, role: 'other' },
+      { frame: 11, track_id: 8, x1: 0, y1: 0, x2: 10, y2: 10, interpolated: true, court_x: null, court_y: null, side: null, role: 'player' },
     ] } }),
   })
   Object.values(ctx).forEach((f) => typeof f === "function" && f.mockClear())
@@ -88,8 +89,10 @@ test('player boxes of the current frame are drawn when that layer is on, even wi
   })
   // track 7 at frame 10 (x 200..260, y 100..300 in a 1920 x 1080 video) at half scale; track 8 is another frame
   expect(ctx.strokeRect).toHaveBeenCalledWith(100, 50, 30, 100)
-  expect(ctx.fillText).toHaveBeenCalledWith('7', expect.any(Number), expect.any(Number))
-  expect(ctx.fillText).not.toHaveBeenCalledWith('8', expect.any(Number), expect.any(Number))
+  expect(ctx.fillText).toHaveBeenCalledWith('ID 7', expect.any(Number), expect.any(Number)) // a tracking id, not a shirt number
+  expect(ctx.fillText).not.toHaveBeenCalledWith('ID 8', expect.any(Number), expect.any(Number))
+  expect(ctx.strokeRect).toHaveBeenCalledWith(200, 50, 30, 100) // the referee is drawn (faint) ...
+  expect(ctx.fillText).not.toHaveBeenCalledWith('ID 9', expect.any(Number), expect.any(Number)) // ... but not labelled
   expect(ctx.stroke).not.toHaveBeenCalled() // no ball trail
 })
 

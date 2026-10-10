@@ -113,16 +113,25 @@ def render(vid: str, path: Path, out: Path) -> Path:
             img = vcourt.draw(img, H, color=(0, 255, 255), thickness=max(1, int(2 * scale)))
 
         people = []
+        others = []
         for row in (by_frame.get(i).itertuples() if i in by_frame else []):
+            p1, p2 = (int(row.x1), int(row.y1)), (int(row.x2), int(row.y2))
+            if getattr(row, "role", "player") == "other":  # officials, staff, spectators: faint, unlabelled
+                others.append((p1, p2))
+                continue
             side = row.side if isinstance(row.side, str) else ""
             col = TEAM.get(side, WHITE) if row.placed else WHITE
-            p1, p2 = (int(row.x1), int(row.y1)), (int(row.x2), int(row.y2))
             cv2.rectangle(img, p1, p2, EDGE, max(2, int(3 * scale)))
             cv2.rectangle(img, p1, p2, col, max(1, int(1.5 * scale)))
-            # a tracking id, not the shirt number (jersey numbers are not read yet)
+            # a tracking id, not the shirt number
             text(img, f"ID {int(row.track_id)}", (p1[0], p1[1] - int(6 * scale)), 0.5 * scale)
             if row.placed and not np.isnan(row.court_x):
                 people.append((row.court_x, row.court_y, side))
+        if others:
+            faint = img.copy()
+            for p1, p2 in others:
+                cv2.rectangle(faint, p1, p2, (150, 150, 150), max(1, int(1.5 * scale)))
+            img = cv2.addWeighted(faint, 0.4, img, 0.6, 0)
 
         pts = [(int(x), int(y)) for x, y in uv[max(0, i - trail):i + 1] if not np.isnan(x)]
         for k in range(1, len(pts)):

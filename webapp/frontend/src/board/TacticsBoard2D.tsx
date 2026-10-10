@@ -99,7 +99,7 @@ export function TacticsBoard2D({ flights, players }: { flights: readonly Flight[
   // players at the playback time (5 updates per second at most; see playback/clock.ts)
   const t = usePlaybackTime()
   const frameNow = players ? Math.round(t * players.fps) : -1
-  const people = players?.placed ? players.boxes.filter((b) => b.frame === frameNow && b.court_x != null) : []
+  const people = players?.placed ? players.boxes.filter((b) => b.frame === frameNow && b.court_x != null && b.role !== 'other') : []
 
   return (
     <svg

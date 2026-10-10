@@ -65,16 +65,21 @@ export function OverlayCanvas({ videoId, fps, layers }: { videoId: string; fps: 
           const y = lb.y + b.y1 * lb.scale
           const bw = (b.x2 - b.x1) * lb.scale
           const bh = (b.y2 - b.y1) * lb.scale
+          const other = b.role === 'other' // officials, staff, spectators: shown faint, not labelled
+          ctx.globalAlpha = other ? 0.35 : 1
           ctx.strokeStyle = EDGE
           ctx.lineWidth = 3
           ctx.strokeRect(x, y, bw, bh)
           ctx.strokeStyle = PLAYER
           ctx.lineWidth = 1.5
           ctx.strokeRect(x, y, bw, bh)
+          ctx.globalAlpha = 1
+          if (other) continue
+          const label = `ID ${b.track_id}` // a tracking id, not the shirt number
           ctx.fillStyle = EDGE
-          ctx.fillRect(x, y - 14, 8 + 7 * String(b.track_id).length, 14)
+          ctx.fillRect(x, y - 14, 8 + 7 * label.length, 14)
           ctx.fillStyle = PLAYER
-          ctx.fillText(String(b.track_id), x + 4, y - 3)
+          ctx.fillText(label, x + 4, y - 3)
         }
       }
       if (!layersRef.current.ball) return

@@ -108,3 +108,14 @@ clustering apart. Players stay in view (median 21% of frames per track against 1
 teams. The thresholds were chosen on these sequences, so the gain is optimistic until confirmed on the SportsMOT
 training sequences (downloaded with task 1.2). A precision of 0.700 is still far from the 0.95 of an ideal filter:
 the player-only detector (task 1) is the main remedy, this check the fallback without a court.
+
+### On the evaluation clips (2026-10-11)
+Players stage version 3 (team and role columns, 12-player cap). Checked by eye on the rendered videos:
+- side_high_women (court ok): the referee under the net and most of the bench are now faint and unlabelled; a line
+  judge and two bench members are still labelled as players.
+- side_rally (court not usable, colour and cap only): a white-shirted line judge is left out, but two French
+  players (white, partly hidden in the back row) are marked other while two people in red at the sides stay
+  players: without a court the cap can only rank by detection confidence.
+Not yet the acceptance criterion (no officials boxed, every player boxed). The player-only detector (task 1) is the
+main remedy. Note: `other_tracks` in the stage summary counts tracks with any frame marked other (the cap works per
+frame), so it overstates how many tracks are officials.

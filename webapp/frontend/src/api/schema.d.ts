@@ -527,6 +527,14 @@ export interface components {
             court_y: number | null;
             /** Side */
             side: ("a" | "b") | null;
+            /** Team */
+            team?: ("a" | "b") | null;
+            /**
+             * Role
+             * @default player
+             * @enum {string}
+             */
+            role: "player" | "other";
         };
         /** PlayerWindow */
         PlayerWindow: {

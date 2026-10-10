@@ -129,6 +129,8 @@ class PlayerBox(BaseModel):
     court_x: float | None   # metres; None without a court mapping
     court_y: float | None
     side: Literal["a", "b"] | None
+    team: Literal["a", "b"] | None = None             # by shirt colour; None when not trusted
+    role: Literal["player", "other"] = "player"       # other: officials, staff, spectators (shown, not counted)
 
 
 class PlayerWindow(BaseModel):
@@ -374,7 +376,9 @@ def player_window(vid: str, start: float = Query(0, ge=0), end: float | None = Q
 
     boxes = [PlayerBox(frame=int(r.frame), track_id=int(r.track_id), x1=num(r.x1), y1=num(r.y1), x2=num(r.x2),
                        y2=num(r.y2), interpolated=bool(r.interpolated), court_x=num(r.court_x),
-                       court_y=num(r.court_y), side=(r.side if isinstance(r.side, str) and r.side else None))
+                       court_y=num(r.court_y), side=(r.side if isinstance(r.side, str) and r.side else None),
+                       team=(getattr(r, "team", "") if isinstance(getattr(r, "team", ""), str) and getattr(r, "team", "") else None),
+                       role=getattr(r, "role", "player") if isinstance(getattr(r, "role", None), str) else "player")
              for r in w.itertuples(index=False)]
     return PlayerWindow(fps=fps, placed=bool(df["placed"].any()) if len(df) else False, boxes=boxes)
 

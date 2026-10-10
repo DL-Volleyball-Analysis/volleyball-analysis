@@ -79,11 +79,12 @@ describe('2D tactics board', () => {
     expect(first).toHaveAttribute('tabindex', '0') // the reason is reachable by keyboard focus
   })
 
-  test('players at the playback time when they are placed on the court', () => {
+  test('players at the playback time when they are placed on the court, without officials', () => {
     const players: PlayerWindow = { fps: 25, placed: true, boxes: [
-      { frame: 25, track_id: 1, x1: 0, y1: 0, x2: 1, y2: 1, interpolated: false, court_x: 4, court_y: 2, side: 'a' },
-      { frame: 25, track_id: 2, x1: 0, y1: 0, x2: 1, y2: 1, interpolated: false, court_x: 12, court_y: 6, side: 'b' },
-      { frame: 26, track_id: 1, x1: 0, y1: 0, x2: 1, y2: 1, interpolated: false, court_x: 4.1, court_y: 2, side: 'a' },
+      { frame: 25, track_id: 1, x1: 0, y1: 0, x2: 1, y2: 1, interpolated: false, court_x: 4, court_y: 2, side: 'a', role: 'player' },
+      { frame: 25, track_id: 2, x1: 0, y1: 0, x2: 1, y2: 1, interpolated: false, court_x: 12, court_y: 6, side: 'b', role: 'player' },
+      { frame: 25, track_id: 3, x1: 0, y1: 0, x2: 1, y2: 1, interpolated: false, court_x: 9, court_y: -1, side: 'a', role: 'other' }, // the referee
+      { frame: 26, track_id: 1, x1: 0, y1: 0, x2: 1, y2: 1, interpolated: false, court_x: 4.1, court_y: 2, side: 'a', role: 'player' },
     ] }
     const { clock } = withClock(<TacticsBoard2D flights={[flight()]} players={players} />)
     act(() => clock.tick(1, true))

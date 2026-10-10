@@ -14,8 +14,8 @@
 
 ## 3. Web app
 
-- [ ] 3.1 Players stage writes `role` and `team`; court positions, actions and statistics use players only; bump the stage version and verify backend tests
-- [ ] 3.2 Overlay and render.py show `other` dimmed; verify component tests and re-render the five clips (no boxes on the first referee and line judges, by eye)
+- [x] 3.1 Players stage writes `role` and `team`; court positions, actions and statistics use players only; bump the stage version and verify backend tests
+- [ ] 3.2 Overlay and render.py show `other` dimmed; verify component tests and re-render the five clips (no boxes on the first referee and line judges, by eye) (2026-10-11: code and tests done, re-rendered; by eye not met yet: a line judge and bench members still labelled, two back-row players dimmed on the clip without a court; waits for task 1)
 
 ## 4. Docs
 
