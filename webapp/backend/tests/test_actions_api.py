@@ -62,3 +62,36 @@ def test_without_the_action_model_the_stage_is_unavailable_and_later_stages_run(
     assert run_worker_once()["status"] == "done"
     assert stage(client, v["id"], "actions")["status"] == "unavailable"
     assert stage(client, v["id"], "trajectory")["status"] != "pending"
+
+
+def test_actions_api_returns_events_numbers_and_suggestions(client, clip, fake_ball, monkeypatch, tmp_path):
+    install(monkeypatch, tmp_path)
+    v = upload(client, clip)
+    run_worker_once()
+    a = client.get(f"/videos/{v['id']}/actions").json()
+    (ev,) = a["events"]
+    assert ev["action"] == "spike" and ev["track_id"] == 1 and ev["number"] == 10
+    assert {n["track_id"]: n["number"] for n in a["numbers"]}[1] == 10
+    (sug,) = a["suggestions"]
+    assert sug["kind"] == "attack" and sug["number"] == 10 and sug["status"] == "open"
+    assert abs(sug["time_s"] - ev["start_s"]) < 1e-6
+
+
+def test_accepting_posts_an_ordinary_tag_and_dismissing_is_remembered(client, clip, fake_ball, monkeypatch, tmp_path):
+    install(monkeypatch, tmp_path)
+    v = upload(client, clip)
+    run_worker_once()
+    sug = client.get(f"/videos/{v['id']}/actions").json()["suggestions"][0]
+    assert client.get(f"/videos/{v['id']}/stats").json()["lines"] == []  # a suggestion never counts
+    r = client.post(f"/videos/{v['id']}/tags", json={"time_s": sug["time_s"], "kind": "attack", "team": "a", "number": 10})
+    assert r.status_code == 201
+    assert client.get(f"/videos/{v['id']}/actions").json()["suggestions"][0]["status"] == "accepted"
+    tag_id = r.json()[0]["id"]
+    client.delete(f"/videos/{v['id']}/tags/{tag_id}")
+    assert client.post(f"/videos/{v['id']}/actions/suggestions/{sug['id']}/dismiss").status_code == 204
+    assert client.get(f"/videos/{v['id']}/actions").json()["suggestions"][0]["status"] == "dismissed"
+
+
+def test_actions_404_before_the_stage_ran(client, clip):
+    v = upload(client, clip)
+    assert client.get(f"/videos/{v['id']}/actions").status_code == 404

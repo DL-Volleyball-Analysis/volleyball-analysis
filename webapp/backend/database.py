@@ -62,6 +62,11 @@ CREATE TABLE IF NOT EXISTS tags (
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS tags_by_video ON tags(video_id, time_s);
+CREATE TABLE IF NOT EXISTS dismissed_suggestions (
+    video_id TEXT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+    suggestion_id TEXT NOT NULL,       -- '<kind>-<start frame>-<track id>' from the actions stage
+    PRIMARY KEY (video_id, suggestion_id)
+);
 """
 
 FINISHED = ("done", "failed")
@@ -247,3 +252,12 @@ class Database:
     def delete_tag(self, video_id: str, tag_id: str) -> bool:
         with self.connect() as c:
             return c.execute("DELETE FROM tags WHERE video_id = ? AND id = ?", (video_id, tag_id)).rowcount > 0
+
+    def dismiss_suggestion(self, video_id: str, suggestion_id: str) -> None:
+        with self.connect() as c:
+            c.execute("INSERT OR IGNORE INTO dismissed_suggestions VALUES (?, ?)", (video_id, suggestion_id))
+
+    def dismissed_suggestions(self, video_id: str) -> set[str]:
+        with self.connect() as c:
+            rows = c.execute("SELECT suggestion_id FROM dismissed_suggestions WHERE video_id = ?", (video_id,))
+            return {r[0] for r in rows}

@@ -548,6 +548,90 @@ def check_unique(players: list[RosterPlayer]) -> None:
         seen.add((pl.team, pl.number))
 
 
+class ActionEvent(BaseModel):
+    action: Literal["block", "receive", "serve", "set", "spike"]
+    track_id: int | None
+    start_s: float
+    end_s: float
+    peak_conf: float
+    number: int | None        # the track's shirt number when the vote is clear
+    team: Team | None         # by shirt colour, else the side of the net
+
+
+class ShirtNumber(BaseModel):
+    track_id: int
+    number: int | None        # None: no clear vote (shown by tracking id)
+    share: float
+    readings: int
+
+
+class Suggestion(BaseModel):
+    """A tag proposed from an action event; never counted until the coach posts it as a tag."""
+    id: str
+    kind: TagKind
+    time_s: float
+    team: Team | None
+    number: int | None        # None: the coach has to give it
+    track_id: int | None
+    status: Literal["open", "accepted", "dismissed"]
+
+
+class ActionsOut(BaseModel):
+    events: list[ActionEvent]
+    numbers: list[ShirtNumber]
+    suggestions: list[Suggestion]
+
+
+SUGGEST = {"spike": "attack", "serve": "serve"}
+ACCEPT_WINDOW_S = 1.0  # a tag of the same kind this close to a suggestion accepts it
+
+
+@app.get("/videos/{vid}/actions", response_model=ActionsOut)
+def actions(vid: str):
+    """Action events, shirt numbers per track and the tags they suggest (change add-player-actions)."""
+    v = video_or_404(vid)
+    path = RESULTS / vid / "action_events.json"
+    if not path.exists():
+        raise HTTPException(404, "action recognition not run yet")
+    data = json.loads(path.read_text())
+    numbers = {int(t): n for t, n in data.get("numbers", {}).items()}
+    team_of: dict[int, str] = {}
+    csv = RESULTS / vid / "players.csv.gz"
+    if csv.exists():
+        df = _players(str(csv), csv.stat().st_mtime)
+        for col in ("side", "team"):  # team (shirt colour) overrides side (net) when known
+            if col in df:
+                for tid, vals in df.groupby("track_id")[col]:
+                    vals = vals[vals.astype(str).isin(["a", "b"])]
+                    if len(vals):
+                        team_of[int(tid)] = str(vals.mode().iloc[0])
+    events = [ActionEvent(action=e["action"], track_id=e["track_id"], start_s=e["start_s"], end_s=e["end_s"],
+                          peak_conf=e["peak_conf"],
+                          number=(numbers.get(e["track_id"]) or {}).get("number") if e["track_id"] is not None else None,
+                          team=team_of.get(e["track_id"]) if e["track_id"] is not None else None)
+              for e in data.get("events", [])]
+    tags, dismissed = db.list_tags(vid), db.dismissed_suggestions(vid)
+    fps = v["fps"] or 30.0
+    suggestions = []
+    for e, raw in zip(events, data.get("events", [])):
+        kind = SUGGEST.get(e.action)
+        if kind is None:
+            continue
+        sid = f"{kind}-{raw['start_frame']}-{e.track_id if e.track_id is not None else 'x'}"
+        accepted = any(t["kind"] == kind and abs(t["time_s"] - e.start_s) <= ACCEPT_WINDOW_S for t in tags)
+        status = "accepted" if accepted else "dismissed" if sid in dismissed else "open"
+        suggestions.append(Suggestion(id=sid, kind=kind, time_s=round(e.start_s, 3), team=e.team, number=e.number,
+                                      track_id=e.track_id, status=status))
+    return ActionsOut(events=events, suggestions=suggestions,
+                      numbers=[ShirtNumber(track_id=t, **n) for t, n in sorted(numbers.items())])
+
+
+@app.post("/videos/{vid}/actions/suggestions/{sid}/dismiss", status_code=204)
+def dismiss_suggestion(vid: str, sid: str):
+    video_or_404(vid)
+    db.dismiss_suggestion(vid, sid)
+
+
 @app.get("/videos/{vid}/roster", response_model=Roster)
 def get_roster(vid: str):
     video_or_404(vid)

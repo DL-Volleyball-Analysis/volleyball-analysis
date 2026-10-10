@@ -286,6 +286,43 @@ export interface paths {
         patch: operations["correct_rally_videos__vid__rallies__idx__patch"];
         trace?: never;
     };
+    "/videos/{vid}/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Actions
+         * @description Action events, shirt numbers per track and the tags they suggest (change add-player-actions).
+         */
+        get: operations["actions_videos__vid__actions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/videos/{vid}/actions/suggestions/{sid}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dismiss Suggestion */
+        post: operations["dismiss_suggestion_videos__vid__actions_suggestions__sid__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/videos/{vid}/roster": {
         parameters: {
             query?: never;
@@ -370,6 +407,35 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActionEvent */
+        ActionEvent: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "block" | "receive" | "serve" | "set" | "spike";
+            /** Track Id */
+            track_id: number | null;
+            /** Start S */
+            start_s: number;
+            /** End S */
+            end_s: number;
+            /** Peak Conf */
+            peak_conf: number;
+            /** Number */
+            number: number | null;
+            /** Team */
+            team: ("a" | "b") | null;
+        };
+        /** ActionsOut */
+        ActionsOut: {
+            /** Events */
+            events: components["schemas"]["ActionEvent"][];
+            /** Numbers */
+            numbers: components["schemas"]["ShirtNumber"][];
+            /** Suggestions */
+            suggestions: components["schemas"]["Suggestion"][];
+        };
         /** BallCoverage */
         BallCoverage: {
             /** Duration S */
@@ -633,6 +699,17 @@ export interface components {
             /** Demo */
             demo: boolean;
         };
+        /** ShirtNumber */
+        ShirtNumber: {
+            /** Track Id */
+            track_id: number;
+            /** Number */
+            number: number | null;
+            /** Share */
+            share: number;
+            /** Readings */
+            readings: number;
+        };
         /** StageInfo */
         StageInfo: {
             /**
@@ -701,6 +778,32 @@ export interface components {
             tagged_rallies: number;
             /** Outside */
             outside: number;
+        };
+        /**
+         * Suggestion
+         * @description A tag proposed from an action event; never counted until the coach posts it as a tag.
+         */
+        Suggestion: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "attack" | "serve";
+            /** Time S */
+            time_s: number;
+            /** Team */
+            team: ("a" | "b") | null;
+            /** Number */
+            number: number | null;
+            /** Track Id */
+            track_id: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "accepted" | "dismissed";
         };
         /** TagIn */
         TagIn: {
@@ -1321,6 +1424,67 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Rally"][];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    actions_videos__vid__actions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dismiss_suggestion_videos__vid__actions_suggestions__sid__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vid: string;
+                sid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
