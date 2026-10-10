@@ -92,3 +92,15 @@ test('player boxes of the current frame are drawn when that layer is on, even wi
   expect(ctx.fillText).not.toHaveBeenCalledWith('8', expect.any(Number), expect.any(Number))
   expect(ctx.stroke).not.toHaveBeenCalled() // no ball trail
 })
+
+
+test('a trail segment that jumps across the frame is not drawn', async () => {
+  fakeApi({ 'GET /api/videos/v1/ball': () => ({ body: { fps: 25, frame: [8, 9, 10], x: [100, 1500, 120], y: [50, 900, 54] } }) })
+  mount({ ball: true, court: false, players: false })
+  await vi.waitFor(() => {
+    step()
+    expect(ctx.arc).toHaveBeenCalled()
+  })
+  // frames 8 -> 9 -> 10 jump 1400+ px each way in a 1920 px video: no trail segment at all
+  expect(ctx.lineTo).not.toHaveBeenCalled()
+})

@@ -66,6 +66,12 @@ Frontend tests include WCAG contrast checks of the theme tokens (`src/theme.test
 J / K previous / next rally · Space play / pause · 1 / 2 winner A / B · 0 clear correction ·
 T / S tag an attack / serve at the playhead (then the player number, A / B to switch team, Enter)
 
+## Analysis video
+`../.venv/bin/python backend/render.py <video name or id> [--out file.mp4]` draws every result on the video for
+sharing outside the app: ball trail, player boxes and ids, court lines (only for shots whose court status is
+ok), a court map with the players' positions (and the ball from 3D flights), and a status bar that says what is
+missing and why. Default output: `data/results/<id>/<name>_analysis.mp4` (H.264 when ffmpeg is installed).
+
 ## Tactics board
 The Board tab shows the 3D ball flights of the rally at the playhead, from above (2D) or as a rotatable
 3D court. Height is the depth of one hue with labels at the apex and the net crossing; low-quality

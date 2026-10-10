@@ -17,6 +17,7 @@ Stored by the web app as players.csv.gz with these columns. Teams are not assign
 plays on which side changes between sets and belongs to rally scoring.
 """
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable, Iterable
 
 import numpy as np
@@ -26,6 +27,7 @@ from .court import LENGTH, WIDTH, side_of_net, to_court
 
 COLUMNS = ["frame", "track_id", "x1", "y1", "x2", "y2", "conf", "interpolated"]
 PERSON = 0  # COCO class id
+MAX_GAP_SAMPLES = 3  # interpolate across at most this many sampling intervals
 
 # step(image) -> rows of (track_id, x1, y1, x2, y2, conf) for one sampled frame
 Step = Callable[[np.ndarray], list[tuple[int, float, float, float, float, float]]]
@@ -40,7 +42,8 @@ class TrackerConfig:
     conf: float = 0.25
 
     def label(self) -> str:
-        return f"{self.model.removesuffix('.pt')}_{self.imgsz}_{self.tracker.removesuffix('.yaml')}_{self.det_fps:g}fps"
+        model = Path(self.model).stem  # the file name only: labels name output folders and stage versions
+        return f"{model}_{self.imgsz}_{self.tracker.removesuffix('.yaml')}_{self.det_fps:g}fps"
 
 
 def ultralytics_step(cfg: TrackerConfig) -> Step:
@@ -78,7 +81,9 @@ def track_frames(frames: Iterable[np.ndarray], src_fps: float, cfg: TrackerConfi
         if i % k == 0:
             rows.extend((i, tid, x1, y1, x2, y2, c, False) for tid, x1, y1, x2, y2, c in step(image))
     sampled = pd.DataFrame(rows, columns=COLUMNS)
-    return interpolate_tracks(sampled, n_frames=n) if k > 1 else sampled
+    # fill only short gaps: a track the tracker lost and picked up again much later would otherwise get a
+    # straight line of boxes through frames where the person was not seen (empty "ghost" boxes)
+    return interpolate_tracks(sampled, n_frames=n, max_gap=MAX_GAP_SAMPLES * k) if k > 1 else sampled
 
 
 def interpolate_tracks(df: pd.DataFrame, n_frames: int, max_gap: int | None = None) -> pd.DataFrame:

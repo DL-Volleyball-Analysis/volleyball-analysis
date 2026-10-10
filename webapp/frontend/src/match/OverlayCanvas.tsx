@@ -7,6 +7,7 @@ import { boxesAt, letterbox, trailPoints } from './overlay'
 export type Layers = { ball: boolean; court: boolean; players: boolean }
 
 const TRAIL_S = 0.5
+const JUMP = 0.08 // same threshold as the ball-tracking jump proxy (vball.metrics)
 // Overlay colours sit on video, not on the page theme: bright core, dark edge for any background.
 const BALL = '#ffd23f'
 const EDGE = 'rgba(0, 0, 0, 0.75)'
@@ -85,6 +86,8 @@ export function OverlayCanvas({ videoId, fps, layers }: { videoId: string; fps: 
       for (let i = 1; i < pts.length; i++) {
         // fade older segments; skip across gaps longer than 3 frames (missed detections)
         if (pts[i].frame - pts[i - 1].frame > 3) continue
+        // skip jumps longer than 8% of the frame width: one of the two points is a false detection
+        if (Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y) > JUMP * video.videoWidth) continue
         const alpha = i / pts.length
         const [x0, y0] = px(pts[i - 1])
         const [x1, y1] = px(pts[i])

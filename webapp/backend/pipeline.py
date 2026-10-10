@@ -213,7 +213,7 @@ def rallies(video: Path, out: Path, prev: dict, tick) -> dict:
 
 FUNCS = {"decode": decode, "court": court, "ball": ball_stage, "players": players_stage,
          "trajectory": trajectory_stage, "events": events, "rallies": rallies}
-VERSIONS = {"decode": "1", "court": "1", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-1",
+VERSIONS = {"decode": "1", "court": "1", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-2",  # -2: interpolation bridges short gaps only
             "trajectory": "1", "events": "0.3", "rallies": "0.1"}
 
 

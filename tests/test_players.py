@@ -103,3 +103,18 @@ def test_frames_without_a_court_mapping_are_kept_unplaced():
     assert len(frame1) == 2  # the referee is not filtered without a mapping
     assert not frame1["placed"].any() and frame1["court_x"].isna().all() and (frame1["side"] == "").all()
     assert out[out["frame"] == 0]["placed"].all()
+
+
+
+def test_track_frames_does_not_bridge_a_long_gap():
+    # detected at sampled frames 0 and 3, lost, then the same id again at frame 30 (sampling every 3 frames)
+    seen = {0: [(1, 0, 0, 10, 10, 0.9)], 3: [(1, 3, 0, 13, 10, 0.9)], 30: [(1, 30, 0, 40, 10, 0.9)]}
+    frames = [None] * 31
+    calls = iter(sorted(range(0, 31, 3)))
+    def step(image):
+        return seen.get(next(calls), [])
+    cfg = TrackerConfig(det_fps=10)
+    df = track_frames(frames, 30.0, cfg, step)
+    got = sorted(df["frame"].tolist())
+    assert got[:4] == [0, 1, 2, 3]       # the short gap is filled
+    assert 15 not in got and 30 in got   # the long gap (27 frames > 3 x 3) is not
