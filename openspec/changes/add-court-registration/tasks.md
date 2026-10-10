@@ -51,7 +51,7 @@
 
 - [x] 5b.1 Add `court_registration.pick` and verify unit tests for the status order and the tie-breaks
 - [x] 5b.2 Run every installed court model in the court stage (one decode pass), record the model per shot, and verify a backend test where each of two shots is won by a different fake model
-- [ ] 5b.3 Install v3b as `court_kpt_broadcast.pt`, rerun the court stage on the 5 clips, and record which model each shot used and the status against the eye
+- [x] 5b.3 Install v3b as `court_kpt_broadcast.pt`, rerun the court stage on the 5 clips, and record which model each shot used and the status against the eye (2 of 5 ok, both correct; 3 needs review, wrong by eye with either model; see docs/results/court-keypoints.md)
 
 ## 6. Integration
 

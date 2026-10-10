@@ -99,3 +99,20 @@ Threshold 1.5% of the width (~29 px at 1080p): the status now agrees with the ey
 feed the players, trajectory and events stages. A first version calibrated on all 14 points and missed it: the
 robust loss treated the four net points as outliers. Synthetic checks: a clean squeeze of the floor into the
 near half from behind an end line gives 130 px, a correct view ~1 px.
+
+### Model per shot on the evaluation clips (2026-10-11)
+The court stage now runs v2 (`court_kpt.pt`, "gym") and v3b (`court_kpt_broadcast.pt`, "broadcast") and keeps the
+better per shot (status, then floor-net consistency, then fit error). Per model, one shot per clip:
+
+| Clip | v2 (gym) | v3b (broadcast) | Used |
+|---|---|---|---|
+| side_high_men | ok, consistency 15 px, error 0.0009 | ok, 13 px, 0.0015 | broadcast |
+| side_high_women | ok, 9 px, 0.0010 | ok, 13 px, 0.0017 | gym |
+| back_rally | needs review, 127 px, 0.0038 | needs review, 243 px, 0.034 | gym (needs review) |
+| back_view | needs review, 72 px, 0.0027 | needs review, 2 of 71 samples fit, 0.036 | gym (needs review) |
+| side_rally | needs review, 81 px, 0.0027 | needs review, 11 of 43 samples fit, 0.035 | gym (needs review) |
+
+Both models are right on the two high side views. The back views and the low Tokyo 2020 side view are beyond
+both: v3b is confident on every point there but its points are geometrically inconsistent (fit error 10x v2's),
+having been trained on high side broadcast views only. The pick never chose a wrong court, and the doubtful shots
+stay needs review. Fixing them needs training images from those angles.
