@@ -72,3 +72,24 @@ apart), a conservative lower bound on false detections since a ball cannot jump 
 
 The synthetic ablation uses 30% missed (in bursts of about 4 frames) and 12% false detections. On the wide
 men's clip the ball is too small: 72% missed and half the rest wrong.
+
+## Ablation on realistic detection errors (2026-10-11)
+`scripts/eval_trajectory_synthetic.py --ablation`: the serve -> receive -> set -> attack rally (1080p, 50 fps),
+detections corrupted as measured above (30% missed in bursts, 12% false points, 2 px noise), true flight
+boundaries, a player about 0.3 m from each touch's ground point. Median 3D error per flight:
+
+| Fit | serve | receive | set | attack (0.45 s) |
+|---|---|---|---|---|
+| no constraints | 0.08 m | 0.20 m | 0.40 m | 0.87 m |
+| + bounds | 0.08 m | 0.20 m | 0.40 m | 0.87 m |
+| + robust refit | 0.09 m | 0.17 m | 0.29 m | 0.76 m |
+| + player anchors | **0.05 m** | **0.11 m** | **0.12 m** | **0.31 m** |
+
+- Player anchors are the large gain: the attack's error drops by 59% against the robust fit (64% against no
+  constraints), the set's by 59%. All 140 touches with a player were anchored; the robust refit dropped 335
+  detections.
+- Bounds change nothing here, as expected: with true boundaries the fit never prefers a ball at the camera.
+  They exist for real tracks, where that solution appeared (test: a path in front of the camera is kept in the
+  hall and marked low quality instead of drawn at the lens).
+- Synthetic players stand at the touch; on real footage the nearest player to the ray may not be the one who
+  touched the ball, which the real-clip report has to show.

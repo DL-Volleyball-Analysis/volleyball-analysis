@@ -13,7 +13,7 @@
 
 ## 3. Evaluation
 
-- [ ] 3.1 Extend `scripts/eval_trajectory_synthetic.py` with the ablation (none, bounds, + robust, + anchors) per flight type on corrupted rallies; record the table
+- [x] 3.1 Extend `scripts/eval_trajectory_synthetic.py` with the ablation (none, bounds, + robust, + anchors) per flight type on corrupted rallies; record the table
 - [ ] 3.2 Real-clip report: flights segmented, kept, low quality, residuals, anchors per clip; record it
 
 ## 4. Web app
