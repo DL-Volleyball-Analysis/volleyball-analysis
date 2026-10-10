@@ -46,8 +46,8 @@ Every number comes from a script and a labelled split, or is named a proxy or sy
 | Player tracking | IDF1 0.484, HOTA 0.467 on SportsMOT volleyball (target IDF1 0.70); 39% of detections are people off court. | labelled benchmark · [player-tracking.md](docs/results/player-tracking.md) |
 | Ball tracking | VballNet V4c: 3.08 false jumps per 100 frames, 68.7% of frames detected on 5 broadcast clips; ~28% detection on wide high-angle shots. | label-free proxy · [ball-tracking.md](docs/results/ball-tracking.md) |
 | 3D trajectory | 0.05 m median error on a synthetic serve; spikes flagged low quality. Real footage waits for a better court model: impossible fits are dropped, not drawn. | synthetic · [trajectory.md](docs/results/trajectory.md) |
-| Action recognition (YOLOv11m) | mAP@0.5 0.957 on the test split, receive weakest (0.863). Test frames come from the same matches as training, so not an unseen-match score. | labelled test split · [actions.md](docs/results/actions.md) |
-| Shirt numbers | Digit mAP@0.5 0.824 on matches whose teams the model never saw; whole numbers read exactly from 63% of single crops (voted per player in the app). | labelled test split · [actions.md](docs/results/actions.md) |
+| Action recognition (YOLOv11m) | In the pipeline: action events per player and suggested attack / serve tags. mAP@0.5 0.957 on the test split, receive weakest (0.863); test frames come from the same matches as training, so not an unseen-match score. | labelled test split · [actions.md](docs/results/actions.md) |
+| Shirt numbers | In the pipeline, voted per player over time. Digit mAP@0.5 0.824 on matches whose teams the model never saw; whole numbers read exactly from 63% of single crops. | labelled test split · [actions.md](docs/results/actions.md) |
 | Player statistics | Attack efficiency, kill rate, aces and serve errors per player from coach tags, CSV export. | tests · [player-stats.md](docs/prd/player-stats.md) |
 
 ## Review app

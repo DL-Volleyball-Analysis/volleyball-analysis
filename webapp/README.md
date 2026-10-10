@@ -11,8 +11,11 @@ and review/correct them in the browser. Continuation of the NTOU capstone (DL-Vo
 | Stage | State |
 |---|---|
 | `decode` – metadata, camera shot cuts | done |
-| `court` – keypoints → homography | waiting for the court keypoint model |
+| `court` – keypoints → homography per shot, best of the installed court models | done (2 of 5 evaluation clips usable) |
 | `ball` – VballNet V4c tracking | done |
+| `players` – YOLO26s + BoT-SORT, court positions, team and role (officials marked other), 12-player cap | done |
+| `actions` – action events per player, time-local shirt numbers | done (needs `models/action_yolo11m.pt`, `models/jersey_digits_yolo26s.pt`) |
+| `trajectory` – camera calibration, bounded and player-anchored 3D flights | done (flights on real clips still low quality) |
 | `events` – contacts, landing in court metres | todo |
 | `rallies` – rally segmentation, point winner | todo (demo data only) |
 
@@ -86,6 +89,15 @@ kill rate, serves, aces and serve errors. The last tag of a rally takes its outc
 winner (corrections included) unless set by hand; earlier tags are in play. Tags of rallies without a
 winner are left out of the ratios and the line is marked incomplete. Tags are stored by time, so they
 survive re-analysis. Rules and tests: `vball.stats` (`tests/test_stats.py`).
+
+## Actions, shirt numbers and suggested tags
+The actions stage runs the action model at 10 fps and assigns each action box to the player track it overlaps
+most (`vball.actions`); the timeline's Actions lane shows them (Srv, Rec, Set, Spk, Blk) in the team's colour. Shirt
+numbers are read from digit detections on the upper part of each player box at 2 fps and voted over the readings
+within a second (`vball.jersey`), so a label follows a tracker identity switch; players without a clear vote are
+shown as `ID n`, never a guessed number. Spikes and serves become suggested attack / serve tags, dashed in the
+Tags lane: accepting posts an ordinary tag (the number must be given when it was not read), dismissing is
+remembered, and nothing counts in statistics until accepted. Accuracy: `docs/results/actions.md`.
 
 ## License
 MIT. Court keypoint data: Roboflow Universe sets (CC BY 4.0).

@@ -31,4 +31,4 @@
 
 ## 6. Docs
 
-- [ ] 6.1 Update README status, PRD index, web app README; validate with `openspec validate add-player-actions --strict`
+- [x] 6.1 Update README status, PRD index, web app README; validate with `openspec validate add-player-actions --strict`
