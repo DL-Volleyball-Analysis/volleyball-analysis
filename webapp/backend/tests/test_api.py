@@ -173,14 +173,3 @@ def test_ball_coverage_first_half_only(client, clip, monkeypatch):
     run_worker_once()
     cov = client.get(f"/videos/{v['id']}/ball/coverage", params={"bins": 10}).json()["coverage"]
     assert cov == [1.0] * 5 + [0.0] * 5
-
-
-def test_court_stage_with_a_model_installed(client, clip, fake_ball, monkeypatch, tmp_path):
-    import pipeline
-    weights = tmp_path / "court.pt"
-    weights.write_bytes(b"")
-    monkeypatch.setattr(pipeline, "COURT_MODEL", weights)
-    v = upload(client, clip)
-    run_worker_once()
-    court = next(s for s in client.get(f"/videos/{v['id']}/stages").json() if s["name"] == "court")
-    assert court["status"] == "todo"  # model present, mapping not implemented yet (add-court-registration)

@@ -42,3 +42,25 @@ extent of the floor keypoints, while the boxes computed for the completed broadc
 model regresses keypoints relative to its box, so the mix plausibly explains why v3 fitted the broadcast clips
 and not k6y7r. v3b recomputes every box as the keypoints' bounding box plus a 1% margin (checked: ratio 1.00
 for both sources, keypoints unchanged) and changes nothing else, fine-tuning from v3's epoch-103 weights.
+
+## Court stage on the evaluation clips (2026-10-10, model v2)
+`vball.court_registration` in the web app's court stage (5 samples per second per shot, model v2 installed
+as `models/court_kpt.pt`), on the five 1080p evaluation clips:
+
+| Clip | View | Stage time / video | Status (self-reported) | By eye (`outputs/court_v2_overlays.jpg`) |
+|---|---|---|---|---|
+| broadcast_back_rally | behind the end line | 0.60x (includes model load) | ok, error 0.0038 | wrong |
+| broadcast_back_view | behind the end line | 0.32x | ok, 0.0027 | wrong: full court squeezed into the near half |
+| broadcast_side_high_men | high on the side | 0.34x | ok, 0.0009 | right |
+| broadcast_side_high_women | high on the side | 0.33x | ok, 0.0010 | right |
+| broadcast_side_rally | behind the end line | 0.36x | ok, 0.0027 | wrong: full court squeezed into the near half |
+
+Overall 0.38x the video duration (budget 0.5x). **2 of 5 correct by eye** (the geometric detector: 1 of 5);
+the target is 4 of 5. All three views from behind an end line fail the same way, mapping the 18 m court onto
+the near 9 m half, as the geometric detector once did.
+
+The self-reported status said ok for all five: the model's points agree with each other, they are just all
+in the wrong place, so a small reprojection error does not show it (the calibration focal gate addresses the
+same kind of problem in 3D). A check that would catch it: from behind an end line the net stands on the
+centre line, so the predicted net points (10-13) should sit above the projected centre line; a shot where they
+do not should be needs_review. To be added, and the overlays redone with v3b.

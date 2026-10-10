@@ -10,8 +10,9 @@ from typing import Callable
 
 import cv2
 import numpy as np
-from vball import ball, players, trajectory
+from vball import ball, court_registration, players, trajectory
 from vball.calibration import calibrate
+from vball.court_keypoints import detect as detect_keypoints
 from vball.paths import MODELS
 
 STAGES = ("decode", "court", "ball", "players", "trajectory", "events", "rallies")
@@ -20,7 +21,8 @@ STAGES = ("decode", "court", "ball", "players", "trajectory", "events", "rallies
 WEIGHTS = {"decode": 0.1, "court": 0.05, "ball": 0.35, "players": 0.38, "trajectory": 0.02, "events": 0.05,
            "rallies": 0.05}
 BALL_MODEL = "v4c"
-COURT_MODEL = MODELS / "court_kpt_yolo26n.pt"
+# the installed court keypoint model: copy the chosen weights here (models/ is not in git)
+COURT_MODEL = MODELS / "court_kpt.pt"
 # best measured on SportsMOT volleyball (docs/results/player-tracking.md); weights download on first use
 PLAYER_CFG = players.TrackerConfig(model=str(MODELS / "yolo26s.pt"), imgsz=960, tracker="botsort.yaml", det_fps=10.0)
 
@@ -63,11 +65,44 @@ def decode(video: Path, out: Path, prev: dict, tick) -> dict:
     return {"status": "done", **meta, "shots": shots}
 
 
+def court_detector():
+    """frame -> 14 x (x, y, conf) with the installed court model, at the size it was trained at.
+    Tests replace this function with a fake detector."""
+    from ultralytics import YOLO
+    model = YOLO(str(COURT_MODEL))
+    imgsz = int((getattr(model, "overrides", {}) or {}).get("imgsz", 640))
+    return lambda frame: detect_keypoints(model, frame, imgsz)
+
+
 def court(video: Path, out: Path, prev: dict, tick) -> dict:
+    """Per-shot court registration (vball.court_registration) from the court keypoint model."""
     if not COURT_MODEL.exists():
-        return {"status": "unavailable",
-                "message": "The court model has not been trained yet."}
-    return {"status": "todo", "message": "Court mapping arrives with milestone M1."}
+        return {"status": "unavailable", "message": "The court model has not been trained yet."}
+    meta = prev["decode"]
+    fps, size = meta.get("fps") or 30.0, (meta.get("width"), meta.get("height"))
+    shots = meta.get("shots") or [{"start_frame": 0, "end_frame": max(0, (meta.get("frames") or 1) - 1)}]
+    wanted = sorted({f for sh in shots for f in court_registration.sample_frames(sh["start_frame"], sh["end_frame"], fps)})
+    detect = court_detector()
+    # one sequential pass: decode only the sampled frames
+    keypoints, cap, i, k = {}, cv2.VideoCapture(str(video)), 0, 0
+    while k < len(wanted) and cap.grab():
+        if i == wanted[k]:
+            ok, frame = cap.retrieve()
+            if ok:
+                keypoints[i] = detect(frame)
+            k += 1
+            if k % 10 == 0:
+                tick(k / len(wanted))
+        i += 1
+    cap.release()
+    empty = np.zeros((14, 3))
+    registered = court_registration.register(shots, fps, size, lambda f: keypoints.get(f, empty))
+    counts = {st: sum(r["status"] == st for r in registered) for st in ("ok", "needs_review", "failed")}
+    res = {"status": "done", "model": COURT_MODEL.name, "shots": registered, "counts": counts}
+    if counts["ok"] < len(registered):
+        res["message"] = (f"Court found in {counts['ok']} of {len(registered)} camera shots"
+                          f" ({counts['needs_review']} to check, {counts['failed']} not found).")
+    return res
 
 
 def ball_stage(video: Path, out: Path, prev: dict, tick) -> dict:
@@ -78,16 +113,9 @@ def ball_stage(video: Path, out: Path, prev: dict, tick) -> dict:
             "detected": int(df["visible"].sum()), "csv": csv.name}
 
 
-def court_homography_at(court_result: dict | None):
-    """frame -> court-to-image homography from the court stage (per shot), or None where it has none."""
-    shots = [s for s in (court_result or {}).get("shots", []) if s.get("H") is not None]
-
-    def at(frame: int):
-        for s in shots:
-            if s["start_frame"] <= frame <= s["end_frame"]:
-                return np.array(s["H"], float)
-        return None
-    return at
+def court_homography_at(court_result: dict | None, image_size: tuple[int, int] | None = None):
+    """frame -> court-to-image homography from the court stage, or None where it has none."""
+    return lambda frame: court_registration.mapping_at(court_result, frame, image_size)
 
 
 def players_stage(video: Path, out: Path, prev: dict, tick) -> dict:
@@ -108,7 +136,8 @@ def players_stage(video: Path, out: Path, prev: dict, tick) -> dict:
         cap.release()
 
     df = players.track_frames(frames(), fps, PLAYER_CFG)
-    df = players.place_on_court(df, court_homography_at(prev.get("court")))
+    size = (prev["decode"].get("width"), prev["decode"].get("height"))
+    df = players.place_on_court(df, court_homography_at(prev.get("court"), size))
     df.to_csv(out / "players.csv.gz", index=False, float_format="%.2f")
     placed = bool(df["placed"].any()) if len(df) else False
     res = {"status": "done", "model": PLAYER_CFG.label(), "tracks": int(df["track_id"].nunique()) if len(df) else 0,
@@ -129,13 +158,15 @@ def ball_uv(out: Path, n_frames: int) -> np.ndarray:
 
 
 def trajectory_stage(video: Path, out: Path, prev: dict, tick) -> dict:
-    """3D flights per camera shot whose court keypoints give a usable calibration.
+    """3D flights per camera shot that has a usable camera calibration.
 
-    Reads `court.shots[*].keypoints` (14 x 2 image points of the k6y7r layout, null when not seen).
-    Writes flights.json: per flight its frames, ballistic parameters, quality and derived values."""
+    The calibration comes from the court stage's samples (raw keypoints, net points included): the first
+    usable one, nearest the middle of the shot. Writes flights.json: per flight its frames, ballistic
+    parameters, quality and derived values."""
     meta = prev["decode"]
     n, fps, size = meta.get("frames") or 0, meta.get("fps") or 30.0, (meta.get("width"), meta.get("height"))
-    shots = [s for s in (prev.get("court") or {}).get("shots", []) if s.get("keypoints")]
+    court_result = prev.get("court") or {}
+    shots = [s for s in court_result.get("shots", []) if s.get("status") != "failed" and s.get("samples")]
     if not shots:
         (out / "flights.json").write_text("[]")
         return {"status": "done", "flights": 0, "calibrated_shots": 0,
@@ -144,10 +175,19 @@ def trajectory_stage(video: Path, out: Path, prev: dict, tick) -> dict:
     flights, unusable = [], []
     for k, shot in enumerate(shots):
         tick(k / len(shots))
-        kp = np.array([[np.nan, np.nan] if p is None else p for p in shot["keypoints"]], float)
-        cal = calibrate(kp, size)
-        if cal.status == "unusable":
-            unusable.append(cal.reason)
+        cal, reason = None, "no court keypoints for calibration"
+        for sample in court_registration.calibration_samples(court_result, shot["start_frame"], shot["end_frame"]):
+            kp = np.array(sample.get("keypoints") or [], float)
+            if kp.shape != (14, 3):
+                continue
+            xy = np.where(kp[:, 2:3] >= 0.5, kp[:, :2], np.nan)  # unconfident keypoints count as unseen
+            c = calibrate(xy, size)
+            if c.status != "unusable":
+                cal = c
+                break
+            reason = c.reason
+        if cal is None:
+            unusable.append(reason)
             continue
         a, b = shot["start_frame"], shot["end_frame"]
         for rec in trajectory.reconstruct(cal.camera, uv[a:b + 1], fps):
@@ -173,7 +213,7 @@ def rallies(video: Path, out: Path, prev: dict, tick) -> dict:
 
 FUNCS = {"decode": decode, "court": court, "ball": ball_stage, "players": players_stage,
          "trajectory": trajectory_stage, "events": events, "rallies": rallies}
-VERSIONS = {"decode": "1", "court": "0.1", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-1",
+VERSIONS = {"decode": "1", "court": "1", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-1",
             "trajectory": "1", "events": "0.3", "rallies": "0.1"}
 
 

@@ -13,13 +13,19 @@ CAM = look_at([9.0, -14.0, 7.5], [9.0, 4.5, 0.5], 300.0, SIZE)
 ARC = render(CAM, [[2.0, 3.0, 2.5], [15.0, 6.0, 2.0]], [1.96], fps=25.0)  # ends in the air
 
 
+def court_keypoints(camera=CAM):
+    """14 x (x, y, conf) as the court model would return for this camera."""
+    return np.column_stack([camera.project(k6y7r_points_3d()), np.full(14, 0.9)])
+
+
 @pytest.fixture
-def calibrated(monkeypatch):
-    """Court stage with the synthetic camera's keypoints; ball stage with the arc's projection."""
+def calibrated(monkeypatch, tmp_path):
+    """The real court stage with a fake detector seeing the synthetic camera; ball stage with the arc."""
     import pipeline
-    kp = CAM.project(k6y7r_points_3d()).tolist()
-    monkeypatch.setitem(pipeline.FUNCS, "court", lambda *a: {"status": "done", "shots": [
-        {"start_frame": 0, "end_frame": 49, "keypoints": kp}]})
+    weights = tmp_path / "court_kpt.pt"
+    weights.write_bytes(b"")
+    monkeypatch.setattr(pipeline, "COURT_MODEL", weights)
+    monkeypatch.setattr(pipeline, "court_detector", lambda: (lambda frame: court_keypoints()))
 
     def track(video, model, out_dir=None, force=False):
         uv = ARC.uv
@@ -39,26 +45,35 @@ def test_without_a_court_there_are_no_flights_and_the_reason_is_given(client, cl
     assert client.get(f"/videos/{v['id']}/flights").json() == []
 
 
-def test_a_calibrated_shot_gives_3d_flights_that_match_the_true_path(client, clip, calibrated):
+def test_court_stage_to_3d_flights_end_to_end(client, clip, calibrated):
     v = upload(client, clip)
     assert run_worker_once()["status"] == "done"
+    court = stage(client, v["id"], "court")
+    assert court["status"] == "done" and court["summary"]["counts"] == {"ok": 2, "needs_review": 0, "failed": 0}
+    # the clip has a camera cut at frame 25, so the arc is fitted once per shot
     t = stage(client, v["id"], "trajectory")
-    assert t["summary"]["calibrated_shots"] == 1 and t["summary"]["flights"] == 1
-    [f] = client.get(f"/videos/{v['id']}/flights").json()
-    assert f["source"] == "model" and f["quality"] == "ok" and f["landing"] is None
-    pos = np.array([[s["x"], s["y"], s["z"]] for s in f["samples"]])
-    first = round(f["start_s"] * 25)
-    err = np.linalg.norm(pos - ARC.positions[first:first + len(pos)], axis=1)
-    assert np.median(err) < 0.05  # noise-free detections
-    assert all(s["observed"] for s in f["samples"])
-    assert f["net_crossing"]["height_m"] > 1.0
+    assert t["summary"]["calibrated_shots"] == 2 and t["summary"]["flights"] == 2
+    flights = client.get(f"/videos/{v['id']}/flights").json()
+    for f in flights:
+        # each half lasts ~1 s on a 320 x 180 camera, so the depth sd (1 px noise floor) flags it low
+        # quality; the actual error is still a few centimetres
+        assert f["source"] == "model" and f["landing"] is None
+        pos = np.array([[s["x"], s["y"], s["z"]] for s in f["samples"]])
+        first = round(f["start_s"] * 25)
+        err = np.linalg.norm(pos - ARC.positions[first:first + len(pos)], axis=1)
+        assert np.median(err) < 0.05  # noise-free detections
+        assert all(s["observed"] for s in f["samples"])
+    assert any(f["net_crossing"] and f["net_crossing"]["height_m"] > 1.0 for f in flights)
 
 
 def test_an_unusable_calibration_is_reported(client, clip, fake_ball, monkeypatch):
     import pipeline
-    kp = (np.random.default_rng(0).uniform(0, 300, (14, 2))).tolist()
+    # a shot the court stage accepted, but whose keypoints fit no camera
+    kp = np.column_stack([np.random.default_rng(0).uniform(0, 300, (14, 2)), np.full(14, 0.9)]).tolist()
+    corners = [[40, 60], [280, 60], [310, 170], [10, 170]]
     monkeypatch.setitem(pipeline.FUNCS, "court", lambda *a: {"status": "done", "shots": [
-        {"start_frame": 0, "end_frame": 49, "keypoints": kp}]})
+        {"start_frame": 0, "end_frame": 49, "status": "ok", "error": 0.001,
+         "samples": [{"frame": 0, "corners_px": corners, "error": 0.001, "keypoints": kp}]}]})
     v = upload(client, clip)
     run_worker_once()
     t = stage(client, v["id"], "trajectory")
@@ -102,3 +117,15 @@ def test_every_demo_flight_that_crosses_the_net_clears_it():
     flights = demo.demo_flights([{**r, "end_s": r["start_s"] + 5.0} for r in rallies], 25.0)
     crossings = [f["derived"]["net_crossing"]["height_m"] for f in flights if f["derived"]["net_crossing"]]
     assert len(crossings) > 300 and min(crossings) > 2.43
+
+
+def test_samples_without_keypoints_do_not_break_the_stage(client, clip, fake_ball, monkeypatch):
+    import pipeline
+    corners = [[40, 60], [280, 60], [310, 170], [10, 170]]
+    monkeypatch.setitem(pipeline.FUNCS, "court", lambda *a: {"status": "done", "shots": [
+        {"start_frame": 0, "end_frame": 49, "status": "ok", "error": 0.001,
+         "samples": [{"frame": 0, "corners_px": corners, "error": 0.001, "keypoints": []}]}]})
+    v = upload(client, clip)
+    assert run_worker_once()["status"] == "done"
+    t = stage(client, v["id"], "trajectory")
+    assert t["summary"]["flights"] == 0 and "no court keypoints" in t["message"]

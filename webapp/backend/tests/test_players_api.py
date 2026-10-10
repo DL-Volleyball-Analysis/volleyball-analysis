@@ -1,5 +1,7 @@
+import cv2
 import numpy as np
 import pytest
+from vball.court_registration import COURT_CORNERS
 
 from test_api import run_worker_once, upload
 
@@ -22,9 +24,11 @@ def test_players_stage_runs_after_ball_without_a_court(client, clip, fake_ball):
 def test_with_a_court_mapping_people_off_court_are_dropped(client, clip, fake_ball, monkeypatch):
     import pipeline
     # court -> image: 10 px per metre, origin at (60, 145), court y up the image
-    H = [[10.0, 0, 60], [0, -10.0, 145], [0, 0, 1]]
+    H = np.array([[10.0, 0, 60], [0, -10.0, 145], [0, 0, 1]])
+    corners = cv2.perspectiveTransform(COURT_CORNERS.reshape(-1, 1, 2), H).reshape(-1, 2).tolist()
     monkeypatch.setitem(pipeline.FUNCS, "court", lambda *a: {"status": "done", "shots": [
-        {"start_frame": 0, "end_frame": 49, "H": H}]})
+        {"start_frame": 0, "end_frame": 49, "status": "ok", "error": 0.001,
+         "samples": [{"frame": 0, "corners_px": corners, "error": 0.001, "keypoints": []}]}]})
     v = upload(client, clip)
     assert run_worker_once()["status"] == "done"
     w = client.get(f"/videos/{v['id']}/players", params={"start": 0, "end": 0}).json()
@@ -52,7 +56,10 @@ def test_players_404_before_the_stage_ran(client, clip):
 
 def test_homography_lookup_by_shot():
     import pipeline
-    at = pipeline.court_homography_at({"shots": [{"start_frame": 0, "end_frame": 9, "H": np.eye(3).tolist()},
-                                                 {"start_frame": 10, "end_frame": 19, "H": None}]})
+    corners = [[40, 60], [280, 60], [310, 170], [10, 170]]
+    court = {"shots": [
+        {"start_frame": 0, "end_frame": 9, "status": "ok", "samples": [{"frame": 0, "corners_px": corners}]},
+        {"start_frame": 10, "end_frame": 19, "status": "failed", "samples": []}]}
+    at = pipeline.court_homography_at(court, (320, 180))
     assert at(5) is not None and at(12) is None and at(30) is None
     assert pipeline.court_homography_at(None)(0) is None

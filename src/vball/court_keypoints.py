@@ -93,3 +93,64 @@ def net_points_from_floor(floor_img: np.ndarray, image_size: tuple[int, int],
         return None
     net3d = k6y7r_points_3d(net_top)[K6Y7R_NET_IDS].astype(np.float64)
     return cv2.projectPoints(net3d, rvec, tvec, K, None)[0].reshape(-1, 2)
+
+
+# --- model output -> homography -----------------------------------------------------------------------
+CORNER_IDS = [0, 4, 5, 9]  # court corners in polygon order (far left, far right, near right, near left)
+MIN_CONF = 0.5
+MIN_AREA_FRACTION = 0.02
+
+
+def detect(model, frame: np.ndarray, imgsz: int | None = None) -> np.ndarray:
+    """14 x (x, y, confidence) in original image pixels from an ultralytics pose model; the most
+    confident court instance. All confidences are 0 when no court is found."""
+    kwargs = {"imgsz": imgsz} if imgsz else {}
+    r = model(frame, verbose=False, **kwargs)[0]
+    if r.keypoints is None or len(r.keypoints) == 0:
+        return np.zeros((len(K6Y7R_FLIP_IDX), 3))
+    return r.keypoints.data[int(r.boxes.conf.argmax())].cpu().numpy().astype(float)
+
+
+def corners_from_homography(H: np.ndarray) -> np.ndarray:
+    """Image positions (4 x 2) of the court corners, in CORNER_IDS order."""
+    return cv2.perspectiveTransform(K6Y7R_FLOOR[CORNER_IDS].reshape(-1, 1, 2).astype(np.float64),
+                                    np.asarray(H, np.float64)).reshape(-1, 2)
+
+
+def court_is_plausible(corners: np.ndarray, image_size: tuple[int, int]) -> bool:
+    """Geometric sanity of a projected court: convex, not mirrored (the labels' handedness with the camera
+    above the floor: far left, far right, near right, near left run clockwise on screen), and covering at
+    least MIN_AREA_FRACTION of the image."""
+    c = np.asarray(corners, float)
+    if not np.isfinite(c).all():
+        return False
+    edges = np.roll(c, -1, axis=0) - c
+    cross = edges[:, 0] * np.roll(edges, -1, axis=0)[:, 1] - edges[:, 1] * np.roll(edges, -1, axis=0)[:, 0]
+    if not (cross > 0).all():  # y points down in images, so clockwise on screen is a positive cross product
+        return False
+    area = 0.5 * np.sum(c[:, 0] * np.roll(c[:, 1], -1) - np.roll(c[:, 0], -1) * c[:, 1])
+    w, h = image_size
+    return area >= MIN_AREA_FRACTION * w * h
+
+
+def fit_homography(keypoints: np.ndarray, image_size: tuple[int, int],
+                   min_conf: float = MIN_CONF) -> tuple[np.ndarray, float] | None:
+    """Court -> image homography from the confident floor keypoints (RANSAC), with its error: the median
+    reprojection error of all confident floor points over the image diagonal. (Not the inliers' RMS: with
+    very noisy points RANSAC can keep exactly four, which a homography always fits perfectly, so the
+    noisiest frames would look the most accurate.) None when fewer than four floor points are confident or
+    the fitted court fails the geometric sanity check. Net points are left out: they are above the floor
+    and would bias a planar fit."""
+    kp = np.asarray(keypoints, float)
+    use = [i for i in range(10) if kp[i, 2] >= min_conf]
+    if len(use) < 4:
+        return None
+    diag = float(np.hypot(*image_size))
+    H, _ = cv2.findHomography(K6Y7R_FLOOR[use].astype(np.float64), kp[use, :2], cv2.RANSAC, 0.01 * diag)
+    if H is None:
+        return None
+    if not court_is_plausible(corners_from_homography(H), image_size):
+        return None
+    proj = cv2.perspectiveTransform(K6Y7R_FLOOR[use].reshape(-1, 1, 2).astype(np.float64), H).reshape(-1, 2)
+    err = float(np.median(np.linalg.norm(proj - kp[use, :2], axis=1))) / diag
+    return H, err

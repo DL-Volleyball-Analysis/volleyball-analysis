@@ -70,13 +70,13 @@ Run the model at 5 samples per second of video, not every frame: about 6x fewer 
 
 ### Fit with RANSAC on floor points, confidence-filtered
 Use only floor keypoints 0-9 with confidence ≥ a threshold, at least 4 of them, `cv2.findHomography(..., RANSAC)` with a reprojection threshold proportional to the image diagonal. The net points are above the floor and would bias a planar fit.
-*Error estimate:* RMS reprojection error of the inlier floor points, divided by the image diagonal, so it is comparable across resolutions.
+*Error estimate:* the median reprojection error of all confident floor points, divided by the image diagonal, so it is comparable across resolutions. (Changed from the inliers' RMS during implementation: with very noisy points RANSAC can keep exactly four, which a homography fits perfectly, so the noisiest frames reported the smallest error.) A small error means the points agree with each other, not that they are right: on the evaluation clips, three views from behind an end line reported small errors with the whole court squeezed into the near half (`docs/results/court-keypoints.md`).
 
 ### Geometric sanity before accepting a fit
 Reject a fit if the projected court corners are not a convex quadrilateral with the same handedness as the training labels (camera above the floor), or if the projected court covers less than 2% of the image. A rejected fit counts as "no estimate" for that sample.
 
 ### Temporal smoothing within a shot
-Per corner, take a running median over 5 consecutive valid samples, never across a shot boundary. This removes single-sample jumps without lagging behind real pans much (5 samples = 1 s).
+Per corner, take a running median over 5 consecutive valid samples, never across a shot boundary; near the ends of a shot the window shrinks on both sides so it stays centred (a one-sided window pulled a panning camera's first and last samples toward their neighbours by half a sample). This removes single-sample jumps without lagging behind real pans much (5 samples = 1 s).
 
 ### Shot status
 - `failed`: fewer than 2 valid samples in the shot.
@@ -85,7 +85,7 @@ Per corner, take a running median over 5 consecutive valid samples, never across
 Thresholds live in one config dict in `vball.court_registration` and are tuned after the first evaluation.
 
 ### Stored format
-`court.json` keeps, per shot: status, error, corrected flag, and samples `{frame, corners_px[4][2]}`. Corners rather than matrices: they are what gets interpolated and drawn, they are readable, and the homography is cheap to rebuild.
+`court.json` keeps, per shot: status, error, corrected flag, and samples `{frame, corners_px[4][2], error, keypoints[14][3]}`. Corners rather than matrices: they are what gets interpolated and drawn, they are readable, and the homography is cheap to rebuild. The raw keypoints are kept because camera calibration (`add-ball-trajectory-3d`) needs the net points, which the floor homography ignores.
 
 ### Corrections resolved at read time
 Corrections live in a new SQLite table `court_corrections(video_id, shot_idx, frame, corners_px)` and are never written into `court.json`. Anything that reads the court (API, events stage) goes through one function that overlays corrections on the stage result. This is what keeps corrections intact across reruns.
