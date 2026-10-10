@@ -13,7 +13,7 @@ and review/correct them in the browser. Continuation of the NTOU capstone (DL-Vo
 | `decode` – metadata, camera shot cuts | done |
 | `court` – keypoints → homography per shot, best of the installed court models | done (2 of 5 evaluation clips usable) |
 | `ball` – VballNet V4c tracking | done |
-| `players` – YOLO26s + BoT-SORT, court positions, team and role (officials marked other), 12-player cap | done |
+| `players` – YOLO26s fine-tuned on SportsMOT to box players only + BoT-SORT, court positions, team and role, 12-player cap | done (IDF1 0.690) |
 | `actions` – action events per player, time-local shirt numbers | done (needs `models/action_yolo11m.pt`, `models/jersey_digits_yolo26s.pt`) |
 | `trajectory` – camera calibration, bounded and player-anchored 3D flights | done (flights on real clips still low quality) |
 | `events` – contacts, landing in court metres | todo |

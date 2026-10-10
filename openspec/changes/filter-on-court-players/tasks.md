@@ -19,4 +19,4 @@
 
 ## 4. Docs
 
-- [ ] 4.1 Update `docs/results/player-tracking.md`, README status and the web app README; `openspec validate filter-on-court-players --strict`
+- [x] 4.1 Update `docs/results/player-tracking.md`, README status and the web app README; `openspec validate filter-on-court-players --strict`
