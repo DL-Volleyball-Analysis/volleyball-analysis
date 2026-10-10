@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from 'react'
-import { useFlights, usePlayers } from '../api/queries'
+import { useActions, useFlights, usePlayers } from '../api/queries'
 import type { Rally, StageInfo } from '../api/types'
 import { TacticsBoard2D } from './TacticsBoard2D'
 
@@ -14,6 +14,7 @@ export function BoardPanel({ videoId, rally, trajectory }: { videoId: string; ra
   const end = rally?.end_s ?? 0
   const flights = useFlights(videoId, start, end, rally !== undefined)
   const players = usePlayers(videoId, start, end, rally !== undefined)
+  const actions = useActions(videoId, rally !== undefined)
 
   if (!rally) return <p className="py-2 text-ink-muted">Move the playhead into a rally to see its flights.</p>
   if (flights.isPending) return <p className="py-2 text-ink-muted">Loading…</p>
@@ -39,7 +40,7 @@ export function BoardPanel({ videoId, rally, trajectory }: { videoId: string; ra
       </div>
       {demo && <p className="text-[12px] text-review">Demo flights: placeholders built from the demo rallies, not measured.</p>}
       {view === '2d' ? (
-        <TacticsBoard2D flights={list} players={players.data} />
+        <TacticsBoard2D flights={list} players={players.data} numbers={actions.data?.segments} />
       ) : (
         <Suspense fallback={<p className="py-6 text-center text-ink-muted">Loading 3D view…</p>}>
           <TacticsBoard3D flights={list} />

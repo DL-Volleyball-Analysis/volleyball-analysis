@@ -86,9 +86,12 @@ describe('2D tactics board', () => {
       { frame: 25, track_id: 3, x1: 0, y1: 0, x2: 1, y2: 1, interpolated: false, court_x: 9, court_y: -1, side: 'a', role: 'other' }, // the referee
       { frame: 26, track_id: 1, x1: 0, y1: 0, x2: 1, y2: 1, interpolated: false, court_x: 4.1, court_y: 2, side: 'a', role: 'player' },
     ] }
-    const { clock } = withClock(<TacticsBoard2D flights={[flight()]} players={players} />)
+    const { clock } = withClock(<TacticsBoard2D flights={[flight()]} players={players}
+      numbers={[{ track_id: 1, start_s: 0.5, end_s: 1.5, number: 10 }, { track_id: 2, start_s: 3, end_s: 4, number: 5 }]} />)
     act(() => clock.tick(1, true))
     expect(screen.getAllByTestId('player')).toHaveLength(2)
+    // only the number read around this moment: track 1 is #10 now, track 2's number belongs to a later stretch
+    expect(screen.getAllByTestId('player-number').map((n) => n.textContent)).toEqual(['10'])
   })
 
   test('the ball marker follows the video in an animation frame without React commits', () => {

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import type { Flight, PlayerWindow } from '../api/types'
+import type { Flight, NumberSegment, PlayerWindow } from '../api/types'
 import { LENGTH, LINES, NET_X, WIDTH, isIn } from '../court/geometry'
 import { useClock, usePlaybackTime } from '../playback/clock'
 import { apex, ballAt, flightLabel, heightShare, segments } from './flightGeometry'
@@ -68,7 +68,11 @@ function LandingMark({ x, y }: { x: number; y: number }) {
  * camera did not see, and players when known. The ball marker moves in an animation frame from the
  * video's own time, outside React.
  */
-export function TacticsBoard2D({ flights, players }: { flights: readonly Flight[]; players?: PlayerWindow }) {
+export function TacticsBoard2D({ flights, players, numbers = [] }: {
+  flights: readonly Flight[]
+  players?: PlayerWindow
+  numbers?: readonly NumberSegment[] // time-local shirt numbers (actions stage)
+}) {
   const clock = useClock()
   const ball = useRef<SVGCircleElement>(null)
   const heightLabel = useRef<SVGTextElement>(null)
@@ -114,9 +118,17 @@ export function TacticsBoard2D({ flights, players }: { flights: readonly Flight[
         <line key={`${x1}-${y1}-${x2}-${y2}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--court-line)" strokeWidth={1} {...HAIR} />
       ))}
       <line x1={NET_X} y1={-0.5} x2={NET_X} y2={WIDTH + 0.5} stroke="var(--court-line)" strokeWidth={2} {...HAIR} />
-      {people.map((p) => (
-        <circle key={p.track_id} cx={p.court_x!} cy={p.court_y!} r={0.3} fill="none" stroke="var(--ink-muted)" strokeWidth={1.5} {...HAIR} data-testid="player" />
-      ))}
+      {people.map((p) => {
+        const shirt = numbers.find((s) => s.track_id === p.track_id && t >= s.start_s && t <= s.end_s)?.number
+        return (
+          <g key={p.track_id}>
+            <circle cx={p.court_x!} cy={p.court_y!} r={0.3} fill="none" stroke="var(--ink-muted)" strokeWidth={1.5} {...HAIR} data-testid="player" />
+            {shirt != null && (
+              <text x={p.court_x!} y={p.court_y! - 0.45} fontSize={0.42} textAnchor="middle" fill="var(--ink-muted)" data-testid="player-number">{shirt}</text>
+            )}
+          </g>
+        )
+      })}
       {flights.map((f, i) => <FlightPath key={`${f.start_s}`} f={f} i={i} />)}
       <circle ref={ball} r={0.22} fill="#ffd23f" stroke="#000" strokeWidth={1} {...HAIR} style={{ display: 'none' }} data-testid="ball-marker" />
       <text ref={heightLabel} fontSize={0.45} fill="var(--ink)" style={{ display: 'none' }} aria-hidden data-testid="ball-height" />
