@@ -15,6 +15,7 @@ This PRD answers *why, for whom, and what counts as success*. How the system mus
 | [player-tracking.md](player-tracking.md) | player detection, tracking, court positions |
 | [tactics-board.md](tactics-board.md) | 3D ball trajectory, 2D / 3D tactics board |
 | [player-stats.md](player-stats.md) | attack efficiency and serve statistics from coach tags |
+| [player-actions.md](player-actions.md) | action events and shirt numbers per player, suggested tags |
 
 Background: analysis of the capstone web app in [`docs/webapp_redesign.md`](../webapp_redesign.md); organisation-wide repo plan in [`docs/repo-organization.md`](../repo-organization.md).
 
