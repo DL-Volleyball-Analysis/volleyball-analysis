@@ -127,3 +127,9 @@ the back view it removed the correct #27 of the libero (whose track had picked u
 and left the wrong #27 on the blocker, whose readings were mostly 27 because #14 faced away. The fix needs
 time-local voting (each frame labelled by the readings within about a second of it), so a label follows an
 identity switch or falls back to the tracking id.
+Fixed with time-local voting (actions stage version 2): each reading takes the vote of the readings within +-1 s,
+consecutive readings with one number form a segment, and labels, suggestions and the rendered video use the
+segment at that moment. On the same frame the blocker is now "ID 6 block" (unread, no wrong number) while the
+libero #27 and #24 stay right. Some tracks now show two numbers over time (e.g. 7 -> 17 -> 17 -> 7), more likely
+the dropped-digit misread measured on the test crops than a real switch; quantifying this needs a clip with
+labelled numbers.

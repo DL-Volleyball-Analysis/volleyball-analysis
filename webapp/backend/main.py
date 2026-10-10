@@ -14,6 +14,7 @@ from typing import Literal
 
 import numpy as np
 import pandas as pd
+from vball import jersey
 from fastapi import FastAPI, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
@@ -576,9 +577,18 @@ class Suggestion(BaseModel):
     status: Literal["open", "accepted", "dismissed"]
 
 
+class NumberSegment(BaseModel):
+    """A stretch of a track with one shirt number (time-local vote); outside segments: the tracking id."""
+    track_id: int
+    start_s: float
+    end_s: float
+    number: int
+
+
 class ActionsOut(BaseModel):
     events: list[ActionEvent]
     numbers: list[ShirtNumber]
+    segments: list[NumberSegment] = []
     suggestions: list[Suggestion]
 
 
@@ -595,6 +605,17 @@ def actions(vid: str):
         raise HTTPException(404, "action recognition not run yet")
     data = json.loads(path.read_text())
     numbers = {int(t): n for t, n in data.get("numbers", {}).items()}
+    fps = v["fps"] or 30.0
+    reach = int(data.get("reach", 0))
+    segs = {int(t): [tuple(x) for x in sg] for t, sg in data.get("segments", {}).items()}
+
+    def number_at(tid, frame):
+        """The time-local number when segments exist (stage version 2), else the track's overall vote."""
+        if tid is None:
+            return None
+        if tid in segs:
+            return jersey.number_at(segs[tid], frame, reach)
+        return (numbers.get(tid) or {}).get("number")
     team_of: dict[int, str] = {}
     csv = RESULTS / vid / "players.csv.gz"
     if csv.exists():
@@ -606,12 +627,10 @@ def actions(vid: str):
                     if len(vals):
                         team_of[int(tid)] = str(vals.mode().iloc[0])
     events = [ActionEvent(action=e["action"], track_id=e["track_id"], start_s=e["start_s"], end_s=e["end_s"],
-                          peak_conf=e["peak_conf"],
-                          number=(numbers.get(e["track_id"]) or {}).get("number") if e["track_id"] is not None else None,
+                          peak_conf=e["peak_conf"], number=number_at(e["track_id"], e["start_frame"]),
                           team=team_of.get(e["track_id"]) if e["track_id"] is not None else None)
               for e in data.get("events", [])]
     tags, dismissed = db.list_tags(vid), db.dismissed_suggestions(vid)
-    fps = v["fps"] or 30.0
     suggestions = []
     for e, raw in zip(events, data.get("events", [])):
         kind = SUGGEST.get(e.action)
@@ -622,7 +641,9 @@ def actions(vid: str):
         status = "accepted" if accepted else "dismissed" if sid in dismissed else "open"
         suggestions.append(Suggestion(id=sid, kind=kind, time_s=round(e.start_s, 3), team=e.team, number=e.number,
                                       track_id=e.track_id, status=status))
-    return ActionsOut(events=events, suggestions=suggestions,
+    segments = [NumberSegment(track_id=t, start_s=round(max(0, a - reach) / fps, 3), end_s=round((b + reach) / fps, 3), number=n)
+                for t, sg in sorted(segs.items()) for a, b, n in sg if n is not None]
+    return ActionsOut(events=events, suggestions=suggestions, segments=segments,
                       numbers=[ShirtNumber(track_id=t, **n) for t, n in sorted(numbers.items())])
 
 

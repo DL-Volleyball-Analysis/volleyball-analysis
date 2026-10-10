@@ -97,7 +97,9 @@ def render(vid: str, path: Path, out: Path) -> Path:
     by_frame = {f: g for f, g in pdf.groupby("frame")} if pdf is not None else {}
     court = r["court"] if r["court"] and r["court"].get("status") == "done" else None
     cmap = CourtMap(int(w * 0.24))
-    shirt = {int(t): n["number"] for t, n in (r["actions"].get("numbers") or {}).items() if n.get("number") is not None}
+    from vball import jersey
+    segs = {int(t): [tuple(x) for x in sg] for t, sg in (r["actions"].get("segments") or {}).items()}
+    reach = int(r["actions"].get("reach", 0))
     doing: dict[tuple[int, int], str] = {}  # (track, frame) -> action, for the frames of each event
     for e in r["actions"].get("events") or []:
         if e.get("track_id") is not None:
@@ -131,7 +133,8 @@ def render(vid: str, path: Path, out: Path) -> Path:
             cv2.rectangle(img, p1, p2, EDGE, max(2, int(3 * scale)))
             cv2.rectangle(img, p1, p2, col, max(1, int(1.5 * scale)))
             tid = int(row.track_id)
-            label = f"#{shirt[tid]}" if tid in shirt else f"ID {tid}"  # shirt number when the vote is clear
+            n = jersey.number_at(segs[tid], i, reach) if tid in segs else None
+            label = jersey.label(tid, n)  # time-local shirt number when the vote is clear, else the tracking id
             if (tid, i) in doing:
                 label += f" {doing[(tid, i)]}"
             text(img, label, (p1[0], p1[1] - int(6 * scale)), 0.5 * scale)

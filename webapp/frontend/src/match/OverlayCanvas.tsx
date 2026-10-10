@@ -17,11 +17,13 @@ const PLAYER = '#ffffff'
 export function OverlayCanvas({ videoId, fps, layers }: { videoId: string; fps: number; layers: Layers }) {
   const clock = useClock()
   const canvas = useRef<HTMLCanvasElement>(null)
-  // shirt numbers by track (actions stage); read when drawing, outside React
+  // time-local shirt numbers per track (actions stage); read when drawing, outside React
   const actions = useActions(videoId, layers.players)
-  const numbers = useRef(new Map<number, number>())
+  const segments = useRef(new Map<number, { start_s: number; end_s: number; number: number }[]>())
   useEffect(() => {
-    numbers.current = new Map((actions.data?.numbers ?? []).filter((n) => n.number != null).map((n) => [n.track_id, n.number!]))
+    const m = new Map<number, { start_s: number; end_s: number; number: number }[]>()
+    for (const s of actions.data?.segments ?? []) m.set(s.track_id, [...(m.get(s.track_id) ?? []), s])
+    segments.current = m
   }, [actions.data])
 
   // Ball data for the windows around the playhead (time quantised to 200 ms, so this
@@ -81,7 +83,8 @@ export function OverlayCanvas({ videoId, fps, layers }: { videoId: string; fps: 
           ctx.strokeRect(x, y, bw, bh)
           ctx.globalAlpha = 1
           if (other) continue
-          const shirt = numbers.current.get(b.track_id)
+          const t = b.frame / fps
+          const shirt = segments.current.get(b.track_id)?.find((s) => t >= s.start_s && t <= s.end_s)?.number
           const label = shirt != null ? `#${shirt}` : `ID ${b.track_id}` // the shirt number when the vote is clear
           ctx.fillStyle = EDGE
           ctx.fillRect(x, y - 14, 8 + 7 * label.length, 14)

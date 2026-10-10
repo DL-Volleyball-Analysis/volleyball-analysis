@@ -43,3 +43,15 @@ def test_too_few_readings_give_no_number():
 
 def test_label_shows_the_number_or_the_tracking_id():
     assert label(12, 7) == "#7" and label(12, None) == "ID 12"
+
+
+def test_a_label_follows_an_identity_switch():
+    from vball.jersey import number_at, segments
+    # a track reads 27 for 4 s, then the tracker jumps to a player whose number is not visible (no readings), then 14
+    frames = list(range(0, 100, 12)) + list(range(150, 230, 12))
+    readings = ["27"] * len(range(0, 100, 12)) + [None, None, None] + ["14"] * (len(range(150, 230, 12)) - 3)
+    segs = segments(frames, readings, window=25)
+    assert segs[0][2] == 27 and segs[-1][2] == 14
+    assert number_at(segs, 40, reach=6) == 27 and number_at(segs, 220, reach=6) == 14
+    assert number_at(segs, 160, reach=6) is None  # unread stretch: tracking id, never the old number
+    assert number_at(segs, 500, reach=6) is None

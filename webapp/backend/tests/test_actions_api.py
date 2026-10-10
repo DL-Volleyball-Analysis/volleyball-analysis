@@ -72,6 +72,8 @@ def test_actions_api_returns_events_numbers_and_suggestions(client, clip, fake_b
     (ev,) = a["events"]
     assert ev["action"] == "spike" and ev["track_id"] == 1 and ev["number"] == 10
     assert {n["track_id"]: n["number"] for n in a["numbers"]}[1] == 10
+    (seg,) = [s for s in a["segments"] if s["track_id"] == 1]  # read 10 throughout: one segment
+    assert seg["number"] == 10 and seg["start_s"] == 0 and seg["end_s"] >= 1.8
     (sug,) = a["suggestions"]
     assert sug["kind"] == "attack" and sug["number"] == 10 and sug["status"] == "open"
     assert abs(sug["time_s"] - ev["start_s"]) < 1e-6

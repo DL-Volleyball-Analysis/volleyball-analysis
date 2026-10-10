@@ -226,25 +226,30 @@ def actions_stage(video: Path, out: Path, prev: dict, tick) -> dict:
                 for row in by_frame.get(i, pd.DataFrame()).itertuples():
                     crop = player_crop(frame, row)
                     if crop is not None:
-                        readings.setdefault(int(row.track_id), []).append(jersey.reading(read(crop)))
+                        readings.setdefault(int(row.track_id), []).append((i, jersey.reading(read(crop))))
         i += 1
         if n and i % 50 == 0:
             tick(i / n)
     cap.release()
     evs = actions.events(pd.DataFrame(rows, columns=actions.DETECTION_COLUMNS), tracks, a_step)
-    numbers = {tid: jersey.vote(r) for tid, r in readings.items()}
+    numbers = {tid: jersey.vote([x for _, x in r]) for tid, r in readings.items()}
+    # time-local numbers: a label follows a tracker identity switch instead of keeping the old number
+    window = int(round(fps))  # +-1 s of readings
+    segs = {tid: jersey.segments([f for f, _ in r], [x for _, x in r], window) for tid, r in readings.items()}
     data = {
         "events": [{"action": e.action, "track_id": e.track_id, "start_frame": e.start_frame, "end_frame": e.end_frame,
                     "start_s": round(e.start_frame / fps, 3), "end_s": round(e.end_frame / fps, 3),
                     "peak_conf": round(e.peak_conf, 3), "samples": e.samples} for e in evs],
         "numbers": {str(tid): {"number": v.number, "share": round(v.share, 3), "readings": v.readings}
                     for tid, v in sorted(numbers.items())},
+        "segments": {str(tid): [list(s) for s in sg] for tid, sg in sorted(segs.items())},
+        "reach": j_step,  # a segment covers its reading frames plus this many frames on each side
     }
     (out / "action_events.json").write_text(json.dumps(data))  # actions.json is the stage result
     by_action = {a: sum(e.action == a for e in evs) for a in actions.ACTIONS}
     res = {"status": "done", "models": {"actions": ACTION_MODEL.name, "digits": JERSEY_MODEL.name if read else None},
            "events": len(evs), "by_action": by_action,
-           "numbered_tracks": sum(v.number is not None for v in numbers.values())}
+           "numbered_tracks": sum(any(n is not None for _, _, n in sg) for sg in segs.values())}
     if read is None:
         res["message"] = "Shirt numbers are not read yet: the digit model is being retrained. Players are shown by tracking id."
     return res
@@ -359,7 +364,7 @@ def rallies(video: Path, out: Path, prev: dict, tick) -> dict:
 FUNCS = {"decode": decode, "court": court, "ball": ball_stage, "players": players_stage, "actions": actions_stage,
          "trajectory": trajectory_stage, "events": events, "rallies": rallies}
 VERSIONS = {"decode": "1", "court": "2", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-3",  # -3: team and role columns, 12-player cap
-            "actions": "1", "trajectory": "3", "events": "0.3", "rallies": "0.1"}
+            "actions": "2", "trajectory": "3", "events": "0.3", "rallies": "0.1"}
 
 
 def stage_file(results: Path, stage: str) -> Path:

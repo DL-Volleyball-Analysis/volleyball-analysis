@@ -433,6 +433,11 @@ export interface components {
             events: components["schemas"]["ActionEvent"][];
             /** Numbers */
             numbers: components["schemas"]["ShirtNumber"][];
+            /**
+             * Segments
+             * @default []
+             */
+            segments: components["schemas"]["NumberSegment"][];
             /** Suggestions */
             suggestions: components["schemas"]["Suggestion"][];
         };
@@ -570,6 +575,20 @@ export interface components {
             height_m: number;
             /** Y M */
             y_m: number;
+        };
+        /**
+         * NumberSegment
+         * @description A stretch of a track with one shirt number (time-local vote); outside segments: the tracking id.
+         */
+        NumberSegment: {
+            /** Track Id */
+            track_id: number;
+            /** Start S */
+            start_s: number;
+            /** End S */
+            end_s: number;
+            /** Number */
+            number: number;
         };
         /** PlayerBox */
         PlayerBox: {

@@ -21,7 +21,8 @@ beforeEach(() => {
   vi.stubGlobal('cancelAnimationFrame', () => {})
   fakeApi({
     'GET /api/videos/v1/ball': () => ({ body: { fps: 25, frame: [8, 9, 10], x: [100, 110, 120], y: [50, 52, 54] } }),
-    'GET /api/videos/v1/actions': () => ({ body: { events: [], suggestions: [], numbers: [{ track_id: 7, number: 4, share: 1, readings: 5 }] } }),
+    'GET /api/videos/v1/actions': () => ({ body: { events: [], suggestions: [], numbers: [{ track_id: 7, number: 4, share: 1, readings: 5 }],
+      segments: [{ track_id: 7, start_s: 0.2, end_s: 0.5, number: 4 }] } }), // frame 10 at 25 fps = 0.4 s
     'GET /api/videos/v1/players': () => ({ body: { fps: 25, placed: false, boxes: [
       { frame: 10, track_id: 7, x1: 200, y1: 100, x2: 260, y2: 300, interpolated: false, court_x: null, court_y: null, side: null, role: 'player' },
       { frame: 10, track_id: 9, x1: 400, y1: 100, x2: 460, y2: 300, interpolated: false, court_x: null, court_y: null, side: null, role: 'other' },

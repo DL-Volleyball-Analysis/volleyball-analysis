@@ -5,6 +5,10 @@ digits left to right: at most two, and two only when they sit side by side (thei
 otherwise the more confident digit alone. Per track, the most frequent reading is the number when there are
 at least `min_readings` readings and at least `min_share` of them agree; otherwise the track has no number and
 is shown by its tracking id (never a guess).
+
+Trackers sometimes swap identities, so a track can carry two players. `segments` votes locally: each reading is
+labelled by the readings within a window around it, and consecutive readings with the same local number form a
+segment; a label then follows an identity switch, or falls back to the tracking id where the readings disagree.
 """
 from collections import Counter
 from dataclasses import dataclass
@@ -52,6 +56,34 @@ def vote(readings: list[str | None], cfg: JerseyConfig = JerseyConfig()) -> Vote
     share = n / len(r)
     ok = len(r) >= cfg.min_readings and share >= cfg.min_share
     return Vote(int(best) if ok else None, share, len(r))
+
+
+def segments(frames: list[int], readings: list[str | None], window: int,
+             cfg: JerseyConfig = JerseyConfig()) -> list[tuple[int, int, int | None]]:
+    """Time-local numbers of one track: (first frame, last frame, number or None) runs over its reading frames.
+    Each reading frame takes the vote of the readings within +-window frames of it."""
+    order = np.argsort(frames)
+    f = np.asarray(frames)[order]
+    r = [readings[i] for i in order]
+    local = []
+    for k, fk in enumerate(f):
+        near = [r[j] for j in range(len(f)) if abs(f[j] - fk) <= window]
+        local.append(vote(near, cfg).number)
+    out: list[tuple[int, int, int | None]] = []
+    for fk, n in zip(f, local):
+        if out and out[-1][2] == n:
+            out[-1] = (out[-1][0], int(fk), n)
+        else:
+            out.append((int(fk), int(fk), n))
+    return out
+
+
+def number_at(segs: list[tuple[int, int, int | None]], frame: int, reach: int) -> int | None:
+    """The number of the segment covering a frame, extended by `reach` frames on each side (readings are sampled)."""
+    for a, b, n in segs:
+        if a - reach <= frame <= b + reach:
+            return n
+    return None
 
 
 def label(track_id: int, number: int | None) -> str:
