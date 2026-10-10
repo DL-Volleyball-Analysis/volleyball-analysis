@@ -64,3 +64,20 @@ in the wrong place, so a small reprojection error does not show it (the calibrat
 same kind of problem in 3D). A check that would catch it: from behind an end line the net stands on the
 centre line, so the predicted net points (10-13) should sit above the projected centre line; a shot where they
 do not should be needs_review. To be added, and the overlays redone with v3b.
+
+### Floor-net consistency check (2026-10-10)
+Per sample, a camera calibrated on the floor keypoints alone projects the net; the distance to the detected
+net points (median per shot) is the shot's consistency. With v2 on the evaluation clips:
+
+| Clip | By eye | Net distance, median of 8 frames | Status now |
+|---|---|---|---|
+| broadcast_back_view | wrong | 58 px | needs_review |
+| broadcast_side_rally | wrong | 86 px | needs_review |
+| broadcast_back_rally | wrong | 116 px | needs_review |
+| broadcast_side_high_men | right | 14 px | ok |
+| broadcast_side_high_women | right | 9 px | ok |
+
+Threshold 1.5% of the width (~29 px at 1080p): the status now agrees with the eye on 5 of 5, and only ok shots
+feed the players, trajectory and events stages. A first version calibrated on all 14 points and missed it: the
+robust loss treated the four net points as outliers. Synthetic checks: a clean squeeze of the floor into the
+near half from behind an end line gives 130 px, a correct view ~1 px.

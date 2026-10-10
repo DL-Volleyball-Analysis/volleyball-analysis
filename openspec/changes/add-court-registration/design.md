@@ -78,11 +78,23 @@ Reject a fit if the projected court corners are not a convex quadrilateral with 
 ### Temporal smoothing within a shot
 Per corner, take a running median over 5 consecutive valid samples, never across a shot boundary; near the ends of a shot the window shrinks on both sides so it stays centred (a one-sided window pulled a panning camera's first and last samples toward their neighbours by half a sample). This removes single-sample jumps without lagging behind real pans much (5 samples = 1 s).
 
+### Floor-net consistency
+A small homography error only says the floor points agree with each other. Model v2, from behind an end line,
+put the far end line on the net and squeezed the whole court into the near half with a small error, while its
+net points were right. Per sample, calibrate a camera on the floor points alone and measure how far the
+detected net points are from where it projects the net (lower of the two net heights); the shot's median
+distance over the image width is its consistency. The net points take no part in the fit, so the camera cannot
+bend toward them (a first try that calibrated on all 14 points let the robust loss absorb the four net points).
+On the evaluation clips: 58-116 px for the three shots wrong by eye, 9-14 px for the two right ones; threshold
+1.5% of the width (~29 px at 1080p).
+
 ### Shot status
 - `failed`: fewer than 2 valid samples in the shot.
-- `needs_review`: median error above the configured threshold, or fewer than half of the samples valid.
+- `needs_review`: median error above the configured threshold, fewer than half of the samples valid, or consistency above its threshold.
 - `ok`: otherwise.
 Thresholds live in one config dict in `vball.court_registration` and are tuned after the first evaluation.
+Only `ok` shots give a mapping to later stages (players, trajectory, events): a needs_review mapping may be
+wrong, and a wrong mapping drops real players or misplaces landings, which is worse than none.
 
 ### Stored format
 `court.json` keeps, per shot: status, error, corrected flag, and samples `{frame, corners_px[4][2], error, keypoints[14][3]}`. Corners rather than matrices: they are what gets interpolated and drawn, they are readable, and the homography is cheap to rebuild. The raw keypoints are kept because camera calibration (`add-ball-trajectory-3d`) needs the net points, which the floor homography ignores.

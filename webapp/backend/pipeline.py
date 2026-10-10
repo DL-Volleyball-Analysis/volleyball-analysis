@@ -166,7 +166,7 @@ def trajectory_stage(video: Path, out: Path, prev: dict, tick) -> dict:
     meta = prev["decode"]
     n, fps, size = meta.get("frames") or 0, meta.get("fps") or 30.0, (meta.get("width"), meta.get("height"))
     court_result = prev.get("court") or {}
-    shots = [s for s in court_result.get("shots", []) if s.get("status") != "failed" and s.get("samples")]
+    shots = [s for s in court_result.get("shots", []) if s.get("status") in court_registration.USABLE and s.get("samples")]
     if not shots:
         (out / "flights.json").write_text("[]")
         return {"status": "done", "flights": 0, "calibrated_shots": 0,

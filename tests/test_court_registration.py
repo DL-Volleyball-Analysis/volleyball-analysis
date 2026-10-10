@@ -116,3 +116,38 @@ def test_calibration_samples_come_from_the_shot_nearest_the_middle_first():
     shot = register_shot(0, 60, 30.0, SIZE, lambda f: keypoints())
     samples = calibration_samples({"shots": [shot]}, 20, 30)
     assert samples[0]["frame"] == 24 and len(samples[0]["keypoints"]) == 14
+
+
+def inconsistent_keypoints():
+    """Floor points from the true camera; net points at the two posts pushed 60 px apart, which no single
+    pinhole camera produces. (A clean squeeze of the floor into the near half is NOT caught: another camera
+    explains it. Model v2's real failures were caught because its floor points were also internally
+    inconsistent; see docs/results/court-keypoints.md.)"""
+    kp = keypoints()
+    kp[[10, 11], 0] += 60
+    kp[[12, 13], 0] -= 60
+    return kp
+
+
+def test_keypoints_no_single_camera_explains_need_review():
+    kp = inconsistent_keypoints()
+    assert fit_homography(kp, SIZE)[1] < 0.001  # the floor homography alone looks perfect
+    shot = register_shot(0, 30, 30.0, SIZE, lambda f: kp)
+    assert shot["status"] == "needs_review" and shot["consistency"] > CONFIG["review_consistency"]
+    good = register_shot(0, 30, 30.0, SIZE, lambda f: keypoints(noise=1.0, seed=f))
+    assert good["status"] == "ok" and good["consistency"] < CONFIG["review_consistency"]
+
+
+def test_without_net_points_the_consistency_check_is_skipped():
+    kp = keypoints()
+    kp[10:, 2] = 0.0
+    shot = register_shot(0, 30, 30.0, SIZE, lambda f: kp)
+    assert shot["consistency"] is None and shot["status"] == "ok"
+
+
+def test_later_stages_only_use_shots_that_are_ok():
+    shot = register_shot(0, 30, 30.0, SIZE, lambda f: inconsistent_keypoints())
+    court = {"shots": [shot]}
+    assert shot["status"] == "needs_review"
+    assert mapping_at(court, 10, SIZE) is None and calibration_samples(court, 0, 30) == []
+    assert mapping_at(court, 10, SIZE, statuses=("ok", "needs_review")) is not None  # still there for review

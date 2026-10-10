@@ -28,6 +28,14 @@ Each shot SHALL have a status of ok, needs_review or failed together with a nume
 - **WHEN** the detected keypoints of a shot fit a court only with a large error
 - **THEN** the shot is marked needs_review and its error estimate is reported
 
+#### Scenario: Floor and net disagree
+- **WHEN** the floor keypoints fit a court with a small error but the detected net points are far from where a camera calibrated on those floor points places the net
+- **THEN** the shot is marked needs_review with that distance reported
+
+#### Scenario: Later stages and unreliable shots
+- **WHEN** a shot is marked needs_review or failed
+- **THEN** stages that use the court (player positions, 3D flights, landings) treat it as having no mapping, and the mapping stays available for review
+
 ### Requirement: Geometric sanity
 The system SHALL reject a fitted mapping whose projected court is not a convex quadrilateral inside a plausible image area, and treat that frame as having no estimate.
 
