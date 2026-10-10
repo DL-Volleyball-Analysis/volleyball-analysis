@@ -41,6 +41,15 @@ class FlightConfig:
     hall_margin_m: float = 10.0  # beyond the court on every side
     max_height_m: float = 20.0
     max_depth_sd_m: float = 0.5  # quality: position sd along the camera ray (mid-flight)
+    # change constrain-3d-flights; each can be switched off for the ablation
+    robust: bool = True        # drop detections inconsistent with the flight and refit
+    outlier_px: float = 8.0    # ... above max(outlier_k x median residual, outlier_px)
+    outlier_k: float = 3.0
+    robust_rounds: int = 3
+    bounded: bool = True       # keep the start inside the hall and the speed within the limit
+    anchor_radius_m: float = 2.5   # nearest player to the ball's ray within this distance anchors a touch
+    anchor_sigma_m: float = 1.0    # soft prior on the ball's horizontal position at an anchored touch
+    anchor_weight_px: float = 4.0  # a 1-sigma anchor deviation costs like this many pixels of reprojection
 
 
 @dataclass
@@ -60,6 +69,8 @@ class FlightFit:
     depth_sd_m: float              # sd of the mid-flight position along the camera ray
     quality: str = "ok"            # "ok" | "low"
     reasons: list[str] = field(default_factory=list)
+    dropped: int = 0               # detections left out as inconsistent with the flight
+    anchors: list[str] = field(default_factory=list)  # "start" / "end": touches pulled toward a player
 
     def at(self, frames) -> np.ndarray:
         t = (np.asarray(frames, float) - self.start) / self.fps
@@ -166,37 +177,97 @@ def _point_on_ray_at_height(cam: Camera, uv: np.ndarray, z: float) -> np.ndarray
     return c + s * d if s > 0 else None
 
 
-def fit(cam: Camera, uv: np.ndarray, flight: Flight, fps: float,
-        cfg: FlightConfig = FlightConfig()) -> FlightFit:
-    """Ballistic fit of one flight. uv: the whole track (N, 2) with NaN rows for misses."""
+def anchor_for(cam: Camera, uv: np.ndarray, players_xy, radius_m: float) -> np.ndarray | None:
+    """The court position of the player nearest to the ball's ray at a touch, if within radius_m. The distance is
+    horizontal, between the player's position and the ray's points at plausible touch heights (0.5-3.5 m)."""
+    if players_xy is None or not len(players_xy):
+        return None
+    d, c = cam.ray(uv), cam.position
+    if abs(d[2]) < 1e-6:
+        return None
+    s_ = (np.array([0.5, 3.5]) - c[2]) / d[2]
+    a, b = (c + s_[0] * d)[:2], (c + s_[1] * d)[:2]  # the ray's footprint between those heights
+    pts = np.asarray(players_xy, float).reshape(-1, 2)
+    ab = b - a
+    t = np.clip(((pts - a) @ ab) / max(ab @ ab, 1e-9), 0, 1)
+    dist = np.linalg.norm(pts - (a + t[:, None] * ab), axis=1)
+    k = int(np.argmin(dist))
+    return pts[k] if dist[k] <= radius_m else None
+
+
+def fit(cam: Camera, uv: np.ndarray, flight: Flight, fps: float, cfg: FlightConfig = FlightConfig(),
+        players_at: dict | None = None) -> FlightFit:
+    """Ballistic fit of one flight. uv: the whole track (N, 2) with NaN rows for misses. players_at: optional
+    {"start": players_xy, "end": players_xy}, the court positions of the players at the flight's first and last
+    frame, used as soft anchors (change constrain-3d-flights)."""
+    from ..court import LENGTH, WIDTH
     frames = np.arange(flight.start, flight.end + 1)
-    obs = uv[frames]
-    seen = ~np.isnan(obs).any(axis=1)
-    t, obs = (frames[seen] - flight.start) / fps, obs[seen]
+    obs_all = uv[frames]
+    seen = ~np.isnan(obs_all).any(axis=1)
+    t_all, obs_all = (frames[seen] - flight.start) / fps, obs_all[seen]
     T = (flight.end - flight.start) / fps
+    if len(t_all) < 2 or t_all[-1] <= 0:
+        raise ValueError("no initialisation: too few detections")
 
-    def residuals(x):
-        return (_project(cam, x, t) - obs).ravel()
+    m = cfg.hall_margin_m
+    lo = np.array([-m, -m, BALL_RADIUS, -cfg.max_speed_mps, -cfg.max_speed_mps, -cfg.max_speed_mps])
+    hi = np.array([LENGTH + m, WIDTH + m, cfg.max_height_m, cfg.max_speed_mps, cfg.max_speed_mps, cfg.max_speed_mps])
+    anchors = {}  # filled after the unanchored robust fit
+    w = cfg.anchor_weight_px / cfg.anchor_sigma_m
 
-    best = None
-    for z0 in (1.0, 2.0, 3.0):
-        for z1 in (1.0, 2.0, 3.0):
-            a = _point_on_ray_at_height(cam, obs[0], z0)
-            b = _point_on_ray_at_height(cam, obs[-1], z1)
-            if a is None or b is None or t[-1] <= 0:
-                continue
-            v0 = (b - a - 0.5 * G * t[-1] ** 2) / t[-1]
-            sol = least_squares(residuals, np.concatenate([a, v0]), loss="huber", f_scale=2.0)
-            if best is None or sol.cost < best.cost:
-                best = sol
+    def solve(t, obs):
+        def residuals(x):
+            r = [(_project(cam, x, t) - obs).ravel()]
+            for end, a in anchors.items():
+                te = 0.0 if end == "start" else T
+                r.append(w * (x[:2] + x[3:5] * te - a))  # horizontal position at the touch (gravity is vertical)
+            return np.concatenate(r)
+
+        best = None
+        for z0 in (1.0, 2.0, 3.0):
+            for z1 in (1.0, 2.0, 3.0):
+                a = _point_on_ray_at_height(cam, obs[0], z0)
+                b = _point_on_ray_at_height(cam, obs[-1], z1)
+                if a is None or b is None:
+                    continue
+                v0 = (b - a - 0.5 * G * t[-1] ** 2) / t[-1]
+                x0 = np.concatenate([a, v0])
+                if cfg.bounded:
+                    x0 = np.clip(x0, lo + 1e-6, hi - 1e-6)
+                sol = least_squares(residuals, x0, loss="huber", f_scale=2.0,
+                                    bounds=(lo, hi) if cfg.bounded else (-np.inf, np.inf))
+                if best is None or sol.cost < best.cost:
+                    best = sol
+        return best
+
+    t, obs = t_all, obs_all
+    best = solve(t, obs)
     if best is None:
         raise ValueError("no initialisation: rays do not reach the start heights")
+    dropped = 0
+    for _ in range(cfg.robust_rounds if cfg.robust else 0):
+        res = np.linalg.norm(_project(cam, best.x, t) - obs, axis=1)
+        keep = res <= max(cfg.outlier_k * np.median(res), cfg.outlier_px)
+        if keep.all() or keep.sum() < cfg.min_detections:
+            break
+        dropped += int((~keep).sum())
+        t, obs = t[keep], obs[keep]
+        best = solve(t, obs) or best
+    # anchors: look for players along the rays through where the fitted path starts and ends (a detection
+    # there may be a false one), then refit with the priors
+    for end, te in (("start", 0.0), ("end", T)):
+        uv_end = _project(cam, best.x, np.array([te]))[0]
+        a = anchor_for(cam, uv_end, (players_at or {}).get(end), cfg.anchor_radius_m)
+        if a is not None:
+            anchors[end] = a
+    if anchors:
+        best = solve(t, obs) or best
 
-    res = np.linalg.norm(best.fun.reshape(-1, 2), axis=1)
+    res = np.linalg.norm(_project(cam, best.x, t) - obs, axis=1)
     fit_px = float(np.median(res))
     # depth conditioning: covariance of (p0, v0) from the Jacobian, propagated to mid-flight and onto
     # the camera ray through that point; noise level from the residuals (at least 1 px)
-    sigma = max(1.0, 1.4826 * float(np.median(res)))
+    sigma = max(1.0, 1.4826 * fit_px)
     JtJ = best.jac.T @ best.jac
     cov = sigma ** 2 * np.linalg.pinv(JtJ)
     tm = T / 2
@@ -211,8 +282,10 @@ def fit(cam: Camera, uv: np.ndarray, flight: Flight, fps: float,
         reasons.append(f"fit error {fit_px:.1f} px")
     if depth_sd > cfg.max_depth_sd_m:
         reasons.append("depth poorly constrained")
+    if cfg.bounded and (np.isclose(best.x, lo, atol=1e-3).any() or np.isclose(best.x, hi, atol=1e-3).any()):
+        reasons.append("on a bound")
     return FlightFit(flight.start, flight.end, best.x[:3], best.x[3:], fps, fit_px, depth_sd,
-                     "low" if reasons else "ok", reasons)
+                     "low" if reasons else "ok", reasons, dropped, sorted(anchors))
 
 
 def implausible(f: "FlightFit", positions: np.ndarray, cfg: FlightConfig = FlightConfig()) -> str | None:

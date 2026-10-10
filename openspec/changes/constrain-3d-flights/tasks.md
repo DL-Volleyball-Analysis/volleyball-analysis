@@ -7,9 +7,9 @@
 
 ## 2. Fit
 
-- [ ] 2.1 Robust refit (drop by residual, refit, report dropped); verify the false-detection scenario test
-- [ ] 2.2 Bounded fit (hall box, floor, speed) with "on a bound" quality; verify the near-camera scenario test
-- [ ] 2.3 Player anchors (nearest player to the ray at the ends, soft prior, reported anchors); verify the short-attack and no-players scenario tests
+- [x] 2.1 Robust refit (drop by residual, refit, report dropped); verify the false-detection scenario test
+- [x] 2.2 Bounded fit (hall box, floor, speed) with "on a bound" quality; verify the near-camera scenario test
+- [x] 2.3 Player anchors (nearest player to the ray at the ends, soft prior, reported anchors); verify the short-attack and no-players scenario tests
 
 ## 3. Evaluation
 

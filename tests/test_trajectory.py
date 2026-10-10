@@ -150,3 +150,52 @@ def test_touch_players_stand_near_the_touches():
     players = touch_players(TOUCHES, seed=1)
     assert players[-1] is None
     assert all(np.linalg.norm(p - np.array(t[:2])) < 1.5 for p, t in zip(players[:-1], TOUCHES[:-1]))
+
+
+def test_false_detections_inside_a_serve_are_dropped():
+    from vball.trajectory.synthetic import corrupt
+    errors, dropped = [], 0
+    for seed in range(5):
+        r = render(CAM, TOUCHES[:2], DURATIONS[:1], FPS)
+        uv = corrupt(r.uv, SIZE, false=0.10, noise_px=2.0, seed=seed)
+        f = fit(CAM, uv, Flight(0, r.touches[-1]), FPS)
+        errors.append(np.median(np.linalg.norm(f.at(np.arange(len(uv))) - r.positions, axis=1)))
+        dropped += f.dropped
+    assert np.median(errors) <= 0.3 and dropped > 0
+
+
+def test_a_path_in_front_of_the_camera_is_never_drawn_there():
+    # a real ballistic path 3 m in front of the camera (something near the lens): the projection is perfect,
+    # so only the bounds stop the fit from placing the ball there
+    near = [[9.0, -11.0, 6.5], [9.6, -10.5, 6.0]]
+    r = render(CAM, near, [0.4], FPS, noise_px=0.5)
+    fl = Flight(0, r.touches[-1])
+    free = fit(CAM, r.uv, fl, FPS, FlightConfig(bounded=False))
+    assert free.p0[1] < -9  # unbounded: in front of the camera
+    f = fit(CAM, r.uv, fl, FPS)
+    m = FlightConfig().hall_margin_m
+    assert f.p0[1] >= -m - 1e-6
+    assert f.quality == "low"
+
+
+def test_player_anchors_halve_the_error_of_short_attacks():
+    from vball.trajectory.synthetic import corrupt, touch_players
+    plain, anchored = [], []
+    for seed in range(10):
+        r = render(CAM, TOUCHES, DURATIONS, FPS)
+        uv = corrupt(r.uv, SIZE, miss=0.3, false=0.12, noise_px=2.0, seed=seed)
+        fl = true_flights(r)[-1]  # the 0.45 s attack
+        players = touch_players(TOUCHES, seed=seed)
+        frames = np.arange(fl.start, fl.end + 1)
+        for out, pat in ((plain, None), (anchored, {"start": [players[-2]], "end": None})):
+            f = fit(CAM, uv, fl, FPS, players_at=pat)
+            out.append(np.median(np.linalg.norm(f.at(frames) - r.positions[frames], axis=1)))
+        assert f.anchors == ["start"]
+    assert np.median(anchored) <= 0.5 * np.median(plain)
+
+
+def test_without_players_a_flight_has_no_anchors():
+    r = render(CAM, TOUCHES[:2], DURATIONS[:1], FPS, noise_px=2.0)
+    assert fit(CAM, r.uv, Flight(0, r.touches[-1]), FPS).anchors == []
+    far = {"start": [np.array([17.0, 8.5])], "end": None}  # nobody near the ball's ray
+    assert fit(CAM, r.uv, Flight(0, r.touches[-1]), FPS, players_at=far).anchors == []
