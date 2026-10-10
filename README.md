@@ -1,26 +1,73 @@
-# Volleyball Analysis
+# Volleyball Match Analysis from a Single Camera
 
-Turning one camera's volleyball match recording into a reviewable record: ball path, court
-coordinates, rallies and the score. Continuation of the NTOU senior capstone
-"Volleyball Match Analysis System Based on Deep Learning"; work in progress.
+**基於深度學習的排球比賽分析系統** · NTOU CSE senior capstone, continued as a research project
 
-This repository holds the analysis package (`vball`), the web app (`webapp/`), the training and
-evaluation scripts, and the planning documents. The public page is
-[volleyvision-website](https://github.com/DL-Volleyball-Analysis/volleyvision-website).
+Turning one camera's recording of a volleyball match into a reviewable, point-by-point record: the ball's path,
+the court in metres, the players, rallies and the score.
 
-## Status
-| Component | State | Evidence |
+[![CI](https://github.com/DL-Volleyball-Analysis/volleyball-analysis/actions/workflows/ci.yml/badge.svg)](https://github.com/DL-Volleyball-Analysis/volleyball-analysis/actions)
+[![Website](https://img.shields.io/badge/website-VolleyVision-0033A0)](https://dl-volleyball-analysis.github.io/volleyvision-website/)
+[![Report](https://img.shields.io/badge/capstone-report-555)](https://github.com/DL-Volleyball-Analysis/capstone-report)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+<p align="center">
+  <img src="docs/assets/analysis.gif" width="720" alt="Analysed broadcast clip: ball trail, tracked players, detected court lines and a top-down court map">
+  <br><sub>Output of <code>webapp/backend/render.py</code> on a 6 s broadcast clip: ball trail (VballNet), player
+  tracks (YOLO26s + BoT-SORT; labels are tracking ids, not shirt numbers), court lines from the keypoint model and
+  the players on a top-down court map. Footage: Volleyball World broadcast, used for research only.</sub>
+</p>
+
+## Pipeline
+
+```mermaid
+flowchart LR
+  V[Video] --> D[decode<br/>shots]
+  D --> C[court<br/>14 keypoints, homography,<br/>floor-net check]
+  D --> B[ball<br/>VballNet V4c]
+  C --> P[players<br/>YOLO26s + BoT-SORT,<br/>court metres]
+  B --> T[trajectory<br/>camera calibration,<br/>ballistic 3D fit]
+  C --> T
+  P --> E[events / rallies<br/>planned]
+  T --> E
+  E --> UI[review app<br/>timeline, tactics board,<br/>statistics]
+```
+
+Each stage is versioned and cached, reports why it could not produce a result (no usable court, camera not
+calibrated, model missing), and later stages only use results marked reliable.
+
+## Results
+
+Every number comes from a script and a labelled split, or is named a proxy or synthetic. Details and scripts:
+[docs/results/](docs/results).
+
+| Component | Result | Evidence |
 |---|---|---|
-| Ball tracking | VballNet V4c: 2.7× fewer false jumps than the capstone's FastV1 on 5 broadcast clips (proxy, no labels). Weak on wide high-angle shots (~28% detection). | [docs/results/ball-tracking.md](docs/results/ball-tracking.md) |
-| Court registration | 14-point keypoint model, per-shot registration in the pipeline with a floor-net consistency check. v2: 0.49 m on held-out images; v3 interim 0.17 m on held-out broadcast clips but 7.91 m on gym images (box convention bug, v3b training). | [docs/results/court-keypoints.md](docs/results/court-keypoints.md) |
-| Player tracking | YOLO26s + BoT-SORT at 10 fps in the pipeline, with on-court filtering: IDF1 0.484 on SportsMOT volleyball (target 0.70); 39% of boxes are people off court. | [docs/results/player-tracking.md](docs/results/player-tracking.md) |
-| 3D trajectory | Calibration, ballistic fit, the trajectory stage and the 2D / 3D tactics board are built; 0.05 m median error on a synthetic serve, spikes flagged low quality. Real footage waits for court model v3 (v2 calibrates 4 / 49 test views). | [docs/results/trajectory.md](docs/results/trajectory.md) |
-| Player statistics | Attack and serve tags in the review app; attack efficiency, kill rate, aces and serve errors per player and set, CSV export (phase 1: coach tags). | [docs/prd/player-stats.md](docs/prd/player-stats.md) |
-| Landing / scoring | Scoring rules implemented (`vball.scoring`); rally detection planned. | [docs/prd/rally-scoring.md](docs/prd/rally-scoring.md) |
-| Action recognition (capstone) | YOLOv11m mAP@0.5 0.945 on the validation split. | [docs/results/action-recognition.md](docs/results/action-recognition.md) |
+| Court registration | 0.49 m median court-position error on held-out images (target 0.3 m); 1.35 m on broadcast clips. A floor-net consistency check flags wrong courts (3 of 5 evaluation clips flagged, all wrong by eye). Model v3b training. | labelled test images · [court-keypoints.md](docs/results/court-keypoints.md) |
+| Player tracking | IDF1 0.484, HOTA 0.467 on SportsMOT volleyball (target IDF1 0.70); 39% of detections are people off court. | labelled benchmark · [player-tracking.md](docs/results/player-tracking.md) |
+| Ball tracking | VballNet V4c: 2.7× fewer false jumps than the capstone model; ~28% detection on wide high-angle shots. | label-free proxy · [ball-tracking.md](docs/results/ball-tracking.md) |
+| 3D trajectory | 0.05 m median error on a synthetic serve; spikes flagged low quality. Real footage waits for a better court model: impossible fits are dropped, not drawn. | synthetic · [trajectory.md](docs/results/trajectory.md) |
+| Action recognition (capstone YOLOv11m) | mAP@0.5 0.957 on the test split, receive weakest (0.863). Test frames come from the same matches as training, so not an unseen-match score. | labelled test split · [actions.md](docs/results/actions.md) |
+| Shirt numbers (capstone YOLOv8m) | Not usable: the capstone merge mislabelled balls, players and whole numbers as digits 0-2. Retraining planned. | [actions.md](docs/results/actions.md) |
+| Player statistics | Attack efficiency, kill rate, aces and serve errors per player from coach tags, CSV export. | tests · [player-stats.md](docs/prd/player-stats.md) |
 
-Every number comes from a script and a labelled split, or is named a proxy or a published
-benchmark. A metric without labelled data is reported as "not measured".
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/chart-court.png" alt="Court keypoint error by model version"><br><sub>Court position error by model version (log scale).</sub></td>
+    <td width="50%"><img src="docs/assets/chart-tracking.png" alt="Player tracking IDF1 by detector size, resolution and tracker"><br><sub>Detector and tracker grid on SportsMOT volleyball (before the gap fix; the pipeline setting, s 960 BoT-SORT, now scores 0.484).</sub></td>
+  </tr>
+</table>
+
+## Review app
+
+<img src="docs/assets/review-app.jpg" alt="Match review app: video with ball trail, rally list, rally details and timeline">
+
+<sub>Match review (React + FastAPI, <a href="webapp/README.md">webapp/</a>): video with overlays, rally list and
+details, timeline lanes for rallies, ball, landings and review flags. Rallies shown here are demo data until
+rally detection lands.</sub>
+
+<img src="docs/assets/boards-and-stats.png" alt="2D and 3D tactics boards and a player statistics table">
+
+<sub>2D / 3D tactics board (demo flights) and the player statistics table built from coach tags.</sub>
 
 ## How the work is planned
 - [docs/prd/](docs/prd/README.md): product requirements — why, for whom, what counts as success.
@@ -78,5 +125,17 @@ Ball tracking needs [fast-volleyball-tracking-inference](https://github.com/asig
 - SportsMOT (player tracking evaluation): CC BY-NC 4.0, research use only, not redistributed.
 
 ## Team
-NTOU Department of Computer Science and Engineering capstone: Liang Yu-Jia (lead), Tsai Pei-Ying,
-Chung Chia-Hsin; advisor Professor Ting Pei-Yi. Current rebuild by Liang Yu-Jia.
+Liang Yu-Jia 梁祐嘉 (lead), Tsai Pei-Ying 蔡佩穎, Chung Chia-Hsin 鍾佳芯; advisor Professor Ting Pei-Yi 丁培毅.
+Department of Computer Science and Engineering, National Taiwan Ocean University. The rebuild after the capstone
+is by Liang Yu-Jia.
+
+## Citation
+```bibtex
+@misc{liang2026volleyball,
+  title  = {Volleyball Match Analysis System Based on Deep Learning},
+  author = {Liang, Yu-Jia and Tsai, Pei-Ying and Chung, Chia-Hsin},
+  note   = {Senior capstone, Department of Computer Science and Engineering, National Taiwan Ocean University. Advisor: Pei-Yi Ting},
+  year   = {2026},
+  url    = {https://github.com/DL-Volleyball-Analysis/volleyball-analysis}
+}
+```

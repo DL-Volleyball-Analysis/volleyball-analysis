@@ -1,5 +1,7 @@
 # Action recognition (capstone): results
 
+> Superseded: test-split results, class distribution and the train/test overlap are in [actions.md](actions.md) (2026-10-10).
+
 From the capstone's training logs (`runs/volleyball_200epoch*/results.csv` and `args.yaml`, kept on the
 team's Drive; the training code is in
 [action-recognition-yolov11](https://github.com/DL-Volleyball-Analysis/action-recognition-yolov11)).
