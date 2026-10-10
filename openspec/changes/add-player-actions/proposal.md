@@ -17,7 +17,8 @@ jersey-digit detector (YOLOv8m); neither is used or measured on held-out data. I
 - Display: numbers on boxes, the court map and the rendered video; an Actions timeline lane.
 - Suggested attack / serve tags from spike and serve events, accepted or dismissed by the coach.
 
-Out of scope: training new models, re-identification across shots.
+Out of scope: re-identification across shots. (Training new models was out of scope; the digit model is retrained
+because the capstone one proved unusable, agreed 2026-10-11.)
 
 ## Capabilities
 

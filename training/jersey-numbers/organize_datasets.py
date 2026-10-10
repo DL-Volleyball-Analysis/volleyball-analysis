@@ -1,4 +1,8 @@
 """
+SUPERSEDED (2026-10-10): do not use. This merge maps class indices across datasets and ignores class names, so
+balls, whole players and whole-number boxes from two datasets became the digits 0-2. Use
+scripts/build_jersey_dataset.py (maps classes by name, splits by match). Kept as the record of the capstone.
+
 組織和合併多個資料集腳本
 將下載的資料集合併成統一的 YOLOv8 格式
 """

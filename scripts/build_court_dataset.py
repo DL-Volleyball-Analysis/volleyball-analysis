@@ -14,7 +14,6 @@
 Usage: .venv/bin/python scripts/build_court_dataset.py [--no-drive]
 """
 import argparse
-import os
 import shutil
 import sys
 from pathlib import Path
@@ -25,31 +24,17 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from vball.court_keypoints import FRONT_ZONE_IDS, K6Y7R_FLIP_IDX, complete_floor  # noqa: E402
-from vball.paths import DATASETS  # noqa: E402
+from vball.paths import DATASETS, drive_root  # noqa: E402
 
 K6Y7R = DATASETS / "volleyball-court-keypoints-k6y7r-v1"
 VNL = DATASETS / "volleyball_court_key_points_regression_dataset-v7"
 OUT = DATASETS / "court_keypoints_v3b"
-# The Google Drive desktop folder: VBALL_DRIVE_ACCOUNT if set, else the only Drive account found.
-DRIVE_ACCOUNT_ENV = "VBALL_DRIVE_ACCOUNT"
 DRIVE_RELPATH = "volleyball/datasets/court_keypoints_v3b.zip"  # Colab: /content/drive/MyDrive/<this>
 VNL_TRAIN_CLIPS = ("clip_one", "clip_two", "clip_three")
 VNL_TEST_CLIPS = ("clip_four", "clip_five")
 VNL_TRAIN_EVERY = 2  # consecutive frames are near duplicates; keep VNL from outweighing k6y7r
 
 
-def drive_root() -> Path:
-    """'My Drive' is localised by the Drive app (e.g. 我的雲端硬碟), so find it instead of hard-coding."""
-    if os.environ.get(DRIVE_ACCOUNT_ENV):
-        accounts = [Path(os.environ[DRIVE_ACCOUNT_ENV])]
-    else:
-        accounts = sorted((Path.home() / "Library/CloudStorage").glob("GoogleDrive-*"))
-    if len(accounts) != 1:
-        raise SystemExit(f"set {DRIVE_ACCOUNT_ENV} to the Google Drive folder to use (found {len(accounts)})")
-    for name in ("My Drive", "我的雲端硬碟"):
-        if (accounts[0] / name).is_dir():
-            return accounts[0] / name
-    raise SystemExit(f"no 'My Drive' folder under {accounts[0]}")
 K = len(K6Y7R_FLIP_IDX)
 
 

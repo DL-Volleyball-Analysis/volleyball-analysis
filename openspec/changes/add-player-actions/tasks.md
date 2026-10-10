@@ -4,7 +4,10 @@
 
 - [x] 1.1 Copy the action and jersey weights into `models/` (`action_yolo11m.pt`, `jersey_digits_yolov8m.pt`) and record their source runs in `docs/results/actions.md`
 - [x] 1.2 Write `scripts/eval_actions.py` (download the test split, `model.val`) and record per-class and overall mAP@0.5 and split size
-- [ ] 1.3 Write `scripts/eval_jersey.py` (digit mAP on the test split; whole-number accuracy by composing digits) and record both
+- [x] 1.3 Measure the capstone jersey model: found unusable (classes merged by index; horizontal flips), recorded in `docs/results/actions.md`
+- [x] 1.4 Write `scripts/build_jersey_dataset.py` (classes by name, split by match, other-sport digits in train only) and verify tests; zip on Drive
+- [ ] 1.5 Train `notebooks/train_jersey_digits.ipynb` on Colab and record test digit mAP per digit
+- [ ] 1.6 Write `scripts/eval_jersey.py`: whole-number accuracy on the test crops by composing digits (and on jersey-detection-v3 if downloaded) and record it
 
 ## 2. `vball.actions` and `vball.jersey`
 

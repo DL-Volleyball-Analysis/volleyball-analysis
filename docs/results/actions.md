@@ -69,3 +69,29 @@ Consequence: the model cannot be used to read shirt numbers. A correct merge (ma
 Player, keep whole-number boxes only as a separate class or not at all) and a retrain on Colab are needed before
 task 1.3 can measure anything meaningful. None of the three datasets with digit labels has a test split; one
 has to be held out by source video.
+
+A second problem: the capstone trained with Ultralytics' default `fliplr: 0.5`
+(`training/jersey-numbers/results/args.yaml`), so half the training crops were mirrored; a mirrored digit is a
+different digit and a mirrored two-digit number reads backwards.
+
+## Jersey digit retraining set (2026-10-11)
+`scripts/build_jersey_dataset.py` -> `data/datasets/jersey_digits.zip` (on Drive for
+`notebooks/train_jersey_digits.ipynb`, YOLO26s, 320 px, `fliplr=0`).
+
+- Classes mapped by name ('0'-'9', 'cero'); only sets with digit boxes. Both volleyball sets (v1 exports) have
+  exactly the classes 0-9; the two capstone sets with ball / player / whole-number boxes are left out.
+- Split by match, not frame. The Roboflow splits put frames of all 10 matches in both train and valid, which is
+  why the capstone's validation score could not show generalisation.
+- A baseball and football set with digit boxes (practice-qj7kd/jersey-number-cogss, 1,004 crops, CC BY 4.0)
+  is added to train only, for more fonts, colours and poses; valid and test stay volleyball.
+
+| Split | Crops | Matches | Fewest boxes |
+|---|---|---|---|
+| train | 5,720 | usm_ft_1, graz_1 (+ part 2), chile_usa, usm_ucen_2_full + cogss | digit 8: 293 |
+| valid | 1,170 | usa_brazil_fem_brazilside, usm_usach_1 (one match alone lacks digits 3 and 4) | digit 7: 74 |
+| test | 1,048 | japan_poland, thailand_warmup, poland_italy (teams in no training match) | digit 6: 40 |
+
+Other public data checked: projectexperiments/jersey-detection-v3 (8,617 images) labels whole numbers as 103
+classes, usable later to test whole-number reading but not to train digit boxes; SoccerNet and the hockey set of
+Koshkina and Elder label whole numbers per crop or tracklet, which suits a text-recognition reader (PARSeq)
+rather than a digit detector.

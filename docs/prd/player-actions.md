@@ -36,7 +36,7 @@ shirt number, and attack statistics need to know who attacked; today every attac
 - Accepting a suggestion produces exactly the tag a coach would have typed (tests).
 
 ## Out of scope
-- Training new action or number models (only if the measurements demand it, as a separate change).
+- Training a new action model. (The number model is retrained: the measurement showed the capstone one unusable.)
 - Re-identification across shots and matches.
 
 ## Dependencies

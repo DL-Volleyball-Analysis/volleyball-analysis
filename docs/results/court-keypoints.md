@@ -43,6 +43,24 @@ model regresses keypoints relative to its box, so the mix plausibly explains why
 and not k6y7r. v3b recomputes every box as the keypoints' bounding box plus a 1% margin (checked: ratio 1.00
 for both sources, keypoints unchanged) and changes nothing else, fine-tuning from v3's epoch-103 weights.
 
+## v3b result (2026-10-11): best on broadcast, still wrong on gym images
+Colab stopped at epoch 184 of 250 (validation pose loss 5.07 -> 5.00 over the last 30 epochs). End to end,
+`scripts/eval_court_keypoints.py --dataset court_keypoints_v3b`, median court-position error:
+
+| Model | k6y7r test (gym, 39 images) | VNL clips four-five (broadcast, 275) | broadcast within 0.3 m |
+|---|---|---|---|
+| v2 | **0.49 m** (9 no fit) | 1.43 m (158 no fit) | 0% |
+| v3, epoch 103 | 7.91 m | 0.17 m | 89% |
+| v3b best | 7.28 m | **0.10 m** (0 no fit) | **96%** |
+| v3b epoch 180 | 6.35 m | 0.09 m | 94% |
+
+The box convention was not the cause of the gym failure. A mirrored numbering is not either: relabelling v3b's
+predictions left-right, far-near or by 180 degrees helps no consistent share of the images (best permutation per
+image: as is 17, rot180 8, far-near 7, left-right 5), while v2 is right as is on 28 of 31. v3b's predictions on
+gym images are simply poor: training is dominated by near-duplicate frames of three broadcast clips and starts
+from v3. Options: pick the model per shot with the floor-net consistency check (no labels needed), or retrain with
+fewer VNL frames from pretrained weights.
+
 ## Court stage on the evaluation clips (2026-10-10, model v2)
 `vball.court_registration` in the web app's court stage (5 samples per second per shot, model v2 installed
 as `models/court_kpt.pt`), on the five 1080p evaluation clips:

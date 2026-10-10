@@ -28,6 +28,11 @@ numbers on player crops by composing digits. The actions stage stays opt-in unti
 | Stage wiring, `actions.json`, API | web app `pipeline.py`, `main.py` |
 | Labels, Actions lane, suggestions | web app `src/match`, `src/stats`, `render.py` |
 
+### Retraining the digit model (added 2026-10-11, agreed with the owner)
+The capstone digit model is unusable (classes merged by index, horizontal flips; see docs/results/actions.md).
+Retrain YOLO26s at 320 px without flips on `scripts/build_jersey_dataset.py`: digit classes by name, splits by
+match (test teams appear in no training match), other-sport digit crops in train only.
+
 ### Rates and crops
 Actions at 10 fps on the full frame (the model was trained on full frames). Digits at 2 fps per track on the
 upper half of the player box upscaled to 640 px (numbers are on the back and chest; the model saw crops).
