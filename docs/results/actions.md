@@ -95,3 +95,20 @@ Other public data checked: projectexperiments/jersey-detection-v3 (8,617 images)
 classes, usable later to test whole-number reading but not to train digit boxes; SoccerNet and the hockey set of
 Koshkina and Elder label whole numbers per crop or tracklet, which suits a text-recognition reader (PARSeq)
 rather than a digit detector.
+
+## Retrained digit model (2026-10-11)
+`notebooks/train_jersey_digits.ipynb` on Kaggle (T4): YOLO26s, 320 px, no flips; early stop at epoch 69 (patience
+40), best validation mAP@0.5:0.95 0.521 at epoch 29; 36 min. Installed as `models/jersey_digits_yolo26s.pt`.
+
+**Digits, test split** (1,048 crops; Japan, Thailand and Poland, teams in no training match):
+mAP@0.5 **0.824**, mAP@0.5:0.95 0.519, precision 0.809, recall 0.740.
+
+| digit | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| AP@0.5 | 0.690 | 0.932 | 0.936 | 0.904 | 0.810 | 0.906 | 0.767 | 0.890 | 0.681 | 0.727 |
+
+**Whole numbers, one crop at a time** (`scripts/eval_jersey.py`, output in `outputs/jersey_eval.txt`): read exactly
+**63.2%**, wrong 29.9%, not read 7.0%; one-digit numbers 70.8% / 12.4% / 16.8%, two-digit numbers 60.1% / 36.8% /
+3.1%. The most common error drops one digit of a two-digit number (19 -> 1, 11 -> 1, 15 -> 1, 17 -> 7), then
+look-alike digits (18 -> 16, 5 -> 9). The web app votes over a track's readings (at least 3, 60% agreeing), which
+should raise accuracy per player; that is not measured yet (no labelled tracks with numbers).

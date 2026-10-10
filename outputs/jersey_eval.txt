@@ -1,0 +1,5 @@
+test crops with a number: 1048
+read exactly 63.2%, wrong 29.9%, not read 7.0%
+  1-digit numbers (298): exact 70.8%, wrong 12.4%, not read 16.8%
+  2-digit numbers (750): exact 60.1%, wrong 36.8%, not read 3.1%
+most common wrong readings (true -> read): 18->16 x18, 19->1 x16, 11->17 x15, 11->1 x14, 15->1 x14, 17->7 x12, 5->9 x12, 19->10 x9
