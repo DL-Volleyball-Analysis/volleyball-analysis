@@ -92,3 +92,19 @@ three sampling intervals (`MAX_GAP_SAMPLES`). Rerun of the best setting (YOLO26s
 The ghost boxes were counted as false positives: precision +3.3 points, MOTA +0.08, at a small recall cost
 (some long gaps had been bridged correctly). The PRD targets are still missed. Raw output:
 `outputs/player_tracking/yolo26s_960_botsort_10fps_gap3*.txt`.
+
+## Role check by appearance (2026-10-11, change filter-on-court-players)
+`scripts/eval_roles.py` (output in `outputs/roles_eval.txt`): on the saved YOLO26s 960 BoT-SORT tracks of the 15
+SportsMOT volleyball val sequences, a predicted track is a non-player when it matches no labelled player (IoU >=
+0.5 on at least half its boxes). No court mapping here, so this is colour alone (no libero override).
+
+| Team centres fitted on | non-player boxes marked other | player boxes marked other | box precision |
+|---|---|---|---|
+| all tracks | 3.1% | 0.1% | 0.613 -> 0.620 |
+| tracks seen in >= 30% of frames (installed) | **33.1%** | **1.1%** | **0.613 -> 0.700** |
+
+Non-player tracks outnumber the players' (577 vs 488): spectators, bench and staff in many colours pull two-team
+clustering apart. Players stay in view (median 21% of frames per track against 10%), so only long tracks define the
+teams. The thresholds were chosen on these sequences, so the gain is optimistic until confirmed on the SportsMOT
+training sequences (downloaded with task 1.2). A precision of 0.700 is still far from the 0.95 of an ideal filter:
+the player-only detector (task 1) is the main remedy, this check the fallback without a court.

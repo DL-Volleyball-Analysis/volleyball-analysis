@@ -1,0 +1,3 @@
+tracks: non-players marked other 43.0% of 577; players marked other 5.7% of 488
+boxes: non-players marked other 33.1% of 35307; players marked other 1.1% of 55828
+box precision (boxes on labelled players / all boxes): 0.613 -> 0.700 after dropping other

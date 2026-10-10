@@ -8,9 +8,9 @@
 
 ## 2. Cap and role
 
-- [ ] 2.1 Cap at 12 players per frame in `vball.players` and verify tests (placed first, then confidence)
-- [ ] 2.2 Implement `vball.teams` (torso colour histograms, k = 2, outliers as `other`, on-court override) and verify tests with synthetic coloured boxes
-- [ ] 2.3 Measure the role check on SportsMOT val (non-player tracks caught, players wrongly marked) and record it
+- [x] 2.1 Cap at 12 players per frame in `vball.players` and verify tests (placed first, then confidence)
+- [x] 2.2 Implement `vball.teams` (torso colour histograms, k = 2, outliers as `other`, on-court override) and verify tests with synthetic coloured boxes
+- [x] 2.3 Measure the role check on SportsMOT val (non-player tracks caught, players wrongly marked) and record it
 
 ## 3. Web app
 

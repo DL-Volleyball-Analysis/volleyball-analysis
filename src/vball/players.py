@@ -139,3 +139,35 @@ def place_on_court(df: pd.DataFrame, homography_at: Callable[[int], np.ndarray |
                   & (xy[:, 1] >= -side_margin) & (xy[:, 1] <= WIDTH + side_margin))
         keep[out.index.get_indexer(idx)] = inside
     return out[keep].reset_index(drop=True)
+
+
+MAX_PLAYERS = 12  # six per team on court
+
+
+def roles(df: pd.DataFrame, assignments: dict | None = None, max_players: int = MAX_PLAYERS) -> pd.DataFrame:
+    """Add `team` and `role` ("player" / "other") columns (change filter-on-court-players).
+
+    assignments: track id -> vball.teams.Assignment. A track that looks like neither team is `other` unless the
+    court places it on the court at least half the time (the libero). Then, per frame, at most `max_players`
+    players are kept: those placed on court first, then the most confident; the rest become `other`. Nothing is
+    deleted: consumers filter on role."""
+    from .teams import TeamConfig, on_court_share
+    cfg = TeamConfig()
+    out = df.copy()
+    out["team"], out["role"] = "", "player"
+    if not len(out):
+        return out
+    for tid, a in (assignments or {}).items():
+        rows = out["track_id"] == tid
+        if a.team:
+            out.loc[rows, "team"] = a.team
+        if a.other:
+            xy = out.loc[rows, ["court_x", "court_y"]].to_numpy(float) if "court_x" in out else np.empty((0, 2))
+            if on_court_share(xy, cfg.court_margin_m) < cfg.on_court_share:
+                out.loc[rows, "role"] = "other"
+    placed = out["placed"].astype(bool) if "placed" in out else pd.Series(False, index=out.index)
+    rank = (out.assign(_p=placed, _player=out["role"] == "player")
+               .sort_values(["frame", "_player", "_p", "conf"], ascending=[True, False, False, False])
+               .groupby("frame").cumcount())
+    out.loc[rank[rank >= max_players].index, "role"] = "other"
+    return out
