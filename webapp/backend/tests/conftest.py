@@ -76,3 +76,11 @@ def fake_players(monkeypatch):
         return pd.DataFrame(rows, columns=["frame", "track_id", "x1", "y1", "x2", "y2", "conf", "interpolated"])
 
     monkeypatch.setattr(pipeline.players, "track_frames", track_frames)
+
+
+@pytest.fixture(autouse=True)
+def no_action_models(monkeypatch, tmp_path):
+    """The real action and digit weights may be in models/; tests run without them unless they install fakes."""
+    import pipeline
+    monkeypatch.setattr(pipeline, "ACTION_MODEL", tmp_path / "missing_action.pt")
+    monkeypatch.setattr(pipeline, "JERSEY_MODEL", tmp_path / "missing_digits.pt")

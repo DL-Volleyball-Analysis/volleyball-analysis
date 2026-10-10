@@ -10,21 +10,27 @@ from typing import Callable
 
 import cv2
 import numpy as np
-from vball import ball, court_registration, players, trajectory
+import pandas as pd
+from vball import actions, ball, court_registration, jersey, players, trajectory
 from vball.calibration import calibrate
 from vball.court_keypoints import detect as detect_keypoints
 from vball.paths import MODELS
 
-STAGES = ("decode", "court", "ball", "players", "trajectory", "events", "rallies")
+STAGES = ("decode", "court", "ball", "players", "actions", "trajectory", "events", "rallies")
 # share of total pipeline time, for the progress bar
 # Stage messages are shown to users as-is: write them for a coach, not a developer.
-WEIGHTS = {"decode": 0.1, "court": 0.05, "ball": 0.35, "players": 0.38, "trajectory": 0.02, "events": 0.05,
-           "rallies": 0.05}
+WEIGHTS = {"decode": 0.1, "court": 0.05, "ball": 0.3, "players": 0.33, "actions": 0.1, "trajectory": 0.02,
+           "events": 0.05, "rallies": 0.05}
 BALL_MODEL = "v4c"
 # the installed court keypoint model: copy the chosen weights here (models/ is not in git)
 # Every installed court model registers every shot; court_registration.pick keeps the best per shot. v2 is right
 # on gym images (0.49 m) and v3b on broadcast clips (0.10 m); neither does both (docs/results/court-keypoints.md).
 COURT_MODELS = {"gym": MODELS / "court_kpt.pt", "broadcast": MODELS / "court_kpt_broadcast.pt"}
+# capstone action recogniser (test mAP@0.5 0.957, same matches as training) and the retrained digit detector;
+# shirt numbers are read only once the digit model is installed (docs/results/actions.md)
+ACTION_MODEL = MODELS / "action_yolo11m.pt"
+JERSEY_MODEL = MODELS / "jersey_digits_yolo26s.pt"
+ACTION_FPS, JERSEY_FPS = 10.0, 2.0
 # best measured on SportsMOT volleyball (docs/results/player-tracking.md); weights download on first use
 PLAYER_CFG = players.TrackerConfig(model=str(MODELS / "yolo26s.pt"), imgsz=960, tracker="botsort.yaml", det_fps=10.0)
 
@@ -155,6 +161,91 @@ def players_stage(video: Path, out: Path, prev: dict, tick) -> dict:
     return res
 
 
+def action_detector():
+    """frame -> rows of (action, conf, x1, y1, x2, y2). Tests replace this function with a fake."""
+    from ultralytics import YOLO
+    model = YOLO(str(ACTION_MODEL))
+
+    def detect(frame):
+        r = model(frame, imgsz=640, conf=actions.ActionConfig().min_conf, verbose=False)[0]
+        return [(r.names[int(c)], float(p), *map(float, b))
+                for c, p, b in zip(r.boxes.cls.tolist(), r.boxes.conf.tolist(), r.boxes.xyxy.tolist())]
+    return detect
+
+
+def digit_detector():
+    """player crop -> rows of (digit, conf, x1, y1, x2, y2). Tests replace this function with a fake."""
+    from ultralytics import YOLO
+    model = YOLO(str(JERSEY_MODEL))
+
+    def detect(crop):
+        r = model(crop, imgsz=320, conf=0.25, verbose=False)[0]
+        return [(int(r.names[int(c)]), float(p), *map(float, b))
+                for c, p, b in zip(r.boxes.cls.tolist(), r.boxes.conf.tolist(), r.boxes.xyxy.tolist())]
+    return detect
+
+
+def player_crop(frame: np.ndarray, row) -> np.ndarray | None:
+    """Upper 60% of a player box (numbers are on the back and chest), None when too small to read."""
+    x1, y1, x2, y2 = (int(round(v)) for v in (row.x1, row.y1, row.x2, row.y2))
+    h, w = frame.shape[:2]
+    x1, x2, y1 = max(0, x1), min(w, x2), max(0, y1)
+    y2 = min(h, y1 + int(0.6 * (y2 - y1)))
+    if x2 - x1 < 16 or y2 - y1 < 24:
+        return None
+    return frame[y1:y2, x1:x2]
+
+
+def actions_stage(video: Path, out: Path, prev: dict, tick) -> dict:
+    """Action events per player track (vball.actions) and shirt numbers per track (vball.jersey)."""
+    if not ACTION_MODEL.exists():
+        return {"status": "unavailable", "message": "The action model is not installed."}
+    tracks_csv = out / "players.csv.gz"
+    tracks = pd.read_csv(tracks_csv) if tracks_csv.exists() else pd.DataFrame(columns=players.COLUMNS)
+    n, fps = prev["decode"].get("frames") or 0, prev["decode"].get("fps") or 30.0
+    a_step, j_step = players.sample_every(fps, ACTION_FPS), players.sample_every(fps, JERSEY_FPS)
+    detect = action_detector()
+    read = digit_detector() if JERSEY_MODEL.exists() else None
+    seen = tracks[~tracks["interpolated"].astype(bool)] if len(tracks) else tracks
+    by_frame = {f: g for f, g in seen.groupby("frame")} if read and len(seen) else {}
+    rows, readings = [], {}
+    cap, i = cv2.VideoCapture(str(video)), 0
+    while True:
+        wanted = i % a_step == 0 or (read is not None and i % j_step == 0 and i in by_frame)
+        ok, frame = cap.read() if wanted else (cap.grab(), None)  # decode only the frames that are used
+        if not ok:
+            break
+        if wanted:
+            if i % a_step == 0:
+                rows.extend((i, *d) for d in detect(frame))
+            if read is not None and i % j_step == 0:
+                for row in by_frame.get(i, pd.DataFrame()).itertuples():
+                    crop = player_crop(frame, row)
+                    if crop is not None:
+                        readings.setdefault(int(row.track_id), []).append(jersey.reading(read(crop)))
+        i += 1
+        if n and i % 50 == 0:
+            tick(i / n)
+    cap.release()
+    evs = actions.events(pd.DataFrame(rows, columns=actions.DETECTION_COLUMNS), tracks, a_step)
+    numbers = {tid: jersey.vote(r) for tid, r in readings.items()}
+    data = {
+        "events": [{"action": e.action, "track_id": e.track_id, "start_frame": e.start_frame, "end_frame": e.end_frame,
+                    "start_s": round(e.start_frame / fps, 3), "end_s": round(e.end_frame / fps, 3),
+                    "peak_conf": round(e.peak_conf, 3), "samples": e.samples} for e in evs],
+        "numbers": {str(tid): {"number": v.number, "share": round(v.share, 3), "readings": v.readings}
+                    for tid, v in sorted(numbers.items())},
+    }
+    (out / "action_events.json").write_text(json.dumps(data))  # actions.json is the stage result
+    by_action = {a: sum(e.action == a for e in evs) for a in actions.ACTIONS}
+    res = {"status": "done", "models": {"actions": ACTION_MODEL.name, "digits": JERSEY_MODEL.name if read else None},
+           "events": len(evs), "by_action": by_action,
+           "numbered_tracks": sum(v.number is not None for v in numbers.values())}
+    if read is None:
+        res["message"] = "Shirt numbers are not read yet: the digit model is being retrained. Players are shown by tracking id."
+    return res
+
+
 def ball_uv(out: Path, n_frames: int) -> np.ndarray:
     """(n_frames, 2) ball image positions, NaN where the ball was not detected."""
     import pandas as pd
@@ -225,10 +316,10 @@ def rallies(video: Path, out: Path, prev: dict, tick) -> dict:
     return {"status": "todo", "message": "Rally detection and scoring arrive with milestone M3."}
 
 
-FUNCS = {"decode": decode, "court": court, "ball": ball_stage, "players": players_stage,
+FUNCS = {"decode": decode, "court": court, "ball": ball_stage, "players": players_stage, "actions": actions_stage,
          "trajectory": trajectory_stage, "events": events, "rallies": rallies}
 VERSIONS = {"decode": "1", "court": "2", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-2",  # -2: interpolation bridges short gaps only
-            "trajectory": "2", "events": "0.3", "rallies": "0.1"}
+            "actions": "1", "trajectory": "2", "events": "0.3", "rallies": "0.1"}
 
 
 def stage_file(results: Path, stage: str) -> Path:

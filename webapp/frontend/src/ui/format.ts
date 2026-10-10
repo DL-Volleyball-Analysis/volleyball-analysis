@@ -23,6 +23,7 @@ export const STAGE_LABEL: Record<StageName, string> = {
   court: 'Finding the court',
   ball: 'Tracking the ball',
   players: 'Tracking the players',
+  actions: 'Recognising actions and shirt numbers',
   trajectory: 'Reconstructing 3D flights',
   events: 'Finding contacts and landings',
   rallies: 'Scoring rallies',

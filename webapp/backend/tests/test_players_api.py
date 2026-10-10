@@ -10,7 +10,7 @@ def test_players_stage_runs_after_ball_without_a_court(client, clip, fake_ball):
     v = upload(client, clip)
     assert run_worker_once()["status"] == "done"
     stages = client.get(f"/videos/{v['id']}/stages").json()
-    assert [s["name"] for s in stages] == ["decode", "court", "ball", "players", "trajectory", "events", "rallies"]
+    assert [s["name"] for s in stages] == ["decode", "court", "ball", "players", "actions", "trajectory", "events", "rallies"]
     p = {s["name"]: s for s in stages}["players"]
     assert p["status"] == "done" and p["summary"]["tracks"] == 2 and p["summary"]["placed"] is False
     assert "court was not found" in p["message"]

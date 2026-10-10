@@ -35,7 +35,7 @@ app.add_middleware(
 db = Database(DB_PATH)
 
 Team = Literal["a", "b"]
-Stage = Literal["decode", "court", "ball", "players", "trajectory", "events", "rallies"]
+Stage = Literal["decode", "court", "ball", "players", "actions", "trajectory", "events", "rallies"]
 
 
 class Job(BaseModel):

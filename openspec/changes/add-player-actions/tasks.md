@@ -16,7 +16,7 @@
 
 ## 3. Pipeline and API (web app)
 
-- [ ] 3.1 Add the `actions` stage after `players` (unavailable without models, opt-in until task 1 is recorded) and verify backend tests with fake detectors
+- [x] 3.1 Add the `actions` stage after `players` (unavailable without models, opt-in until task 1 is recorded) and verify backend tests with fake detectors
 - [ ] 3.2 Add `GET /videos/{id}/actions` (events, numbers per track, suggestions) and verify API tests; regenerate frontend types
 
 ## 4. Display

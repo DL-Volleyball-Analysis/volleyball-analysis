@@ -460,9 +460,9 @@ export interface components {
              * From Stage
              * @enum {string}
              */
-            from_stage: "decode" | "court" | "ball" | "players" | "trajectory" | "events" | "rallies";
+            from_stage: "decode" | "court" | "ball" | "players" | "actions" | "trajectory" | "events" | "rallies";
             /** Stage */
-            stage: ("decode" | "court" | "ball" | "players" | "trajectory" | "events" | "rallies") | null;
+            stage: ("decode" | "court" | "ball" | "players" | "actions" | "trajectory" | "events" | "rallies") | null;
             /** Progress */
             progress: number;
             /** Error */
@@ -479,7 +479,7 @@ export interface components {
              * @default decode
              * @enum {string}
              */
-            from_stage: "decode" | "court" | "ball" | "players" | "trajectory" | "events" | "rallies";
+            from_stage: "decode" | "court" | "ball" | "players" | "actions" | "trajectory" | "events" | "rallies";
         };
         /** Landing */
         Landing: {
@@ -621,7 +621,7 @@ export interface components {
              * Name
              * @enum {string}
              */
-            name: "decode" | "court" | "ball" | "players" | "trajectory" | "events" | "rallies";
+            name: "decode" | "court" | "ball" | "players" | "actions" | "trajectory" | "events" | "rallies";
             /**
              * Status
              * @enum {string}
