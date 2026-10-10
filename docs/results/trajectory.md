@@ -55,3 +55,20 @@ returning a confident wrong camera (focal sd 37-78% in that case, 0.4% with the 
 ## Real footage
 Not measured yet (task 8.1): net-crossing heights on the evaluation clips, once a court model gives
 usable calibrations on them.
+
+## Detection errors on the evaluation clips (2026-10-11)
+For realistic synthetic tests (change `constrain-3d-flights`). Missed = frames without a VballNet V4c detection;
+isolated outliers = detections more than 30 px from the line joining their neighbours (neighbours at most 6 frames
+apart), a conservative lower bound on false detections since a ball cannot jump that far between frames.
+
+| Clip | Frames | Missed | Isolated outliers |
+|---|---|---|---|
+| back_rally | 226 | 26.5% | 14.5% |
+| back_view | 420 | 26.2% | 6.5% |
+| side_high_men | 153 | 71.9% | 51.7% |
+| side_high_women | 178 | 33.1% | 18.9% |
+| side_rally | 421 | 23.3% | 0.3% |
+| frame-weighted | | 31.3% | 12.5% |
+
+The synthetic ablation uses 30% missed (in bursts of about 4 frames) and 12% false detections. On the wide
+men's clip the ball is too small: 72% missed and half the rest wrong.

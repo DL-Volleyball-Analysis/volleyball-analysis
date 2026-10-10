@@ -2,8 +2,8 @@
 
 ## 1. Realistic synthetic errors
 
-- [ ] 1.1 Add `synthetic.corrupt` (bursty misses, false points, noise) and synthetic players at the touches; verify tests that the rates are respected
-- [ ] 1.2 Measure miss and false rates on the evaluation clips' ball tracks and record them in docs/results/trajectory.md
+- [x] 1.1 Add `synthetic.corrupt` (bursty misses, false points, noise) and synthetic players at the touches; verify tests that the rates are respected
+- [x] 1.2 Measure miss and false rates on the evaluation clips' ball tracks and record them in docs/results/trajectory.md
 
 ## 2. Fit
 

@@ -130,3 +130,23 @@ def test_physically_impossible_flights_are_dropped_with_the_reason():
     kept = reconstruct(wrong, r.uv, FPS, rejected=rejected)
     assert rejected and all(len(x) == 3 for x in rejected)
     assert len(kept) + len(rejected) == len(segment(r.uv))
+
+
+def test_corrupt_respects_the_error_rates():
+    from vball.trajectory.synthetic import corrupt
+    r = render(CAM, TOUCHES, DURATIONS, FPS)
+    uv = corrupt(r.uv, SIZE, miss=0.3, false=0.1, noise_px=2.0, seed=3)
+    lost = np.isnan(uv).any(axis=1)
+    assert abs(lost.mean() - 0.3) < 0.01
+    err = np.linalg.norm(uv[~lost] - r.uv[~lost], axis=1)
+    assert abs((err > 30).mean() - 0.1) < 0.03  # replaced by points elsewhere
+    assert np.median(err[err < 30]) < 3          # the rest carry only noise
+    runs = np.diff(np.flatnonzero(np.diff(np.r_[0, lost.astype(int), 0])))[::2]
+    assert np.mean(runs) > 1.5                   # misses come in bursts
+
+
+def test_touch_players_stand_near_the_touches():
+    from vball.trajectory.synthetic import touch_players
+    players = touch_players(TOUCHES, seed=1)
+    assert players[-1] is None
+    assert all(np.linalg.norm(p - np.array(t[:2])) < 1.5 for p, t in zip(players[:-1], TOUCHES[:-1]))

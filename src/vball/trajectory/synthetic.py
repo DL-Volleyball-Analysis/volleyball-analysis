@@ -42,3 +42,35 @@ def render(cam: Camera, touch_points, durations, fps: float = 50.0, noise_px: fl
     uv = uv + np.random.default_rng(seed).normal(0, noise_px, uv.shape)
     uv[list(occluded)] = np.nan
     return SyntheticRally(positions, uv, touches, fps)
+
+
+def corrupt(uv: np.ndarray, image_size: tuple[int, int], miss: float = 0.0, false: float = 0.0,
+            noise_px: float = 0.0, burst: int = 4, seed: int = 0) -> np.ndarray:
+    """Detection errors as seen on real tracks: a `miss` share of frames lost in bursts of about `burst` frames
+    (occlusions), a `false` share of the remaining detections replaced by uniform points in the image (other
+    round things, heads), and Gaussian noise on the rest."""
+    rng = np.random.default_rng(seed)
+    out = np.asarray(uv, float).copy()
+    n = len(out)
+    seen = ~np.isnan(out).any(axis=1)
+    out[seen] += rng.normal(0, noise_px, (int(seen.sum()), 2))
+    target, lost = int(round(miss * n)), np.zeros(n, bool)
+    while lost.sum() < target:
+        a = int(rng.integers(0, n))
+        lost[a:a + max(1, int(rng.poisson(burst)))] = True
+    lost[np.flatnonzero(lost)[target:]] = False  # trim the last burst to the exact share
+    out[lost] = np.nan
+    seen = np.flatnonzero(~np.isnan(out).any(axis=1))
+    bad = rng.choice(seen, size=int(round(false * len(seen))), replace=False) if len(seen) else []
+    out[bad] = rng.uniform([0, 0], image_size, (len(bad), 2))
+    return out
+
+
+def touch_players(touch_points, jitter_m: float = 0.3, last_is_floor: bool = True, seed: int = 0) -> list:
+    """Court position (x, y) of the player at each touch, or None for the final floor contact: the touch's
+    ground point plus a small offset (feet are not exactly under the ball)."""
+    rng = np.random.default_rng(seed)
+    out = [np.asarray(p, float)[:2] + rng.normal(0, jitter_m, 2) for p in touch_points]
+    if last_is_floor:
+        out[-1] = None
+    return out
