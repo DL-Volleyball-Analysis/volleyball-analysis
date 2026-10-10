@@ -2,7 +2,7 @@
 
 ## 1. Player-only detector
 
-- [ ] 1.1 Write `scripts/build_sportsmot_detection.py` (15 train sequences, every 3rd frame, one class, split by sequence) and verify tests for the label conversion
+- [x] 1.1 Write `scripts/build_sportsmot_detection.py` (15 train sequences, every 3rd frame, one class, split by sequence) and verify tests for the label conversion
 - [ ] 1.2 Upload the SportsMOT volleyball training set as a private Kaggle dataset and write `notebooks/train_player_detector.ipynb` (Colab / Kaggle); verify a local smoke run
 - [ ] 1.3 Train on Kaggle; evaluate with `scripts/eval_player_tracking.py` on the 15 val sequences; record against the baseline and install only if IDF1 and precision both improve
 
