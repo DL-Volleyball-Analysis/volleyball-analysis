@@ -19,7 +19,12 @@ Results using YOLOv8m model | 使用 YOLOv8m 模型訓練後的結果：
 The training log and settings are kept in [`results/`](results) (`results.csv`, `args.yaml`). Final epoch
 (95), validation split: precision 0.952, recall 0.950, mAP@0.5 0.966, mAP@0.5:0.95 0.734. The plots and
 sample batches are in the archived repository
-[jersey-number-detection](https://github.com/DL-Volleyball-Analysis/jersey-number-detection/tree/main/runs/jersey_detection).
+[capstone-jersey-numbers](https://github.com/DL-Volleyball-Analysis/capstone-jersey-numbers/tree/main/runs/jersey_detection).
+
+> **Do not use this model (found 2026-10-10).** `organize_datasets.py` maps class indices across datasets and ignores
+> class names, so balls, whole players and whole-number boxes became the digits 0, 1 and 2; the validation score above
+> includes those wrong labels. Details in [docs/results/actions.md](../../docs/results/actions.md); a corrected
+> merge and retraining are planned in the change `add-player-actions`.
 
 ## Topics
 

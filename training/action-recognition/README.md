@@ -47,7 +47,7 @@ This project trains a YOLOv11m model to recognize volleyball actions from video 
 ## Results | 結果
 
 From the training log of the final model (epoch 190), **validation** split: precision 0.916, recall 0.915,
-mAP@0.5 0.945, mAP@0.5:0.95 0.755. No test-split evaluation was recorded. See
+mAP@0.5 0.945, mAP@0.5:0.95 0.755. Test split (measured 2026-10-10 with `scripts/eval_actions.py`): mAP@0.5 0.957, mAP@0.5:0.95 0.790; test frames come from the same matches as training, so this is not an unseen-match score ([docs/results/actions.md](../../docs/results/actions.md)). See
 [docs/results/action-recognition.md](../../docs/results/action-recognition.md).
 
 ## Training Configuration | 訓練配置

@@ -11,6 +11,6 @@ datasets, `runs/` outputs and weights stay out of git (finished weights go in th
 The court keypoint model is trained from [`notebooks/train_court_keypoints.ipynb`](../notebooks/train_court_keypoints.ipynb).
 
 Moved here from the archived repositories
-[action-recognition-yolov11](https://github.com/DL-Volleyball-Analysis/action-recognition-yolov11) and
-[jersey-number-detection](https://github.com/DL-Volleyball-Analysis/jersey-number-detection), which keep
+[capstone-action-recognition](https://github.com/DL-Volleyball-Analysis/capstone-action-recognition) and
+[capstone-jersey-numbers](https://github.com/DL-Volleyball-Analysis/capstone-jersey-numbers), which keep
 the full history and training plots; the `yolo11m.pt` base model is downloaded by Ultralytics.

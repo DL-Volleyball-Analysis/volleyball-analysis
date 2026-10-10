@@ -1,6 +1,6 @@
 # Capstone web app: current-state analysis
 
-Subject: `DL-Volleyball-Analysis/volleyball_analysis_webapp` as of its 2026-01 `main` branch (read from code, not from its docs). Written 2026-10-07; the redesign goals, requirements and plans that followed now live in:
+Subject: `DL-Volleyball-Analysis/volleyball_analysis_webapp` (renamed `capstone-webapp`, archived) as of its 2026-01 `main` branch (read from code, not from its docs). Written 2026-10-07; the redesign goals, requirements and plans that followed now live in:
 
 - Product requirements: [`docs/prd/match-review.md`](prd/match-review.md) and [`docs/prd/README.md`](prd/README.md)
 - Backend behaviour (implemented on branch `redesign`): `openspec/specs/{video-library,analysis-jobs,match-scoring}`

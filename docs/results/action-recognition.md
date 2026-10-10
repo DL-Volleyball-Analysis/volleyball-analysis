@@ -4,7 +4,7 @@
 
 From the capstone's training logs (`runs/volleyball_200epoch*/results.csv` and `args.yaml`, kept on the
 team's Drive; the training code is in
-[action-recognition-yolov11](https://github.com/DL-Volleyball-Analysis/action-recognition-yolov11)).
+[capstone-action-recognition](https://github.com/DL-Volleyball-Analysis/capstone-action-recognition)).
 Five classes: receive, set, block, spike, serve. Merged Roboflow volleyball action datasets
 (24,806 images: 18,616 train, 3,636 validation, 2,554 test, per the capstone report).
 
