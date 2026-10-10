@@ -48,3 +48,24 @@ footage (PRD M5).
 
 Consequences for the plan: report receive separately and treat receive events as less reliable; collect and label
 receive and dig frames from our own matches before relying on reception statistics.
+
+## Jersey digit model: the training labels are wrong (2026-10-10)
+The capstone merge script (`training/jersey-numbers/organize_datasets.py`) maps class *indices* across datasets
+and ignores class *names*. Index order of the four merged Roboflow sets (Roboflow sorts names):
+
+| Dataset | Classes by index | Became |
+|---|---|---|
+| volleyai-actions/jersey-number-detection-s01j4 | 0-9 | digits 0-9 (correct) |
+| workspace67/jersey-fxmll | 0-9 | digits 0-9 (correct) |
+| teste-5efoz/player-number-detect (565 train images) | Ball, Player, number | "0" = ball, "1" = whole player, "2" = whole number |
+| hgjhj/jersey-number-detection-br3ld (612 / 175 / 87) | number | "0" = whole number |
+
+Checked against the model: on the 87 hgjhj test crops (one whole-number box each) it predicts class "0" 93
+times, 86 of them on the whole-number box (IoU > 0.5) - it learned "0" as "a number is here". The validation
+mAP@0.5 of 0.966 includes these wrong labels, so it does not measure digit reading. On full broadcast frames
+it detects nothing (trained on crops), so it would need player crops anyway.
+
+Consequence: the model cannot be used to read shirt numbers. A correct merge (map by class name, drop Ball and
+Player, keep whole-number boxes only as a separate class or not at all) and a retrain on Colab are needed before
+task 1.3 can measure anything meaningful. None of the three datasets with digit labels has a test split; one
+has to be held out by source video.
