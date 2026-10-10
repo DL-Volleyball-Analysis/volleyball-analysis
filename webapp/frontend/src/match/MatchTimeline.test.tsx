@@ -112,4 +112,37 @@ describe('MatchTimeline rendering cost', () => {
     expect(commits.mock.calls.length).toBe(before)
     expect(screen.getByTestId('playhead').style.left).toBe('100%')
   })
+
+  test('the actions lane shows recognised actions and the tags lane only open suggestions', async () => {
+    const clock = createClock()
+    const video = document.createElement('video')
+    clock.attach(video)
+    const onSelectSuggestion = vi.fn()
+    renderApp(
+      <ClockContext.Provider value={clock}>
+        <MatchTimeline videoId="v1" rallies={rallies(['a'])} duration={30} currentIndex={0} onSelect={vi.fn()}
+          actions={[
+            { action: 'spike', track_id: 3, start_s: 4, end_s: 4.4, peak_conf: 0.9, number: 10, team: 'a' },
+            { action: 'receive', track_id: 7, start_s: 8, end_s: 8.2, peak_conf: 0.8, number: null, team: null },
+          ]}
+          suggestions={[
+            { id: 'attack-100-3', kind: 'attack', time_s: 4, team: 'a', number: 10, track_id: 3, status: 'open' },
+            { id: 'serve-10-5', kind: 'serve', time_s: 0.4, team: 'b', number: null, track_id: 5, status: 'open' },
+            { id: 'attack-300-9', kind: 'attack', time_s: 12, team: 'a', number: 4, track_id: 9, status: 'accepted' },
+            { id: 'attack-400-9', kind: 'attack', time_s: 16, team: 'a', number: 4, track_id: 9, status: 'dismissed' },
+          ]}
+          onSelectSuggestion={onSelectSuggestion} />
+      </ClockContext.Provider>,
+    )
+    const marks = screen.getAllByTestId('action-mark')
+    expect(marks.map((m) => m.textContent)).toEqual(['Spk', 'Rec'])
+    expect(marks[0]).toHaveAccessibleName('spike by #10 (A) at 4.0 s')
+    expect(marks[1]).toHaveAccessibleName('receive by ID 7 at 8.0 s')
+    await userEvent.click(marks[1])
+    expect(video.currentTime).toBe(8)
+    const open = screen.getAllByTestId('suggestion-mark')
+    expect(open.map((m) => m.textContent)).toEqual(['10', 'S?'])
+    await userEvent.click(open[0])
+    expect(onSelectSuggestion).toHaveBeenCalledWith(expect.objectContaining({ id: 'attack-100-3' }))
+  })
 })

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { BALL_WINDOW_S, ballWindow, useBallWindow, usePlayers } from '../api/queries'
+import { BALL_WINDOW_S, ballWindow, useActions, useBallWindow, usePlayers } from '../api/queries'
 import type { BallWindow, PlayerWindow } from '../api/types'
 import { useClock, usePlaybackTime } from '../playback/clock'
 import { boxesAt, letterbox, trailPoints } from './overlay'
@@ -17,6 +17,12 @@ const PLAYER = '#ffffff'
 export function OverlayCanvas({ videoId, fps, layers }: { videoId: string; fps: number; layers: Layers }) {
   const clock = useClock()
   const canvas = useRef<HTMLCanvasElement>(null)
+  // shirt numbers by track (actions stage); read when drawing, outside React
+  const actions = useActions(videoId, layers.players)
+  const numbers = useRef(new Map<number, number>())
+  useEffect(() => {
+    numbers.current = new Map((actions.data?.numbers ?? []).filter((n) => n.number != null).map((n) => [n.track_id, n.number!]))
+  }, [actions.data])
 
   // Ball data for the windows around the playhead (time quantised to 200 ms, so this
   // component re-renders at most 5 times per second; drawing does not depend on it).
@@ -75,7 +81,8 @@ export function OverlayCanvas({ videoId, fps, layers }: { videoId: string; fps: 
           ctx.strokeRect(x, y, bw, bh)
           ctx.globalAlpha = 1
           if (other) continue
-          const label = `ID ${b.track_id}` // a tracking id, not the shirt number
+          const shirt = numbers.current.get(b.track_id)
+          const label = shirt != null ? `#${shirt}` : `ID ${b.track_id}` // the shirt number when the vote is clear
           ctx.fillStyle = EDGE
           ctx.fillRect(x, y - 14, 8 + 7 * label.length, 14)
           ctx.fillStyle = PLAYER

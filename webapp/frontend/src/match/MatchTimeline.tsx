@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { useBallCoverage } from '../api/queries'
-import type { Rally, Tag } from '../api/types'
+import type { ActionEvent, Rally, Suggestion, Tag } from '../api/types'
 import { isIn } from '../court/geometry'
 import { useClock } from '../playback/clock'
 import { tagLabel } from '../stats/tagText'
@@ -8,15 +8,17 @@ import { formatDuration } from '../ui/format'
 import { needsReview, reasonText } from './rallyText'
 import { rulerStep, timeAt } from './timeline'
 
-const LANES = ['Rallies', 'Ball', 'Landings', 'Tags', 'Review'] as const
+const LANES = ['Rallies', 'Ball', 'Landings', 'Actions', 'Tags', 'Review'] as const
+const ACTION_SHORT: Record<ActionEvent['action'], string> = { serve: 'Srv', receive: 'Rec', set: 'Set', spike: 'Spk', block: 'Blk' }
 const LABEL_PX = 56 // room per ruler label, so labels never overlap on narrow screens
 
 /**
- * Editor-style timeline: a ruler and five lanes (rallies by winner, ball detection coverage,
- * landings, attack / serve tags, rallies to review) with a playhead. The playhead moves in an animation frame from the
+ * Editor-style timeline: a ruler and six lanes (rallies by winner, ball detection coverage,
+ * landings, recognised actions, attack / serve tags with open suggestions, rallies to review) with a playhead. The playhead moves in an animation frame from the
  * video's own time, outside React; click or drag on a lane to seek.
  */
-export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSelect, tags = [], selectedTag, onSelectTag }: {
+export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSelect, tags = [], selectedTag, onSelectTag,
+  actions = [], suggestions = [], selectedSuggestion, onSelectSuggestion }: {
   videoId: string
   rallies: readonly Rally[]
   duration: number
@@ -25,6 +27,10 @@ export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSele
   tags?: readonly Tag[]
   selectedTag?: string | null
   onSelectTag?: (t: Tag) => void
+  actions?: readonly ActionEvent[]
+  suggestions?: readonly Suggestion[]
+  selectedSuggestion?: string | null
+  onSelectSuggestion?: (s: Suggestion) => void
 }) {
   const clock = useClock()
   const track = useRef<HTMLDivElement>(null)
@@ -146,8 +152,49 @@ export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSele
           })}
         </div>
 
-        {/* Tags: the player number (S before it for a serve) in the team's colour; outside rallies dimmed */}
+        {/* Actions: recognised by the action model, in the team's colour when known; click to seek */}
+        <div className="relative h-6 border-b border-line" data-testid="lane-actions">
+          {actions.map((a, i) => {
+            const who = a.number != null ? `#${a.number}` : a.track_id != null ? `ID ${a.track_id}` : 'unknown player'
+            const label = `${a.action} by ${who}${a.team ? ` (${a.team.toUpperCase()})` : ''} at ${a.start_s.toFixed(1)} s`
+            return (
+              <button
+                key={i}
+                type="button"
+                data-testid="action-mark"
+                title={label}
+                aria-label={label}
+                onClick={() => clock.seek(a.start_s)}
+                className={`absolute top-1/2 -translate-y-1/2 rounded-[2px] px-0.5 font-mono text-[10px] leading-none ${a.team === 'a' ? 'text-team-a' : a.team === 'b' ? 'text-team-b' : 'text-ink-muted'}`}
+                style={{ left: pct(a.start_s) }}
+              >
+                {ACTION_SHORT[a.action]}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Tags: the player number (S before it for a serve) in the team's colour; outside rallies dimmed.
+            Open suggestions are dashed and never counted until accepted. */}
         <div className="relative h-6 border-b border-line" data-testid="lane-tags">
+          {suggestions.filter((s) => s.status === 'open').map((s) => {
+            const label = `Suggested ${s.kind}${s.number != null ? ` by ${s.number}` : ''} at ${s.time_s.toFixed(1)} s`
+            return (
+              <button
+                key={s.id}
+                type="button"
+                data-testid="suggestion-mark"
+                title={label}
+                aria-label={label}
+                aria-pressed={s.id === selectedSuggestion}
+                onClick={() => onSelectSuggestion?.(s)}
+                className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[2px] border border-dashed border-ink-muted px-0.5 font-mono text-[11px] leading-none text-ink-muted ${s.id === selectedSuggestion ? 'outline-2 outline-offset-1 outline-accent' : ''}`}
+                style={{ left: pct(s.time_s) }}
+              >
+                {s.kind === 'serve' ? 'S' : ''}{s.number ?? '?'}
+              </button>
+            )
+          })}
           {tags.map((t) => (
             <button
               key={t.id}

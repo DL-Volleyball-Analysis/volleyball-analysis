@@ -1,14 +1,15 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useJobStream } from '../api/jobStream'
-import { useAddTag, useCorrectRally, useDeleteTag, usePatchTag, useRallies, useStages, useTags, useVideo } from '../api/queries'
-import type { Rally, Tag, TagKind, Team } from '../api/types'
+import { useActions, useAddTag, useCorrectRally, useDeleteTag, useDismissSuggestion, usePatchTag, useRallies, useStages, useTags, useVideo } from '../api/queries'
+import type { Rally, Suggestion, Tag, TagKind, Team } from '../api/types'
 import { BoardPanel } from '../board/BoardPanel'
 import { CourtMap } from '../court/CourtMap'
 import { ClockContext, createClock, useClock } from '../playback/clock'
 import { useRallyAt } from '../playback/useRallyAt'
 import { StatsPanel } from '../stats/StatsPanel'
 import { TagEntry } from '../stats/TagEntry'
+import { SuggestionCard } from '../stats/SuggestionCard'
 import { TagInspector } from '../stats/TagInspector'
 import { useTagShortcuts } from '../stats/useTagShortcuts'
 import { BreakableName } from '../ui/BreakableName'
@@ -56,12 +57,17 @@ function MatchView({ id }: { id: string }) {
   const [entry, setEntry] = useState<{ kind: TagKind; timeS: number } | null>(null)
   const [lastTeam, setLastTeam] = useState<Team>('a')
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
+  const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null)
+  const actionsAvailable = stages.data?.find((s) => s.name === 'actions')?.status === 'done'
+  const actionsQ = useActions(id, actionsAvailable)
+  const dismiss = useDismissSuggestion(id)
 
   const seekTo = useCallback((r: Rally) => clock.seek(r.start_s), [clock])
   const correct = useCallback((idx: number, winner: Team | null) => correction.mutate({ idx, winner }), [correction])
   useReviewShortcuts({ rallies, index: pos.index, clock, correct })
   const startTag = useCallback((kind: TagKind, timeS: number) => {
     setSelectedTag(null)
+    setSelectedSuggestion(null)
     setEntry({ kind, timeS })
   }, [])
   useTagShortcuts({ clock, onStart: startTag })
@@ -72,10 +78,18 @@ function MatchView({ id }: { id: string }) {
   }
   const selectTag = useCallback((t: Tag) => {
     setEntry(null)
+    setSelectedSuggestion(null)
     setSelectedTag(t.id)
     clock.seek(t.time_s)
   }, [clock])
+  const selectSuggestion = useCallback((s: Suggestion) => {
+    setEntry(null)
+    setSelectedTag(null)
+    setSelectedSuggestion(s.id)
+    clock.seek(s.time_s)
+  }, [clock])
   const tag = tags.find((t) => t.id === selectedTag)
+  const suggestion = actionsQ.data?.suggestions.find((s) => s.id === selectedSuggestion && s.status === 'open')
   const tagError = addTag.error ?? patchTag.error ?? deleteTag.error
 
   if (video.isPending) return <p className="text-ink-muted">Loading match…</p>
@@ -117,9 +131,15 @@ function MatchView({ id }: { id: string }) {
             </div>
           </div>
           <aside className="border-t border-line lg:border-t-0 lg:border-l">
-            {(entry || tag) && (
+            {(entry || tag || suggestion) && (
               <div className="border-b border-line px-4 py-3">
-                {entry ? (
+                {suggestion ? (
+                  <SuggestionCard key={suggestion.id} suggestion={suggestion} saving={addTag.isPending}
+                    onAccept={(team, number) => addTag.mutate({ time_s: suggestion.time_s, kind: suggestion.kind, team, number },
+                      { onSuccess: () => setSelectedSuggestion(null) })}
+                    onDismiss={() => dismiss.mutate(suggestion.id, { onSuccess: () => setSelectedSuggestion(null) })}
+                    onClose={() => setSelectedSuggestion(null)} />
+                ) : entry ? (
                   <TagEntry kind={entry.kind} timeS={entry.timeS} defaultTeam={lastTeam} saving={addTag.isPending}
                     onSave={saveTag} onCancel={() => setEntry(null)} />
                 ) : tag ? (
@@ -159,7 +179,9 @@ function MatchView({ id }: { id: string }) {
 
         <div className="border-t border-line">
           <MatchTimeline videoId={v.id} rallies={rallies} duration={duration} currentIndex={pos.index} onSelect={seekTo}
-            tags={tags} selectedTag={selectedTag} onSelectTag={selectTag} />
+            tags={tags} selectedTag={selectedTag} onSelectTag={selectTag}
+            actions={actionsQ.data?.events} suggestions={actionsQ.data?.suggestions}
+            selectedSuggestion={selectedSuggestion} onSelectSuggestion={selectSuggestion} />
         </div>
       </div>
 

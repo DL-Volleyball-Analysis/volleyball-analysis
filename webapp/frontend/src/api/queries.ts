@@ -18,6 +18,7 @@ export const keys = {
   stats: (id: string) => ['video', id, 'stats'] as const,
   flights: (id: string, start: number, end: number) => ['video', id, 'flights', start, end] as const,
   players: (id: string, start: number, end: number) => ['video', id, 'players', start, end] as const,
+  actions: (id: string) => ['video', id, 'actions'] as const,
 }
 
 /** Ball data is fetched in fixed windows so a long match is never loaded at once. */
@@ -105,6 +106,7 @@ function useTagMutation<V>(id: string, fn: (v: V) => Promise<Tag[]>) {
       qc.setQueryData(keys.tags(id), tags)
       qc.invalidateQueries({ queryKey: keys.stats(id) })
       qc.invalidateQueries({ queryKey: keys.roster(id) })
+      qc.invalidateQueries({ queryKey: keys.actions(id) }) // a tag can accept a suggestion
     },
   })
 }
@@ -132,3 +134,15 @@ export const useFlights = (id: string, start: number, end: number, enabled = tru
 /** Player boxes and court positions of a time range; 404 until the players stage has run. */
 export const usePlayers = (id: string, start: number, end: number, enabled = true) =>
   useQuery({ queryKey: keys.players(id, start, end), queryFn: () => api.players(id, start, end), enabled, retry: false })
+
+/** Action events, shirt numbers and suggested tags; 404 until the actions stage ran (no retry). */
+export const useActions = (id: string, enabled = true) =>
+  useQuery({ queryKey: keys.actions(id), queryFn: () => api.actions(id), enabled, retry: false })
+
+export function useDismissSuggestion(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (sid: string) => api.dismissSuggestion(id, sid),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.actions(id) }),
+  })
+}

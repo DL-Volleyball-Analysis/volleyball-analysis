@@ -21,6 +21,7 @@ beforeEach(() => {
   vi.stubGlobal('cancelAnimationFrame', () => {})
   fakeApi({
     'GET /api/videos/v1/ball': () => ({ body: { fps: 25, frame: [8, 9, 10], x: [100, 110, 120], y: [50, 52, 54] } }),
+    'GET /api/videos/v1/actions': () => ({ body: { events: [], suggestions: [], numbers: [{ track_id: 7, number: 4, share: 1, readings: 5 }] } }),
     'GET /api/videos/v1/players': () => ({ body: { fps: 25, placed: false, boxes: [
       { frame: 10, track_id: 7, x1: 200, y1: 100, x2: 260, y2: 300, interpolated: false, court_x: null, court_y: null, side: null, role: 'player' },
       { frame: 10, track_id: 9, x1: 400, y1: 100, x2: 460, y2: 300, interpolated: false, court_x: null, court_y: null, side: null, role: 'other' },
@@ -89,7 +90,8 @@ test('player boxes of the current frame are drawn when that layer is on, even wi
   })
   // track 7 at frame 10 (x 200..260, y 100..300 in a 1920 x 1080 video) at half scale; track 8 is another frame
   expect(ctx.strokeRect).toHaveBeenCalledWith(100, 50, 30, 100)
-  expect(ctx.fillText).toHaveBeenCalledWith('ID 7', expect.any(Number), expect.any(Number)) // a tracking id, not a shirt number
+  // track 7's shirt number is known once the actions load: '#4' instead of its tracking id
+  await vi.waitFor(() => { step(); expect(ctx.fillText).toHaveBeenCalledWith('#4', expect.any(Number), expect.any(Number)) })
   expect(ctx.fillText).not.toHaveBeenCalledWith('ID 8', expect.any(Number), expect.any(Number))
   expect(ctx.strokeRect).toHaveBeenCalledWith(200, 50, 30, 100) // the referee is drawn (faint) ...
   expect(ctx.fillText).not.toHaveBeenCalledWith('ID 9', expect.any(Number), expect.any(Number)) // ... but not labelled
