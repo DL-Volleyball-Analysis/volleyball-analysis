@@ -1,0 +1,29 @@
+class distribution
+train   18616 images,  16878 boxes, 4219 images without a box (22.7%), up to 5 boxes in one image
+    block      4608 boxes (27.3%) in   2952 images
+    receive     984 boxes ( 5.8%) in    969 images
+    serve      2348 boxes (13.9%) in   2348 images
+    set        4147 boxes (24.6%) in   4136 images
+    spike      4791 boxes (28.4%) in   4789 images
+valid    3636 images,   3129 boxes, 1207 images without a box (33.2%), up to 4 boxes in one image
+    block      1072 boxes (34.3%) in    807 images
+    receive     277 boxes ( 8.9%) in    277 images
+    serve       340 boxes (10.9%) in    340 images
+    set         495 boxes (15.8%) in    494 images
+    spike       945 boxes (30.2%) in    944 images
+test     2554 images,   2269 boxes, 593 images without a box (23.2%), up to 4 boxes in one image
+    block       574 boxes (25.3%) in    358 images
+    receive     157 boxes ( 6.9%) in    154 images
+    serve       275 boxes (12.1%) in    275 images
+    set         550 boxes (24.2%) in    548 images
+    spike       713 boxes (31.4%) in    713 images
+test split: 2554 images
+training split: 18616 images from 11 named sources
+test images with a source video name: 1222; of those, from a video also in training: 1222 (100%)
+                   all       2554       2269      0.952      0.937      0.957       0.79
+test mAP@0.5 0.957, mAP@0.5:0.95 0.790, precision 0.952, recall 0.937
+  block    AP@0.5 0.987  AP@0.5:0.95 0.797
+  receive  AP@0.5 0.863  AP@0.5:0.95 0.679
+  serve    AP@0.5 0.967  AP@0.5:0.95 0.751
+  set      AP@0.5 0.976  AP@0.5:0.95 0.845
+  spike    AP@0.5 0.991  AP@0.5:0.95 0.879

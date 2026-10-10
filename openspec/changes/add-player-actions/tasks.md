@@ -2,8 +2,8 @@
 
 ## 1. Measure the capstone models
 
-- [ ] 1.1 Copy the action and jersey weights into `models/` (`action_yolo11m.pt`, `jersey_digits_yolov8m.pt`) and record their source runs in `docs/results/actions.md`
-- [ ] 1.2 Write `scripts/eval_actions.py` (download the test split, `model.val`) and record per-class and overall mAP@0.5 and split size
+- [x] 1.1 Copy the action and jersey weights into `models/` (`action_yolo11m.pt`, `jersey_digits_yolov8m.pt`) and record their source runs in `docs/results/actions.md`
+- [x] 1.2 Write `scripts/eval_actions.py` (download the test split, `model.val`) and record per-class and overall mAP@0.5 and split size
 - [ ] 1.3 Write `scripts/eval_jersey.py` (digit mAP on the test split; whole-number accuracy by composing digits) and record both
 
 ## 2. `vball.actions` and `vball.jersey`
