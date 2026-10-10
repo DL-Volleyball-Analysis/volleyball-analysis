@@ -112,3 +112,13 @@ mAP@0.5 **0.824**, mAP@0.5:0.95 0.519, precision 0.809, recall 0.740.
 3.1%. The most common error drops one digit of a two-digit number (19 -> 1, 11 -> 1, 15 -> 1, 17 -> 7), then
 look-alike digits (18 -> 16, 5 -> 9). The web app votes over a track's readings (at least 3, 60% agreeing), which
 should raise accuracy per player; that is not measured yet (no labelled tracks with numbers).
+
+## On the evaluation clips (2026-10-11)
+The actions stage now runs with both models installed. Per clip: 8-21 action events, 1-8 tracks with a shirt
+number. Checked by eye on the rendered back view (Tokyo 2020, no usable court) at 4.1 s:
+- right: the libero labelled #27, a red #24, and "ID 10 spike" on the attacker (action right, number not read, so
+  no guess);
+- wrong: "#27 block" on the blue #14 at the net. Track 6 voted #27 from earlier frames: the tracker swapped
+  identities between players, and the vote keeps the old number. Two tracks were also both voted #7 and two #27.
+Next: split a track where its readings change consistently (an identity switch) before voting, and measure
+number accuracy per player once a clip has labelled numbers.

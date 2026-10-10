@@ -23,7 +23,7 @@
 
 - [ ] 4.1 Numbers on overlay boxes and the court map, `ID n` otherwise; verify component tests (overlay done 2026-10-11; court map labels still to do)
 - [x] 4.2 Actions timeline lane; verify component tests
-- [ ] 4.3 Numbers and action labels in `render.py`; render one evaluation clip and check numbers against the shirts by eye
+- [x] 4.3 Numbers and action labels in `render.py`; render one evaluation clip and check numbers against the shirts by eye (2026-10-11: #27 libero and #24 right, one wrong number after a tracker identity switch; see docs/results/actions.md)
 
 ## 5. Suggested tags
 

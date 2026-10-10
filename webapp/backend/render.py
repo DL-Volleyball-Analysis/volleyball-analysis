@@ -35,6 +35,7 @@ def load(vid: str) -> dict:
     out["ball_df"] = pd.read_csv(res / "ball.csv") if (res / "ball.csv").exists() else None
     out["players_df"] = pd.read_csv(res / "players.csv.gz") if (res / "players.csv.gz").exists() else None
     out["flights"] = json.loads((res / "flights.json").read_text()) if (res / "flights.json").exists() else []
+    out["actions"] = json.loads((res / "action_events.json").read_text()) if (res / "action_events.json").exists() else {}
     return out
 
 
@@ -96,6 +97,12 @@ def render(vid: str, path: Path, out: Path) -> Path:
     by_frame = {f: g for f, g in pdf.groupby("frame")} if pdf is not None else {}
     court = r["court"] if r["court"] and r["court"].get("status") == "done" else None
     cmap = CourtMap(int(w * 0.24))
+    shirt = {int(t): n["number"] for t, n in (r["actions"].get("numbers") or {}).items() if n.get("number") is not None}
+    doing: dict[tuple[int, int], str] = {}  # (track, frame) -> action, for the frames of each event
+    for e in r["actions"].get("events") or []:
+        if e.get("track_id") is not None:
+            for f in range(e["start_frame"], e["end_frame"] + 1):
+                doing[(int(e["track_id"]), f)] = e["action"]
     scale = h / 1080
     trail = int(TRAIL_S * fps)
 
@@ -123,8 +130,11 @@ def render(vid: str, path: Path, out: Path) -> Path:
             col = TEAM.get(side, WHITE) if row.placed else WHITE
             cv2.rectangle(img, p1, p2, EDGE, max(2, int(3 * scale)))
             cv2.rectangle(img, p1, p2, col, max(1, int(1.5 * scale)))
-            # a tracking id, not the shirt number
-            text(img, f"ID {int(row.track_id)}", (p1[0], p1[1] - int(6 * scale)), 0.5 * scale)
+            tid = int(row.track_id)
+            label = f"#{shirt[tid]}" if tid in shirt else f"ID {tid}"  # shirt number when the vote is clear
+            if (tid, i) in doing:
+                label += f" {doing[(tid, i)]}"
+            text(img, label, (p1[0], p1[1] - int(6 * scale)), 0.5 * scale)
             if row.placed and not np.isnan(row.court_x):
                 people.append((row.court_x, row.court_y, side))
         if others:
@@ -151,7 +161,7 @@ def render(vid: str, path: Path, out: Path) -> Path:
         img[:bar.shape[0]] = (img[:bar.shape[0]] * 0.35).astype(np.uint8)
         court_txt = COURT_STATUS.get(status, "no court model") if court else "court: not available"
         placed = "positions on the map" if people else "no court positions (court not usable)"
-        text(img, f"{i / fps:5.1f} s   ball: VballNet V4c   players: YOLO26s + BoT-SORT (ID = tracking id), {placed}   {court_txt}",
+        text(img, f"{i / fps:5.1f} s   ball: VballNet V4c   players: YOLO26s + BoT-SORT (#n shirt, ID n tracking id), {placed}   {court_txt}",
              (int(14 * scale), int(29 * scale)), 0.62 * scale)
         writer.write(img)
     cap.release()
