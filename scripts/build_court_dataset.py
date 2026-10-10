@@ -1,4 +1,4 @@
-"""Build the court keypoint training set (v3) for Colab and zip it to Google Drive.
+"""Build the court keypoint training set (v3b) for Colab and zip it to Google Drive.
 
 - train / valid / test: volleyball-court-keypoints-k6y7r (14 points, image-based numbering).
 - train also gets VNL broadcast clips one-three (every 2nd frame): their 4 labelled front-zone corners
@@ -6,6 +6,10 @@
   points outside the image and the net points are left unlabelled (see the change's design.md).
 - test_vnl: VNL clips four and five, completed the same way, never used for training. They share the
   broadcast with the training clips, so they are not unseen cameras.
+- Boxes (v3b): every label's box is recomputed by one rule, the bounding box of its visible keypoints plus
+  a 1% margin. v3 kept the k6y7r annotators' boxes (median 2.8x, p90 24x the floor-point extent) next to
+  tight computed boxes for VNL (1.1x); a pose model regresses keypoints relative to its box, so the two
+  conventions conflicted.
 
 Usage: .venv/bin/python scripts/build_court_dataset.py [--no-drive]
 """
@@ -25,10 +29,10 @@ from vball.paths import DATASETS  # noqa: E402
 
 K6Y7R = DATASETS / "volleyball-court-keypoints-k6y7r-v1"
 VNL = DATASETS / "volleyball_court_key_points_regression_dataset-v7"
-OUT = DATASETS / "court_keypoints_v3"
+OUT = DATASETS / "court_keypoints_v3b"
 # The Google Drive desktop folder: VBALL_DRIVE_ACCOUNT if set, else the only Drive account found.
 DRIVE_ACCOUNT_ENV = "VBALL_DRIVE_ACCOUNT"
-DRIVE_RELPATH = "volleyball/datasets/court_keypoints_v3.zip"  # Colab: /content/drive/MyDrive/<this>
+DRIVE_RELPATH = "volleyball/datasets/court_keypoints_v3b.zip"  # Colab: /content/drive/MyDrive/<this>
 VNL_TRAIN_CLIPS = ("clip_one", "clip_two", "clip_three")
 VNL_TEST_CLIPS = ("clip_four", "clip_five")
 VNL_TRAIN_EVERY = 2  # consecutive frames are near duplicates; keep VNL from outweighing k6y7r
@@ -49,9 +53,33 @@ def drive_root() -> Path:
 K = len(K6Y7R_FLIP_IDX)
 
 
+BOX_MARGIN = 0.01  # normalised
+
+
+def keypoint_box(kp: np.ndarray) -> list[float]:
+    """(cx, cy, w, h) normalised: bounding box of the visible keypoints plus a margin, inside the image."""
+    vis = kp[kp[:, 2] > 0, :2]
+    x0, y0 = np.clip(vis.min(0) - BOX_MARGIN, 0, 1)
+    x1, y1 = np.clip(vis.max(0) + BOX_MARGIN, 0, 1)
+    return [(x0 + x1) / 2, (y0 + y1) / 2, x1 - x0, y1 - y0]
+
+
+def label_row(cls: str, kp: np.ndarray) -> str:
+    return " ".join([cls] + [f"{b:.6g}" for b in keypoint_box(kp)] + [f"{x:.6g}" for x in kp.ravel()])
+
+
 def copy_split(src: Path, dst: Path) -> int:
+    """k6y7r images as they are; labels with the box recomputed from the keypoints."""
     shutil.copytree(src / "images", dst / "images")
-    shutil.copytree(src / "labels", dst / "labels")
+    (dst / "labels").mkdir(parents=True)
+    for label in (src / "labels").glob("*.txt"):
+        rows = []
+        for line in label.read_text().splitlines():
+            v = line.split()
+            if not v:
+                continue
+            rows.append(label_row(v[0], np.array(v[5:5 + 3 * K], float).reshape(K, 3)))
+        (dst / "labels" / label.name).write_text("\n".join(rows) + "\n")
     return len(list((dst / "images").iterdir()))
 
 
@@ -80,11 +108,7 @@ def completed_label(label: Path, w: int, h: int) -> str:
     inside = (floor[:, 0] >= 0) & (floor[:, 0] <= 1) & (floor[:, 1] >= 0) & (floor[:, 1] <= 1)
     kp[:10, :2] = np.where(inside[:, None], floor, 0)
     kp[:10, 2] = np.where(inside, 2, 0)
-    vis = kp[:10][inside, :2]
-    x0, y0 = np.clip(vis.min(0) - 0.01, 0, 1)
-    x1, y1 = np.clip(vis.max(0) + 0.01, 0, 1)
-    box = [(x0 + x1) / 2, (y0 + y1) / 2, x1 - x0, y1 - y0]
-    return " ".join([v[0]] + [f"{b:.6g}" for b in box] + [f"{x:.6g}" for x in kp.ravel()])
+    return label_row(v[0], kp)
 
 
 def add_vnl(dst: Path, clips: tuple[str, ...], every: int) -> int:

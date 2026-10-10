@@ -35,3 +35,10 @@ mAP50 about 0.1 at epoch 103, against about 0.3 for v1 at the same epoch). Train
 selected on the k6y7r validation split. If k6y7r stays worse than v2 at the end, the next run (v3b) samples
 broadcast frames sparsely (every 6th frame) so they do not dominate: amateur footage, the product's target,
 looks more like k6y7r than like broadcast.
+
+## v3b (2026-10-10): one box convention
+Checking the v3 labels showed two box conventions: the k6y7r annotators' boxes are median 2.8x (p90 24x) the
+extent of the floor keypoints, while the boxes computed for the completed broadcast labels are 1.1x. A pose
+model regresses keypoints relative to its box, so the mix plausibly explains why v3 fitted the broadcast clips
+and not k6y7r. v3b recomputes every box as the keypoints' bounding box plus a 1% margin (checked: ratio 1.00
+for both sources, keypoints unchanged) and changes nothing else, fine-tuning from v3's epoch-103 weights.
