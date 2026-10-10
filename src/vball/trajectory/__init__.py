@@ -304,15 +304,17 @@ def implausible(f: "FlightFit", positions: np.ndarray, cfg: FlightConfig = Fligh
 
 
 def reconstruct(cam: Camera, uv: np.ndarray, fps: float, cfg: FlightConfig = FlightConfig(),
-                rejected: list | None = None) -> list[dict]:
+                rejected: list | None = None, players_at=None) -> list[dict]:
     """Segment a track and fit every flight. Each item: the fit, positions for every frame of the
     flight with an observed flag, and the derived values. Physically impossible fits are left out; when a
-    list is passed as `rejected`, their (start, end, reason) are appended to it."""
+    list is passed as `rejected`, their (start, end, reason) are appended to it. players_at: optional
+    frame -> (K, 2) court positions of the players placed in that frame, for player-anchored touches."""
     uv = np.asarray(uv, float)
     out = []
     for fl in segment(uv, cfg):
         try:
-            f = fit(cam, uv, fl, fps, cfg)
+            pat = {"start": players_at(fl.start), "end": players_at(fl.end)} if players_at else None
+            f = fit(cam, uv, fl, fps, cfg, players_at=pat)
         except ValueError as e:  # no starting point (a camera whose rays miss the court heights)
             if rejected is not None:
                 rejected.append((fl.start, fl.end, str(e)))

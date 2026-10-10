@@ -93,3 +93,19 @@ boundaries, a player about 0.3 m from each touch's ground point. Median 3D error
   hall and marked low quality instead of drawn at the lens).
 - Synthetic players stand at the touch; on real footage the nearest player to the ray may not be the one who
   touched the ball, which the real-clip report has to show.
+
+## Real clips with the constrained fit (2026-10-11)
+Trajectory stage version 3 (robust refit, bounds, player anchors from the players placed on court). Only the two
+high side views have a usable court; the men's calibration is the v3b one chosen per shot.
+
+| Clip | Segmented | Kept (all low quality) | Rejected as impossible | Kept and anchored |
+|---|---|---|---|---|
+| side_high_women | 9 | 5 (was 0) | 4 | 5 |
+| side_high_men | 3 | 1 (was 0) | 2 | 1 |
+
+- The kept flights now lie on court: starts at 2-3 m height inside the court, speeds 3-18 m/s, no fit at the camera.
+- Two women's flights fit to 2.6-2.8 px with both ends anchored; they stay low quality only on depth (sd 0.68 and
+  1.30 m against 0.5 m). The others have residuals of 10-120 px: their segments mix flights or carry many false
+  detections, which no fit can explain.
+- The bottleneck has moved from the fit to the 2D ball track and its segmentation (change `measure-ball-2d`): on
+  the men's clip 72% of frames have no detection.

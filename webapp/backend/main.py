@@ -167,6 +167,8 @@ class Flight(BaseModel):
     net_crossing: NetCrossing | None
     landing: Landing | None
     samples: list[FlightSample]
+    anchors: list[Literal["start", "end"]] = []  # touches pulled toward a player's court position
+    dropped: int = 0                              # detections left out as inconsistent with the flight
 
 
 class ImportRequest(BaseModel):
@@ -391,7 +393,8 @@ def flight_out(f: dict, fps: float, seen: np.ndarray, source: str) -> Flight:
                   if d.get("net_crossing") else None,
                   landing=Landing(x_m=round(d["landing"]["x_m"], 2), y_m=round(d["landing"]["y_m"], 2)) if d.get("landing") else None,
                   samples=[FlightSample(t=round(float(fr / fps), 3), x=round(float(p[0]), 3), y=round(float(p[1]), 3),
-                                        z=round(float(p[2]), 3), observed=o) for fr, p, o in zip(frames, pos, obs)])
+                                        z=round(float(p[2]), 3), observed=o) for fr, p, o in zip(frames, pos, obs)],
+                  anchors=f.get("anchors", []), dropped=f.get("dropped", 0))
 
 
 @app.get("/videos/{vid}/flights", response_model=list[Flight])

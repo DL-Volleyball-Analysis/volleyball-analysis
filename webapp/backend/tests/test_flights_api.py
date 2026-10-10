@@ -63,6 +63,7 @@ def test_court_stage_to_3d_flights_end_to_end(client, clip, calibrated):
         err = np.linalg.norm(pos - ARC.positions[first:first + len(pos)], axis=1)
         assert np.median(err) < 0.05  # noise-free detections
         assert all(s["observed"] for s in f["samples"])
+        assert f["dropped"] == 0 and isinstance(f["anchors"], list)  # clean detections; anchors need placed players
     assert any(f["net_crossing"] and f["net_crossing"]["height_m"] > 1.0 for f in flights)
 
 
