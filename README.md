@@ -42,20 +42,13 @@ Every number comes from a script and a labelled split, or is named a proxy or sy
 
 | Component | Result | Evidence |
 |---|---|---|
-| Court registration | 0.49 m median court-position error on held-out images (target 0.3 m); 1.35 m on broadcast clips. A floor-net consistency check flags wrong courts (3 of 5 evaluation clips flagged, all wrong by eye). Model v3b training. | labelled test images · [court-keypoints.md](docs/results/court-keypoints.md) |
+| Court registration | 0.10 m median court-position error on held-out broadcast clips (96% within 0.3 m); 0.49 m on held-out gym images. A floor-net consistency check flags wrong courts. | labelled test images · [court-keypoints.md](docs/results/court-keypoints.md) |
 | Player tracking | IDF1 0.484, HOTA 0.467 on SportsMOT volleyball (target IDF1 0.70); 39% of detections are people off court. | labelled benchmark · [player-tracking.md](docs/results/player-tracking.md) |
-| Ball tracking | VballNet V4c: 2.7× fewer false jumps than the capstone model; ~28% detection on wide high-angle shots. | label-free proxy · [ball-tracking.md](docs/results/ball-tracking.md) |
+| Ball tracking | VballNet V4c: 3.08 false jumps per 100 frames, 68.7% of frames detected on 5 broadcast clips; ~28% detection on wide high-angle shots. | label-free proxy · [ball-tracking.md](docs/results/ball-tracking.md) |
 | 3D trajectory | 0.05 m median error on a synthetic serve; spikes flagged low quality. Real footage waits for a better court model: impossible fits are dropped, not drawn. | synthetic · [trajectory.md](docs/results/trajectory.md) |
-| Action recognition (capstone YOLOv11m) | mAP@0.5 0.957 on the test split, receive weakest (0.863). Test frames come from the same matches as training, so not an unseen-match score. | labelled test split · [actions.md](docs/results/actions.md) |
-| Shirt numbers (capstone YOLOv8m) | Not usable: the capstone merge mislabelled balls, players and whole numbers as digits 0-2. Retraining planned. | [actions.md](docs/results/actions.md) |
+| Action recognition (YOLOv11m) | mAP@0.5 0.957 on the test split, receive weakest (0.863). Test frames come from the same matches as training, so not an unseen-match score. | labelled test split · [actions.md](docs/results/actions.md) |
+| Shirt numbers | Digit detector being retrained on 5,720 crops, tested on matches whose teams it never saw. | [actions.md](docs/results/actions.md) |
 | Player statistics | Attack efficiency, kill rate, aces and serve errors per player from coach tags, CSV export. | tests · [player-stats.md](docs/prd/player-stats.md) |
-
-<table>
-  <tr>
-    <td width="50%"><img src="docs/assets/chart-court.png" alt="Court keypoint error by model version"><br><sub>Court position error by model version (log scale).</sub></td>
-    <td width="50%"><img src="docs/assets/chart-tracking.png" alt="Player tracking IDF1 by detector size, resolution and tracker"><br><sub>Detector and tracker grid on SportsMOT volleyball (before the gap fix; the pipeline setting, s 960 BoT-SORT, now scores 0.484).</sub></td>
-  </tr>
-</table>
 
 ## Review app
 

@@ -8,19 +8,19 @@
 
 ## 2. Truthful claims
 
-- [ ] 2.1 Add `lib/claims.ts` with required sources and render `Stats` from it; verify the build fails type-checking if an entry has no source
-- [ ] 2.2 Fill the initial entries from `outputs/ball_model_comparison/metrics.csv` and the upstream benchmark; verify each value against its source file
-- [ ] 2.3 Remove the unsourced stats and the "automatic court detection" claim from both languages; verify `grep` finds no "98.5" or "100K" in the repo
+- [x] 2.1 Add `lib/claims.ts` with required sources and render `Stats` from it; verify the build fails type-checking if an entry has no source (done as `CLAIMS` in `lib/site/content.ts`; `source` is a required field of `Claim`)
+- [x] 2.2 Fill the initial entries from `outputs/ball_model_comparison/metrics.csv` and the upstream benchmark; verify each value against its source file (2026-10-11: ball, court, player tracking, synthetic 3D, actions; each links its docs/results file)
+- [x] 2.3 Remove the unsourced stats and the "automatic court detection" claim from both languages; verify `grep` finds no "98.5" or "100K" in the repo (0 hits, 2026-10-11)
 
 ## 3. Copy and sections
 
-- [ ] 3.1 Add feature status and milestone; rewrite feature and how-it-works copy (EN + ZH) for the current pipeline; verify every available feature exists in the web app
-- [ ] 3.2 Add the Research section with links to PRD, specs and repos; verify all links resolve
-- [ ] 3.3 Verify every section renders in both languages with no missing translation keys (type check on `translations.ts`)
+- [x] 3.1 Add feature status and milestone; rewrite feature and how-it-works copy (EN + ZH) for the current pipeline; verify every available feature exists in the web app
+- [x] 3.2 Add the Research section with links to PRD, specs and repos; verify all links resolve (checked 2026-10-11)
+- [x] 3.3 Verify every section renders in both languages with no missing translation keys (type check on `lib/site/content.ts`: every string is a `{ en, zh }` pair)
 
 ## 4. Performance
 
-- [ ] 4.1 Lazy-load the hero video with a poster frame and verify in the network panel that the video is not requested before it is near the viewport
+- [x] 4.1 Lazy-load the hero video with a poster frame and verify in the network panel that the video is not requested before it is near the viewport (the hero became an interactive drawing; the real analysis clip uses `preload="none"` and a poster, so it loads only when played)
 - [ ] 4.2 Verify initial load < 2 MB and Lighthouse mobile performance and accessibility ≥ 90; record the numbers in the repo README
 
 ## 5. After M2
