@@ -47,6 +47,12 @@
 - [ ] 5.4 Verify a rerun from `decode` keeps the correction (test)
 - [ ] 5.5 Update the web app `docs/architecture/ARCHITECTURE.md` API table and verify the endpoints listed match `/openapi.json`
 
+## 5b. Model per shot
+
+- [x] 5b.1 Add `court_registration.pick` and verify unit tests for the status order and the tie-breaks
+- [x] 5b.2 Run every installed court model in the court stage (one decode pass), record the model per shot, and verify a backend test where each of two shots is won by a different fake model
+- [ ] 5b.3 Install v3b as `court_kpt_broadcast.pt`, rerun the court stage on the 5 clips, and record which model each shot used and the status against the eye
+
 ## 6. Integration
 
 - [ ] 6.1 Switch `scripts/detect_court.py` to the learned model, render overlays for the 5 clips, and verify by eye that at least 4 of 5 are correct (currently 1 of 5); record the result in README

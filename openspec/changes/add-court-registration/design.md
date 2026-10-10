@@ -88,6 +88,15 @@ bend toward them (a first try that calibrated on all 14 points let the robust lo
 On the evaluation clips: 58-116 px for the three shots wrong by eye, 9-14 px for the two right ones; threshold
 1.5% of the width (~29 px at 1080p).
 
+### Model per shot (2026-10-11)
+v3b reaches 0.10 m on held-out broadcast clips but 7.28 m on gym images; v2 is the reverse (0.49 m gym, 1.43 m
+broadcast with half the frames unfitted). Rather than wait for one model that does both, the court stage runs
+every installed model (`court_kpt.pt` = v2, `court_kpt_broadcast.pt` = v3b) on the same sampled frames (one
+decode pass) and `court_registration.pick` keeps, per shot, the best status, then the lower floor-net
+consistency, then the lower fit error. The consistency check needs no labels and already rejected v2's wrong
+back-view courts, so it is the natural referee. Cost: one more keypoint inference per sample (court stage about
+0.4x -> 0.8x video duration, small next to player tracking).
+
 ### Shot status
 - `failed`: fewer than 2 valid samples in the shot.
 - `needs_review`: median error above the configured threshold, fewer than half of the samples valid, or consistency above its threshold.

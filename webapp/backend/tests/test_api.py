@@ -34,7 +34,7 @@ def test_rejects_non_video(client):
 
 def test_pipeline_stages_and_ball_window(client, clip, fake_ball, monkeypatch, tmp_path):
     import pipeline
-    monkeypatch.setattr(pipeline, "COURT_MODEL", tmp_path / "missing.pt")  # independent of models/
+    monkeypatch.setattr(pipeline, "COURT_MODELS", {"gym": tmp_path / "missing.pt"})  # independent of models/
     v = upload(client, clip)
     job = run_worker_once()
     assert job["status"] == "done", job["error"]

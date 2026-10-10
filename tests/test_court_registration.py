@@ -151,3 +151,21 @@ def test_later_stages_only_use_shots_that_are_ok():
     assert shot["status"] == "needs_review"
     assert mapping_at(court, 10, SIZE) is None and calibration_samples(court, 0, 30) == []
     assert mapping_at(court, 10, SIZE, statuses=("ok", "needs_review")) is not None  # still there for review
+
+
+def test_pick_prefers_status_then_consistency_then_error():
+    from vball.court_registration import pick
+    def shot(status, consistency=None, error=None):
+        return {"start_frame": 0, "end_frame": 9, "status": status, "consistency": consistency, "error": error, "samples": []}
+    shots = pick({
+        "gym": [shot("ok", 0.010, 0.002), shot("needs_review", 0.05, 0.001), shot("failed"), shot("ok", 0.004, 0.003)],
+        "broadcast": [shot("needs_review", 0.001, 0.001), shot("ok", 0.012, 0.004), shot("failed"), shot("ok", 0.004, 0.001)],
+    })
+    assert [s["model"] for s in shots] == ["gym", "broadcast", "gym", "broadcast"]
+    assert shots[0]["status"] == "ok" and shots[1]["status"] == "ok"
+
+
+def test_pick_with_one_model_keeps_its_shots():
+    from vball.court_registration import pick
+    one = [{"start_frame": 0, "end_frame": 9, "status": "failed", "consistency": None, "error": None, "samples": []}]
+    assert pick({"v2": one}) == [{**one[0], "model": "v2"}] and pick({}) == []

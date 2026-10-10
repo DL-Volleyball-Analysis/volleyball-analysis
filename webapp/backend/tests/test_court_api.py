@@ -17,14 +17,14 @@ def installed(monkeypatch, tmp_path):
     import pipeline
     weights = tmp_path / "court_kpt.pt"
     weights.write_bytes(b"")
-    monkeypatch.setattr(pipeline, "COURT_MODEL", weights)
+    monkeypatch.setattr(pipeline, "COURT_MODELS", {"gym": weights})
     return pipeline
 
 
 def test_court_found_in_every_shot(client, clip, fake_ball, installed, monkeypatch):
     seen = []
 
-    def detector():
+    def detector(weights):
         def detect(frame):
             seen.append(frame.shape)
             return np.column_stack([CAM.project(k6y7r_points_3d()), np.full(14, 0.9)])
@@ -42,7 +42,7 @@ def test_court_found_in_every_shot(client, clip, fake_ball, installed, monkeypat
 
 
 def test_a_shot_without_a_court_fails_and_is_reported(client, clip, fake_ball, installed, monkeypatch):
-    def detector():
+    def detector(weights):
         kp = np.column_stack([CAM.project(k6y7r_points_3d()), np.full(14, 0.9)])
         # the second shot (frames 25-49, red) shows no court
         return lambda frame: kp if frame[90, 160, 1] > 100 else np.zeros((14, 3))
@@ -57,8 +57,27 @@ def test_a_shot_without_a_court_fails_and_is_reported(client, clip, fake_ball, i
 
 def test_without_a_model_the_court_stage_is_unavailable(client, clip, fake_ball, monkeypatch, tmp_path):
     import pipeline
-    monkeypatch.setattr(pipeline, "COURT_MODEL", tmp_path / "missing.pt")
+    monkeypatch.setattr(pipeline, "COURT_MODELS", {"gym": tmp_path / "missing.pt"})
     v = upload(client, clip)
     run_worker_once()
     c = stage(client, v["id"], "court")
     assert c["status"] == "unavailable" and "not been trained" in c["message"]
+
+
+def test_each_shot_uses_the_model_that_found_its_court(client, clip, fake_ball, monkeypatch, tmp_path):
+    import pipeline
+    for name in ("gym", "broadcast"):
+        (tmp_path / f"{name}.pt").write_bytes(b"")
+    monkeypatch.setattr(pipeline, "COURT_MODELS", {n: tmp_path / f"{n}.pt" for n in ("gym", "broadcast")})
+    kp = np.column_stack([CAM.project(k6y7r_points_3d()), np.full(14, 0.9)])
+
+    def detector(weights):
+        first_shot = weights.stem == "gym"  # the gym model finds the court in shot 1 (green), broadcast in shot 2 (red)
+        return lambda frame: kp if (frame[90, 160, 1] > 100) == first_shot else np.zeros((14, 3))
+    monkeypatch.setattr(pipeline, "court_detector", detector)
+    v = upload(client, clip)
+    run_worker_once()
+    c = stage(client, v["id"], "court")
+    assert c["summary"]["counts"] == {"ok": 2, "needs_review": 0, "failed": 0}
+    assert [s["model"] for s in c["summary"]["shots"]] == ["gym", "broadcast"]
+    assert c["summary"]["models"] == {"gym": "gym.pt", "broadcast": "broadcast.pt"}

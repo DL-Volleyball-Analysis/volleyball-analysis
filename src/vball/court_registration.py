@@ -17,7 +17,7 @@ near half with a small error, while its net points were right. "Consistency" is 
 between the predicted net points and where a camera calibrated on the floor points alone projects the net
 (`vball.calibration`); the net points take no part in that fit, so the camera cannot bend toward them.
 
-court.json (stage result): {"status", "model", "shots": [{"start_frame", "end_frame", "status", "error",
+court.json (stage result): {"status", "models", "shots": [{"start_frame", "end_frame", "status", "error", "model",
 "samples": [{"frame", "corners_px": [[x, y] x 4], "error", "keypoints": [[x, y, conf] x 14]}]}]}. Corners
 are in CORNER_IDS order (far left, far right, near right, near left) and already smoothed; keypoints are the
 raw model output, kept for camera calibration (`vball.calibration`, which needs the net points).
@@ -128,6 +128,29 @@ def register(shots: Iterable[dict], fps: float, image_size: tuple[int, int],
     for k, s in enumerate(shots):
         out.append(register_shot(s["start_frame"], s["end_frame"], fps, image_size, keypoints_at, config))
         on_shot(k)
+    return out
+
+
+STATUS_ORDER = ("ok", "needs_review", "failed")
+
+
+def pick(candidates: dict[str, list[dict]]) -> list[dict]:
+    """Per shot, the registration of the best model: status first (ok, needs review, failed), then the lower
+    floor-net consistency, then the lower fit error (None counts as worst). candidates: model name -> the
+    shots `register` returned with that model, all for the same shots in the same order. Each returned shot
+    names its model."""
+    names = list(candidates)
+    if not names:
+        return []
+    def key(shot: dict):
+        inf = float("inf")
+        return (STATUS_ORDER.index(shot["status"]),
+                inf if shot.get("consistency") is None else shot["consistency"],
+                inf if shot.get("error") is None else shot["error"])
+    out = []
+    for k in range(len(candidates[names[0]])):
+        best = min(names, key=lambda n: key(candidates[n][k]))
+        out.append({**candidates[best][k], "model": best})
     return out
 
 

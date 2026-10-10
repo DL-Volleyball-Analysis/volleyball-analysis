@@ -36,6 +36,19 @@ Each shot SHALL have a status of ok, needs_review or failed together with a nume
 - **WHEN** a shot is marked needs_review or failed
 - **THEN** stages that use the court (player positions, 3D flights, landings) treat it as having no mapping, and the mapping stays available for review
 
+### Requirement: Model per shot
+When more than one court model is installed, the system SHALL register every shot with each model and keep, per
+shot, the registration with the best status (ok, then needs review, then failed), breaking ties by the lower
+floor-net consistency distance and then the lower fit error, and SHALL record which model each shot used.
+
+#### Scenario: Broadcast and gym models
+- **WHEN** a video's first shot is registered ok only by model A and its second shot only by model B
+- **THEN** the first shot uses model A's registration, the second model B's, and each shot names its model
+
+#### Scenario: One model installed
+- **WHEN** only one court model is installed
+- **THEN** every shot uses it, as before
+
 ### Requirement: Geometric sanity
 The system SHALL reject a fitted mapping whose projected court is not a convex quadrilateral inside a plausible image area, and treat that frame as having no estimate.
 

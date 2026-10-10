@@ -24,8 +24,8 @@ def calibrated(monkeypatch, tmp_path):
     import pipeline
     weights = tmp_path / "court_kpt.pt"
     weights.write_bytes(b"")
-    monkeypatch.setattr(pipeline, "COURT_MODEL", weights)
-    monkeypatch.setattr(pipeline, "court_detector", lambda: (lambda frame: court_keypoints()))
+    monkeypatch.setattr(pipeline, "COURT_MODELS", {"gym": weights})
+    monkeypatch.setattr(pipeline, "court_detector", lambda weights: (lambda frame: court_keypoints()))
 
     def track(video, model, out_dir=None, force=False):
         uv = ARC.uv
