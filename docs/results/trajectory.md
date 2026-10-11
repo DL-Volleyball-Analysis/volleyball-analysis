@@ -53,7 +53,7 @@ point in one vertical plane; zoom and distance then trade off and many cameras f
 returning a confident wrong camera (focal sd 37-78% in that case, 0.4% with the whole court).
 
 ## Real footage
-Not measured yet (task 8.1): net-crossing heights on the evaluation clips, once a court model gives
+Net-crossing heights are measured in the section below (task 8.1). Previously: not measured, waiting until a court model gave
 usable calibrations on them.
 
 ## Detection errors on the evaluation clips (2026-10-11)
@@ -109,3 +109,17 @@ high side views have a usable court; the men's calibration is the v3b one chosen
   detections, which no fit can explain.
 - The bottleneck has moved from the fit to the 2D ball track and its segmentation (change `measure-ball-2d`): on
   the men's clip 72% of frames have no detection.
+
+## Net-crossing check on the evaluation clips (2026-10-11, task 8.1)
+Trajectory stage version 3 on the two clips with an ok court (the other three have no court, so no flights). Of
+the 6 kept flights, 2 cross the net plane:
+
+| Clip | Frames | Net-crossing height | Where (y) | Fit | Depth sd | Above the net top? |
+|---|---|---|---|---|---|---|
+| women | 13-24 | 0.74 m | -4.75 m (outside the court) | 119.9 px | 2.8 m | no: impossible, and flagged low quality |
+| women | 115-129 | 2.41 m | 5.52 m | 29.7 px | 293 m | yes (net top 2.24 m), but the depth is unconstrained |
+
+All 6 kept flights (100%) are low quality, as the stage reports. The one physically impossible crossing comes from a
+flight that mixes two pieces of track (fit error 120 px); the check confirms that a low-quality flag is needed
+before any landing or net call is made from these flights. The cause is upstream: the 2D ball track (see
+`docs/results/ball-tracking.md`, labelled evaluation).

@@ -39,7 +39,7 @@
 
 ## 8. Real-footage checks
 
-- [ ] 8.1 On the evaluation clips, check net-crossing heights are above the net top for balls that crossed and report the share of low-quality flights; record in `docs/results/trajectory.md`
+- [x] 8.1 On the evaluation clips, check net-crossing heights are above the net top for balls that crossed and report the share of low-quality flights; record in `docs/results/trajectory.md`
 - [ ] 8.2 When labelled landings exist (M5), report landing error against them
 
 ## 9. Docs
