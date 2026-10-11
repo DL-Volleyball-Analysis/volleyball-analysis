@@ -15,5 +15,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['src/test/setup.ts'],
     css: { include: [/theme\.css/] }, // contrast test reads the tokens
+    // `npm run test:coverage` fails below these (2026-10-11: lines 88%, statements 87%, branches 81%, functions 86%)
+    coverage: { include: ['src/**'], exclude: ['src/**/*.test.*', 'src/test/**', 'src/api/schema.d.ts', 'src/main.tsx'],
+      thresholds: { lines: 85, statements: 85, branches: 75, functions: 80 } },
   },
 })
