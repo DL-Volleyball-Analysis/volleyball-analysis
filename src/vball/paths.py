@@ -18,6 +18,9 @@ BALL_MODELS = {
     # RAVEL-VB releases from the same upstream repo (read in place, external/ stays untouched)
     "ravel011": EXTERNAL / "fast-volleyball-tracking-inference" / "models" / "RAVEL-VB-011-9f.onnx",  # 1024x576 grey
     "ravel012": EXTERNAL / "fast-volleyball-tracking-inference" / "models" / "RAVEL-VB-012-9f.onnx",  # 640x360 RGB
+    # WASB (Tarashima et al., BMVC 2023, MIT), its published Volleyball-dataset weights exported to ONNX
+    # (notebooks/eval_wasb_volleyball.ipynb)
+    "wasb": MODELS / "wasb_volleyball.onnx",
 }
 
 

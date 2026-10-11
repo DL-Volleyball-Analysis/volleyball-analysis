@@ -129,3 +129,23 @@ def test_metrics():
     r = metrics.accuracy(track, labels, tol_px=4)
     # tp: frames 0, 4; frame 1 is 49 px away (fp and fn); frame 2 missed (fn); frame 3 a detection with no ball (fp)
     assert (r["precision"], r["recall"]) == (0.5, 0.5) and r["frames"] == 5
+
+
+def test_wasb_letterbox_normalisation_and_three_frame_windows(monkeypatch):
+    from vball.ball_detect import Wasb
+    seen = []
+
+    def heat(x):
+        seen.append(x.shape)
+        out = np.zeros((1, 3, 288, 512), np.float32)
+        out[0, :, 143:146, 255:258] = 0.9   # the centre of the 512 x 288 input
+        return [out]
+    monkeypatch.setattr(ball_detect, "_session", lambda path: FakeSession(heat))
+    det = Wasb("unused.onnx")
+    x = det.prep(np.full((720, 1280, 3), 255, np.uint8))
+    assert x.shape == (3, 288, 512) and np.allclose(x[:, 100, 100], (1 - Wasb.MEAN) / Wasb.STD)
+    cands = det.candidates([np.zeros((1080, 1920, 3), np.uint8)] * 4)  # windows of 3: one full, one padded
+    assert len(cands) == 4 and seen == [(1, 9, 288, 512)] * 2
+    assert abs(cands[3][0].x - 960) < 5 and abs(cands[3][0].y - 540) < 5
+    sq = Wasb("unused.onnx").prep(np.full((100, 100, 3), 255, np.uint8))  # square frame: letterboxed (black bars)
+    assert np.allclose(sq[:, 144, 10], (0 - Wasb.MEAN) / Wasb.STD) and np.allclose(sq[:, 144, 256], (1 - Wasb.MEAN) / Wasb.STD)

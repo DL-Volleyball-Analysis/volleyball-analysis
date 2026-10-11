@@ -7,6 +7,8 @@ Two detector families, both from asigatchov/fast-volleyball-tracking-inference (
              candidates (floor dashes, scoreboard digits).
   Ravel      RAVEL-VB releases: 9 frames (011: 1024 x 576 grey; 012: 640 x 360 RGB) -> a coarse ball grid with
              a confidence and a sub-cell offset per cell. Local maxima above `threshold` are the candidates.
+  Wasb       WASB (Tarashima et al., BMVC 2023; HRNet with high-resolution features): 3 RGB frames at 512 x 288,
+             ImageNet-normalised -> one heatmap per frame (sigmoid applied in the exported model).
 
     det = load("ravel012")                       # or "v4c", "v4c-tiles", "ravel011"
     cands = det.candidates(bgr_frames)           # per frame: [Candidate(x, y, score), ...]
@@ -138,15 +140,58 @@ class Ravel:
         return out
 
 
-DETECTORS = ["v4c", "v4c-tiles", "ravel011", "ravel012"]
+class Wasb:
+    W, H, FRAMES = 512, 288, 3
+    MEAN = np.array([0.485, 0.456, 0.406], np.float32)
+    STD = np.array([0.229, 0.224, 0.225], np.float32)
+
+    def __init__(self, path: str | Path, threshold: float = 0.5, merge_px: float = 12.0):
+        self.session = _session(path)
+        self.input = self.session.get_inputs()[0].name
+        self.threshold, self.merge_px = threshold, merge_px
+
+    def prep(self, f: np.ndarray) -> np.ndarray:
+        """3 x H x W, RGB, ImageNet-normalised; the frame is letterboxed to 512 x 288 like WASB's affine input."""
+        if f.ndim == 2:
+            f = cv2.cvtColor(f, cv2.COLOR_GRAY2BGR)
+        h, w = f.shape[:2]
+        s = min(self.W / w, self.H / h)
+        nw, nh = round(w * s), round(h * s)
+        canvas = np.zeros((self.H, self.W, 3), np.uint8)
+        x0, y0 = (self.W - nw) // 2, (self.H - nh) // 2
+        canvas[y0:y0 + nh, x0:x0 + nw] = cv2.resize(f, (nw, nh), interpolation=cv2.INTER_LINEAR)
+        rgb = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+        return ((rgb - self.MEAN) / self.STD).transpose(2, 0, 1)
+
+    def candidates(self, frames: list[np.ndarray]) -> list[list[Candidate]]:
+        if not frames:
+            return []
+        h, w = frames[0].shape[:2]
+        s = min(self.W / w, self.H / h)
+        x0, y0 = (self.W - round(w * s)) // 2, (self.H - round(h * s)) // 2
+        out: list[list[Candidate]] = []
+        for st in range(0, len(frames), self.FRAMES):
+            win = frames[st:st + self.FRAMES]
+            x = [self.prep(f) for f in win]
+            x = x + [x[-1]] * (self.FRAMES - len(x))
+            hm = self.session.run(None, {self.input: np.concatenate(x)[None].astype(np.float32)})[0][0]
+            for m in hm[:len(win)]:
+                out.append(merge([Candidate((bx - x0) / s, (by - y0) / s, p) for bx, by, p in blobs(m, self.threshold)],
+                                 self.merge_px))
+        return out
+
+
+DETECTORS = ["v4c", "v4c-tiles", "ravel011", "ravel012", "wasb"]
 
 
 def load(name: str):
-    """A detector by name: v4c (whole frame), v4c-tiles (+ 2 x 2 tiles), ravel011, ravel012."""
+    """A detector by name: v4c (whole frame), v4c-tiles (+ 2 x 2 tiles), ravel011, ravel012, wasb."""
     if name == "v4c":
         return VballNet(BALL_MODELS["v4c"])
     if name == "v4c-tiles":
         return VballNet(BALL_MODELS["v4c"], grid=(2, 2))
     if name in ("ravel011", "ravel012"):
         return Ravel(BALL_MODELS[name])
+    if name == "wasb":
+        return Wasb(BALL_MODELS["wasb"])
     raise ValueError(f"unknown ball detector {name!r}; one of {DETECTORS}")
