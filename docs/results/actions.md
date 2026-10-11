@@ -6,7 +6,7 @@ Change: `openspec/changes/add-player-actions`.
 | Model | File (`models/`, not in git) | Source run |
 |---|---|---|
 | Actions, YOLOv11m, 5 classes (block, receive, serve, set, spike), 640 px | `action_yolo11m.pt` | team Drive `專題/vb_action_yolov11/runs/volleyball_200epoch/weights/best.pt` (epoch 190 of 200) |
-| Jersey digits, YOLOv8m, 10 classes (0-9), 640 px | `jersey_digits_yolov8m.pt` | team Drive `專題/jersey-number-detection-main/runs/jersey_detection/weights/best.pt` |
+| Jersey digits, YOLOv8m, 10 classes (0-9), 640 px | `jersey_digits_yolov8m.pt` (capstone model, replaced by `jersey_digits_yolo26s.pt` below and deleted) | team Drive `專題/jersey-number-detection-main/runs/jersey_detection/weights/best.pt` |
 
 ## Action recogniser on its test split
 `scripts/eval_actions.py --train-zip <capstone zip>` (output kept in `outputs/actions_eval.txt`). The capstone's
