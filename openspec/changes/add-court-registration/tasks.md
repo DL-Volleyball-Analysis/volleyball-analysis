@@ -5,7 +5,7 @@
 - [x] 0.1 Add front-zone completion to `vball.court_keypoints` (homography from 4 floor points → all floor points; calibration → net points, used for checks only) and verify on k6y7r labels: completed vs labelled points, median and p90 error in pixels recorded in `docs/results/court-keypoints.md`
 - [x] 0.2 Build dataset v3 (k6y7r + VNL clips one-three completed, every 2nd frame; VNL four-five as `test_vnl`, boxes from completed points) and verify split counts and that no clip appears in two splits
 - [x] 0.3 Notebook v3 (YOLO26s-pose, 1280 px, 400 epochs, run `court_kpt_v3`, Drive checkpoints and resume) and verify a 1-epoch local smoke run on the v3 zip
-- [ ] 0.4 After Colab training, measure end-to-end metre error on k6y7r test and `test_vnl`, and net-point pixel error on k6y7r test (v2 vs v3 side by side), and record it in `docs/results/court-keypoints.md`
+- [x] 0.4 After Colab training, measure end-to-end metre error on k6y7r test and `test_vnl`, and net-point pixel error on k6y7r test (v2 vs v3 side by side), and record it in `docs/results/court-keypoints.md`
 
 
 ## 1. Keypoints to homography (`vball.court_keypoints`)
@@ -30,7 +30,7 @@
 ## 3. Evaluation in metres
 
 - [x] 3.1 Write `scripts/eval_court_keypoints.py` reporting median and p90 keypoint error in metres plus no-mapping count for the k6y7r test and VNL splits, and verify it runs on the smoke-run weights
-- [ ] 3.2 Measure inference time per image on the M1 Pro CPU in the same script and verify it is printed
+- [x] 3.2 Measure inference time per image on the M1 Pro CPU in the same script and verify it is printed
 - [ ] 3.3 After Colab training, run the evaluation on the real weights, record the numbers in README "Status" and CLAUDE.md, and verify they match the script output (no proxy numbers presented as accuracy)
 - [ ] 3.4 Tune the status thresholds from the evaluation's error distribution and verify the threshold values are the only edit in `vball.court_registration`
 

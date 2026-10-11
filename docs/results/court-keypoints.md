@@ -116,3 +116,16 @@ Both models are right on the two high side views. The back views and the low Tok
 both: v3b is confident on every point there but its points are geometrically inconsistent (fit error 10x v2's),
 having been trained on high side broadcast views only. The pick never chose a wrong court, and the doubtful shots
 stay needs review. Fixing them needs training images from those angles.
+
+## Net points and inference time (2026-10-11)
+`scripts/eval_court_keypoints.py --dataset court_keypoints_v3b` now also reports the pixel error of the four net
+points (10-13) where they are labelled (k6y7r test, 1080p-scale images) and the model's time per image on the
+M1 Pro CPU (model call only, median).
+
+| Model | k6y7r test (metres) | Net points, k6y7r test | `test_vnl` (metres) | Time per image |
+|---|---|---|---|---|
+| v2, YOLO26n-pose 960 px (`court_kpt.pt`, "gym") | median 0.49 m, p90 3.37 m, no fit 9/39 | median 8.7 px, p90 136 px | median 1.43 m, no fit 158/275 | 93 ms |
+| v3b, YOLO26s-pose 1280 px (`court_kpt_broadcast.pt`, "broadcast") | median 7.28 m, p90 18.8 m, no fit 2/39 | median 21.2 px, p90 394 px | **median 0.10 m**, p90 0.19 m, 96% ≤ 0.3 m | 285 ms |
+
+The court stage samples a few frames per shot, so even v3b's 285 ms adds about a second per shot. Net-point
+errors follow the floor errors: v2 places the net well on gym images, v3b does not.
