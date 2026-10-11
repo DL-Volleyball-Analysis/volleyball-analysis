@@ -78,3 +78,24 @@ def test_people_marked_other_are_returned_but_flagged(client, clip, fake_ball, m
     boxes = client.get(f"/videos/{v['id']}/players", params={"start": 0, "end": 0.5}).json()["boxes"]
     roles = {b["track_id"]: (b["role"], b["team"]) for b in boxes}
     assert roles == {1: ("player", "a"), 2: ("other", None)}
+
+
+def test_general_detector_when_the_player_detector_misses_players(client, clip, fake_ball, monkeypatch, tmp_path):
+    import pipeline
+    general = tmp_path / "general.pt"
+    general.write_bytes(b"")
+    specialist = tmp_path / "specialist.pt"
+    specialist.write_bytes(b"")
+    monkeypatch.setattr(pipeline, "GENERAL_PLAYER_MODEL", general)
+    monkeypatch.setattr(pipeline, "PLAYER_CFG", pipeline.replace(pipeline.PLAYER_CFG, model=str(specialist)))
+    counts = {str(specialist): 2, str(general): 13}  # an amateur gym: the player-only detector finds 2 of 13 people
+    monkeypatch.setattr(pipeline, "person_counts", lambda weights, frames, imgsz: [counts[str(weights)]] * len(frames))
+    v = upload(client, clip)
+    assert run_worker_once()["status"] == "done"
+    s = {x["name"]: x for x in client.get(f"/videos/{v['id']}/stages").json()}["players"]
+    assert s["summary"]["detector_choice"]["model"] == "general" and s["summary"]["model"].startswith("general_")
+    counts[str(specialist)] = 12  # broadcast: it finds the players
+    client.post(f"/videos/{v['id']}/jobs", json={"from_stage": "players"})
+    run_worker_once()
+    s = {x["name"]: x for x in client.get(f"/videos/{v['id']}/stages").json()}["players"]
+    assert s["summary"]["detector_choice"]["model"] == "specialist"

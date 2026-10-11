@@ -5,6 +5,7 @@ from stage S recomputes S and everything after it; earlier stages are reused whe
 version still matches, so a new court model does not redo ball tracking.
 """
 import json
+from dataclasses import replace
 from collections.abc import Callable
 from pathlib import Path
 
@@ -36,6 +37,7 @@ JERSEY_MODEL = MODELS / "jersey_digits_yolo26s.pt"
 ACTION_FPS, JERSEY_FPS = 10.0, 2.0
 # YOLO26s fine-tuned on SportsMOT volleyball training sequences (players only): IDF1 0.690, precision 0.970 on
 # SportsMOT volleyball val, against 0.484 / 0.614 for the COCO weights (docs/results/player-tracking.md)
+GENERAL_PLAYER_MODEL = MODELS / "yolo26s.pt"  # COCO persons: fallback where the player-only detector misses players
 PLAYER_CFG = players.TrackerConfig(model=str(MODELS / "player_yolo26s_sportsmot.pt"), imgsz=960, tracker="botsort.yaml", det_fps=10.0)
 
 SHOT_CUT_CORRELATION = 0.6  # HSV histogram correlation below this between frames = camera cut
@@ -136,6 +138,34 @@ def court_homography_at(court_result: dict | None, image_size: tuple[int, int] |
     return lambda frame: court_registration.mapping_at(court_result, frame, image_size)
 
 
+def person_counts(weights: str, frames: list, imgsz: int) -> list[int]:
+    """People per frame found by a detector (tests replace this function with a fake)."""
+    from ultralytics import YOLO
+    model = YOLO(weights)
+    return [len(model(f, imgsz=imgsz, conf=PLAYER_CFG.conf, classes=[players.PERSON], verbose=False)[0].boxes) for f in frames]
+
+
+def choose_player_detector(video: Path, n_frames: int, samples: int = 8) -> tuple[players.TrackerConfig, dict]:
+    """The player-only detector unless it misses most people on this footage (vball.players.prefer_generalist)."""
+    if not Path(GENERAL_PLAYER_MODEL).exists() or not Path(PLAYER_CFG.model).exists() or n_frames < 1:
+        return PLAYER_CFG, {"model": Path(PLAYER_CFG.model).stem, "reason": "default"}
+    cap, picks = cv2.VideoCapture(str(video)), []
+    for f in np.linspace(0, n_frames - 1, samples).astype(int):
+        cap.set(cv2.CAP_PROP_POS_FRAMES, int(f))
+        ok, frame = cap.read()
+        if ok:
+            picks.append(frame)
+    cap.release()
+    spec = person_counts(PLAYER_CFG.model, picks, PLAYER_CFG.imgsz)
+    gen = person_counts(str(GENERAL_PLAYER_MODEL), picks, PLAYER_CFG.imgsz)
+    info = {"player_only_median": float(np.median(spec)) if spec else 0.0, "general_median": float(np.median(gen)) if gen else 0.0}
+    if spec and gen and players.prefer_generalist(spec, gen):
+        cfg = replace(PLAYER_CFG, model=str(GENERAL_PLAYER_MODEL))
+        return cfg, {**info, "model": Path(cfg.model).stem,
+                     "reason": "the player-only detector found too few people on this footage"}
+    return PLAYER_CFG, {**info, "model": Path(PLAYER_CFG.model).stem, "reason": "player-only detector"}
+
+
 def players_stage(video: Path, out: Path, prev: dict, tick) -> dict:
     n = prev["decode"].get("frames") or 0
     fps = prev["decode"].get("fps") or 30.0
@@ -153,14 +183,16 @@ def players_stage(video: Path, out: Path, prev: dict, tick) -> dict:
                 tick(i / n)
         cap.release()
 
-    df = players.track_frames(frames(), fps, PLAYER_CFG)
+    cfg, choice = choose_player_detector(video, n)
+    df = players.track_frames(frames(), fps, cfg)
     size = (prev["decode"].get("width"), prev["decode"].get("height"))
     df = players.place_on_court(df, court_homography_at(prev.get("court"), size))
     df = players.roles(df, team_assignments(video, df))
     df.to_csv(out / "players.csv.gz", index=False, float_format="%.2f")
     placed = bool(df["placed"].any()) if len(df) else False
     others = df.loc[df["role"] == "other", "track_id"].nunique() if len(df) else 0
-    res = {"status": "done", "model": PLAYER_CFG.label(), "tracks": int(df["track_id"].nunique()) if len(df) else 0,
+    res = {"status": "done", "model": cfg.label(), "detector_choice": choice,
+           "tracks": int(df["track_id"].nunique()) if len(df) else 0,
            "rows": int(len(df)), "placed": placed, "other_tracks": int(others)}
     if not placed:
         res["message"] = "The court was not found, so everyone in view is kept and no court positions are given."
@@ -409,7 +441,7 @@ def rallies(video: Path, out: Path, prev: dict, tick) -> dict:
 
 FUNCS = {"decode": decode, "court": court, "ball": ball_stage, "players": players_stage, "actions": actions_stage,
          "trajectory": trajectory_stage, "events": events, "rallies": rallies}
-VERSIONS = {"decode": "1", "court": "2", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-3",  # -3: team and role columns, 12-player cap
+VERSIONS = {"decode": "1", "court": "2", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-4",  # -4: general detector where the player-only one misses players
             "actions": "3",  # 3: per-player classifier + ball prior
             "trajectory": "3", "events": "0.3", "rallies": "0.1"}
 

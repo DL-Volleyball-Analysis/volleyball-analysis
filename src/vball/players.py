@@ -171,3 +171,18 @@ def roles(df: pd.DataFrame, assignments: dict | None = None, max_players: int = 
                .groupby("frame").cumcount())
     out.loc[rank[rank >= max_players].index, "role"] = "other"
     return out
+
+
+def prefer_generalist(specialist_counts, generalist_counts, expected_players: int = MAX_PLAYERS,
+                      min_general: float = 8.0) -> bool:
+    """Should a video use the general person detector instead of the player-only one?
+
+    The player-only detector (fine-tuned on SportsMOT broadcast labels) leaves out referees and spectators, but on
+    footage unlike its training data (amateur gyms, casual clothes, 4K seen at 960 px) it misses the players too: 2-3
+    boxes where a COCO person detector finds 12-16 on the same frame. A volleyball court holds `expected_players`
+    players, so the general detector wins when the player-only one finds fewer than half of them (median over the
+    sampled frames) while the general one sees at least `min_general` people. A ratio of the two counts does not work:
+    on a broadcast end-line view the general detector also counts a crowd of photographers (25 against 12.5).
+    Officials and spectators are then left to the on-court filter and the role check."""
+    spec, gen = float(np.median(specialist_counts)), float(np.median(generalist_counts))
+    return spec < expected_players / 2 and gen >= min_general

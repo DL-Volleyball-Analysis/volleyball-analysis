@@ -117,3 +117,12 @@ def test_track_frames_does_not_bridge_a_long_gap():
     got = sorted(df["frame"].tolist())
     assert got[:4] == [0, 1, 2, 3]       # the short gap is filled
     assert 15 not in got and 30 in got   # the long gap (27 frames > 3 x 3) is not
+
+
+
+def test_general_detector_only_when_the_player_detector_misses_players():
+    from vball.players import prefer_generalist
+    assert prefer_generalist([2, 3, 2, 2], [12, 16, 13, 14])          # amateur gym: player-only finds 2-3 of ~13
+    assert not prefer_generalist([11, 12, 12, 10], [16, 18, 15, 17])  # broadcast: it finds the players, not the crowd
+    assert not prefer_generalist([0, 1], [2, 3])                      # an empty scene is not evidence
+    assert not prefer_generalist([12, 13, 12], [25, 26, 25])          # end-line broadcast: the crowd inflates the general count
