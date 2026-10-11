@@ -16,8 +16,8 @@
 
 ## 1b. Line refinement
 
-- [ ] 1b.1 Implement line refinement from a starting homography (edge search near projected lines, robust fit, bounds) and verify on synthetic images with a 1 m offset start: corners recovered within 0.1 m, and a start on an ad board is rejected
-- [ ] 1b.2 Measure refinement on k6y7r test and `test_vnl` (end-to-end metres, with vs without) and record it
+- [x] 1b.1 (Dropped 2026-10-11: v3b already reaches 0.10 m on broadcast views; the failures are views missing from the training data, which refinement from a wrong start cannot fix; user corrections (5.x) cover them.) Implement line refinement from a starting homography (edge search near projected lines, robust fit, bounds) and verify on synthetic images with a 1 m offset start: corners recovered within 0.1 m, and a start on an ad board is rejected
+- [x] 1b.2 (Dropped with 1b.1.) Measure refinement on k6y7r test and `test_vnl` (end-to-end metres, with vs without) and record it
 
 ## 2. Per-shot registration (`vball.court_registration`)
 
@@ -57,6 +57,7 @@
 ## 6. Integration
 
 - [ ] 6.1 Switch `scripts/detect_court.py` to the learned model, render overlays for the 5 clips, and verify by eye that at least 4 of 5 are correct (currently 1 of 5); record the result in README
+  (2026-10-11: switched; 2 of 5 automatically correct (both high side views), the 2 end-line views needs review and the low side view failed, none drawn wrong. Target not met: needs end-line and low-angle training images; until then a user correction sets those courts.)
 
 ## Workflow follow-up
 

@@ -5,7 +5,7 @@
 - The keypoint layout and its 3D coordinates are defined in `src/vball/court_keypoints.py` (14 points; 0-9 on the floor, 10-13 on the net band). Training happens on Colab and produces `court_kpt_yolo26n.pt`.
 - The `decode` stage already splits a video into camera shots; the pipeline runs stages in order and reuses results by version (`openspec/specs/analysis-jobs`).
 - Evaluation clips are broadcast footage whose cameras pan and zoom within a shot; the user's own gym footage is expected to be mostly tripod-mounted.
-- `vball.court` owns the court frame and the `to_image` / `to_court` helpers. `vball.court_geometry` (line-based) stays as an experimental fallback and is not used by this change.
+- `vball.court` owns the court frame and the `to_image` / `to_court` helpers. `vball.court_geometry` (line-based, the first attempt: 1 of 5 clips) was removed on 2026-10-11 once line refinement (1b) was dropped; its results stay in docs/results/court-keypoints.md.
 
 ## Goals / Non-Goals
 

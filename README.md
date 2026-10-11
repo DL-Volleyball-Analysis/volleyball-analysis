@@ -75,7 +75,6 @@ src/vball/          analysis package
   paths.py            project locations and model registry
   ball.py             VballNet ONNX ball tracking (wraps the upstream inference script)
   court.py            court model (18 x 9 m) and homography helpers
-  court_geometry.py   geometric court registration (experimental fallback)
   court_keypoints.py  14-point court keypoint layout, flip index, label completion
   players.py          player detection + tracking with interpolation
   calibration.py      camera focal length and pose from court + net keypoints
