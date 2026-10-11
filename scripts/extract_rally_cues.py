@@ -4,12 +4,14 @@ Per sample (CSV row): time; court: mean confidence of the 10 floor keypoints and
 fitted (a wide view of the court vs a close-up or replay); players: number of player boxes and their mean motion
 since the previous sample (box centre, nearest neighbour, in box heights); ball: share of the frames since the
 previous sample with a VballNet detection and the median detected speed (image widths per second). Frames are read
-as a stream, so a full match never sits in memory.
+as a stream, so a full match never sits in memory. `<out>.json` next to the CSV holds the video's fps and frame
+count (labels are in frames).
 
   python scripts/extract_rally_cues.py --video match.mp4 --out cues.csv [--rate 5] [--device 0]
 """
 import argparse
 import csv
+import json
 from pathlib import Path
 
 import cv2
@@ -89,6 +91,7 @@ def extract(video: Path, out: Path, rate: float = 5.0, device=None) -> int:
         w = csv.writer(f)
         w.writerow(COLUMNS)
         w.writerows(rows)
+    out.with_suffix(".json").write_text(json.dumps({"fps": fps, "frames": i, "video": video.name}))
     return len(rows)
 
 

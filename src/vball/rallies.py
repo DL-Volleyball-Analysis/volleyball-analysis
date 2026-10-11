@@ -86,18 +86,24 @@ def iou(a: tuple[float, float], b: tuple[float, float]) -> float:
     return inter / union if union > 0 else 0.0
 
 
-def evaluate(detected, labelled, min_iou: float = 0.5) -> dict:
-    """detected, labelled: [(start s, end s, ...)]. Matched precision / recall, median boundary errors (s) and the
-    share of matched boundaries within 1 s."""
+def match(detected, labelled, min_iou: float = 0.5) -> list[tuple]:
+    """One-to-one (detected, labelled) pairs with temporal IoU >= min_iou, greedy from the best pair."""
     pairs = sorted(((iou(d[:2], g[:2]), i, j) for i, d in enumerate(detected) for j, g in enumerate(labelled)), reverse=True)
-    used_d, used_g, matches = set(), set(), []
+    used_d, used_g, out = set(), set(), []
     for v, i, j in pairs:
         if v < min_iou:
             break
         if i not in used_d and j not in used_g:
             used_d.add(i)
             used_g.add(j)
-            matches.append((detected[i], labelled[j]))
+            out.append((detected[i], labelled[j]))
+    return out
+
+
+def evaluate(detected, labelled, min_iou: float = 0.5) -> dict:
+    """detected, labelled: [(start s, end s, ...)]. Matched precision / recall, median boundary errors (s) and the
+    share of matched boundaries within 1 s."""
+    matches = match(detected, labelled, min_iou)
     ds = np.array([abs(d[0] - g[0]) for d, g in matches])
     de = np.array([abs(d[1] - g[1]) for d, g in matches])
     nd, ng = len(detected), len(labelled)

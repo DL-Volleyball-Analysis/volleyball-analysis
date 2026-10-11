@@ -1,8 +1,8 @@
 # Tasks
 
 ## 1. Core
-- [ ] 1.1 `vball.rallies`: CVAT label parsing, hysteresis segmentation, IoU matching and boundary errors, with unit tests
-- [ ] 1.2 `scripts/eval_rallies.py`: train on train matches, choose segmentation on validation, report on test
+- [x] 1.1 `vball.rallies`: CVAT label parsing, hysteresis segmentation, IoU matching and boundary errors, with unit tests
+- [x] 1.2 `scripts/eval_rallies.py`: train on train matches, choose segmentation on validation, report on test
 
 ## 2. Cues
 - [ ] 2.1 `scripts/extract_rally_cues.py` (court, ball, players at 5 per second) and a Kaggle notebook for the 8 matches

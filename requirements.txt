@@ -6,3 +6,4 @@ onnxruntime
 tqdm
 ultralytics      # court keypoint model (YOLO pose)
 roboflow         # dataset download only
+scikit-learn
