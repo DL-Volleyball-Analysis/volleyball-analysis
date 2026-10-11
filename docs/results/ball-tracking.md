@@ -52,3 +52,23 @@ positive; a farther one is both a false positive and a miss. None of these detec
   ball is smaller than in these 720p clips.
 - Next: WASB's published Volleyball-dataset weights as a detector (`vball.ball_detect.Wasb`, ONNX export in
   `notebooks/eval_wasb_volleyball.ipynb`), measured with the same script.
+
+### WASB with its published Volleyball-dataset weights (2026-10-12)
+`notebooks/eval_wasb_volleyball.ipynb`: WASB's HRNet built with its own code, the published weights loaded and exported
+to ONNX with the sigmoid included (`vball.ball_detect.Wasb`, windows of 3 frames, step 3), evaluated by the same script
+and on the same test clips as the table above:
+
+| Method | P / R / F1 at 4 px | P / R / F1 at 10 px |
+|---|---|---|
+| WASB (published weights) | 0.679 / 0.628 / **0.652** | 0.981 / 0.907 / **0.942** |
+| WASB + tracker | 0.670 / 0.605 / 0.636 | 0.961 / 0.868 / 0.912 |
+
+- In-domain training is what matters: F1 at 10 px 0.942 against 0.394 (V4c) and 0.441 (RAVEL-011) on these clips.
+- WASB reports F1 0.865 at 4 px on this split; our 0.652 uses step-3 windows, our letterboxed input and a metric that
+  counts a far detection as both a false positive and a miss. WASB's own evaluation is re-run with one GPU to compare
+  like for like. (The notebook's first ONNX check reported a 0.48 difference: the comparison ran after the export had
+  put the BatchNorm layers back in training mode; in eval mode ONNX and PyTorch agree to 4e-7, so the ONNX model and
+  the numbers above are valid.)
+- The tracker does not help a detector this precise: it removes some true detections with the false ones.
+- On gym footage VballNet is strong (F1 0.859 at 10 px on the held-out orel matches) while WASB was trained on broadcast
+  only: the mixed fine-tuning (`notebooks/train_ball_detector.ipynb`) tests one model for both.
