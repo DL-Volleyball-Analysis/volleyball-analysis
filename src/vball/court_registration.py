@@ -21,13 +21,19 @@ court.json (stage result): {"status", "models", "shots": [{"start_frame", "end_f
 "samples": [{"frame", "corners_px": [[x, y] x 4], "error", "keypoints": [[x, y, conf] x 14]}]}]}. Corners
 are in CORNER_IDS order (far left, far right, near right, near left) and already smoothed; keypoints are the
 raw model output, kept for camera calibration (`vball.calibration`, which needs the net points).
+
+User corrections (four known floor points at one frame of a shot: the corners, or for a camera behind an end
+line the near half, CORRECTION_PRESETS) are stored apart from court.json and overlaid when the court is read
+(`apply_corrections`): the shot becomes ok and `corrected`, with one sample whose 10 floor points follow from
+the four (the floor is a plane) and whose 4 net points come from a camera calibrated on them,
+so every later stage, 3D included, uses the correction as if the model had found it.
 """
 from typing import Callable, Iterable
 
 import cv2
 import numpy as np
 
-from .court_keypoints import CORNER_IDS, K6Y7R_FLOOR, court_is_plausible, fit_homography
+from .court_keypoints import CORNER_IDS, K6Y7R_FLOOR, complete_floor, court_is_plausible, fit_homography, net_points_from_floor
 
 SAMPLE_FPS = 5.0
 SMOOTH_WINDOW = 5
@@ -202,3 +208,48 @@ def calibration_samples(court: dict | None, start: int, end: int) -> list[dict]:
         return []
     mid = (start + end) / 2
     return sorted(shot["samples"], key=lambda s: abs(s["frame"] - mid))
+
+
+CORRECTION_PRESETS = {
+    "corners": CORNER_IDS,   # the four court corners: far left, far right, near right, near left (side views)
+    "near_half": [2, 7, 9, 0],  # centre line left, right, end line right, left (camera behind an end line)
+}
+
+
+def corrected_sample(frame: int, points_px, image_size: tuple[int, int], ids=CORNER_IDS) -> dict:
+    """A court sample from four user points on the floor (K6Y7R floor ids `ids`, default the corners): all 10
+    floor points follow (the floor is a plane), the 4 net points come from a camera calibrated on them
+    (confidence 0 when the view gives no focal length)."""
+    pts = np.asarray(points_px, float).reshape(4, 2)
+    ids = [int(i) for i in ids]
+    if len(set(ids)) != 4 or not all(0 <= i < 10 for i in ids):
+        raise ValueError("four different floor points are needed")
+    try:
+        floor = complete_floor(pts, ids)
+    except ValueError:
+        raise ValueError("these points do not define the floor (three of them on one line?)") from None
+    corners = floor[CORNER_IDS]
+    if not court_is_plausible(corners, image_size):
+        raise ValueError("these points do not give a plausible court: check their order")
+    net = net_points_from_floor(floor, image_size)
+    kp = np.zeros((14, 3))
+    kp[:10, :2], kp[:10, 2] = floor, 1.0
+    if net is not None:
+        kp[10:, :2], kp[10:, 2] = net, 1.0
+    return {"frame": int(frame), "corners_px": corners.tolist(), "error": 0.0, "keypoints": kp.tolist()}
+
+
+def apply_corrections(court: dict | None, corrections: Iterable[dict], image_size: tuple[int, int]) -> dict | None:
+    """The court with user corrections overlaid. corrections: {"shot", "frame", "points_px", "ids"} each (ids
+    default to the corners); a correction replaces its shot's samples and status (ok, corrected). The stored
+    court is not changed."""
+    corrections = list(corrections)
+    if court is None or not corrections:
+        return court
+    shots = [dict(s) for s in court.get("shots", [])]
+    for c in corrections:
+        k = int(c["shot"])
+        if 0 <= k < len(shots):
+            sample = corrected_sample(c["frame"], c["points_px"], image_size, c.get("ids") or CORNER_IDS)
+            shots[k].update(status="ok", corrected=True, error=0.0, consistency=None, samples=[sample])
+    return {**court, "shots": shots}

@@ -14,7 +14,7 @@ from typing import Literal
 
 import numpy as np
 import pandas as pd
-from vball import jersey
+from vball import court_registration, jersey
 from fastapi import FastAPI, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
@@ -81,6 +81,39 @@ class StageInfo(BaseModel):
     version: str | None = None
     message: str | None = None
     summary: dict = {}
+
+
+class CourtSample(BaseModel):
+    frame: int
+    corners_px: list[list[float]]   # far left, far right, near right, near left
+
+
+class CourtShot(BaseModel):
+    shot: int
+    start_frame: int
+    end_frame: int
+    status: Literal["ok", "needs_review", "failed"]
+    model: str | None = None
+    corrected: bool = False
+    samples: list[CourtSample]        # the frontend interpolates corners between samples
+
+
+class CourtOut(BaseModel):
+    status: str                       # the court stage status (pending, done, unavailable, ...)
+    message: str | None = None
+    fps: float | None = None
+    shots: list[CourtShot] = []
+
+
+class CourtCorrection(BaseModel):
+    frame: int
+    points_px: list[list[float]]      # four image points, in the preset's order
+    preset: Literal["corners", "near_half"] = "corners"  # vball.court_registration.CORRECTION_PRESETS
+
+
+class CourtCorrected(BaseModel):
+    court: CourtOut
+    queued: bool                      # a re-analysis from the players stage was queued
 
 
 class Score(BaseModel):
@@ -329,6 +362,63 @@ def stages(vid: str):
         out.append(StageInfo(name=name, status=res.pop("status"), version=res.pop("version", None),
                              message=res.pop("message", None), summary=res))
     return out
+
+
+def court_out(vid: str) -> CourtOut:
+    """The court stage result with the user's corrections overlaid."""
+    res = pipeline.load_stage(RESULTS / vid, "court")
+    if res is None:
+        return CourtOut(status="pending")
+    dec = pipeline.load_stage(RESULTS / vid, "decode")
+    court = pipeline.corrected_court(res, dec, db.court_corrections(vid))
+    shots = [CourtShot(shot=k, start_frame=s["start_frame"], end_frame=s["end_frame"], status=s["status"],
+                       model=s.get("model"), corrected=bool(s.get("corrected")),
+                       samples=[CourtSample(frame=x["frame"], corners_px=x["corners_px"]) for x in s.get("samples", [])])
+             for k, s in enumerate(court.get("shots", []))]
+    return CourtOut(status=court.get("status", "done"), message=court.get("message"),
+                    fps=(dec or {}).get("fps"), shots=shots)
+
+
+def requeue_from_players(vid: str) -> bool:
+    """Players, trajectory and later stages use the court: rerun them (court and ball results are reused).
+    With a job already queued or running nothing is added; the next analysis applies the correction."""
+    if db.active_job(vid):
+        return False
+    db.add_job(vid, "players")
+    return True
+
+
+@app.get("/videos/{vid}/court", response_model=CourtOut)
+def get_court(vid: str):
+    video_or_404(vid)
+    return court_out(vid)
+
+
+@app.put("/videos/{vid}/court/{shot}", response_model=CourtCorrected)
+def correct_court(vid: str, shot: int, req: CourtCorrection):
+    video_or_404(vid)
+    res = pipeline.load_stage(RESULTS / vid, "court")
+    dec = pipeline.load_stage(RESULTS / vid, "decode")
+    shots = (res or {}).get("shots", [])
+    if not 0 <= shot < len(shots):
+        raise HTTPException(404, "shot not found")
+    if not shots[shot]["start_frame"] <= req.frame <= shots[shot]["end_frame"]:
+        raise HTTPException(422, "the frame is outside this shot")
+    ids = court_registration.CORRECTION_PRESETS[req.preset]
+    try:
+        court_registration.corrected_sample(req.frame, req.points_px, (dec["width"], dec["height"]), ids)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    db.set_court_correction(vid, shot, req.frame, req.points_px, list(ids))
+    return CourtCorrected(court=court_out(vid), queued=requeue_from_players(vid))
+
+
+@app.delete("/videos/{vid}/court/{shot}", response_model=CourtCorrected)
+def clear_court(vid: str, shot: int):
+    video_or_404(vid)
+    if not db.clear_court_correction(vid, shot):
+        raise HTTPException(404, "no correction for this shot")
+    return CourtCorrected(court=court_out(vid), queued=requeue_from_players(vid))
 
 
 @lru_cache(maxsize=8)

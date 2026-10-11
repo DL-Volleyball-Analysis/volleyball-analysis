@@ -36,6 +36,7 @@ def load(vid: str) -> dict:
     out["players_df"] = pd.read_csv(res / "players.csv.gz") if (res / "players.csv.gz").exists() else None
     out["flights"] = json.loads((res / "flights.json").read_text()) if (res / "flights.json").exists() else []
     out["actions"] = json.loads((res / "action_events.json").read_text()) if (res / "action_events.json").exists() else {}
+    out["court"] = pipeline.corrected_court(out["court"], out["decode"], Database(DB_PATH).court_corrections(vid))
     return out
 
 

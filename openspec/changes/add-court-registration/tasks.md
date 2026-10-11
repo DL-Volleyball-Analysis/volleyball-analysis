@@ -41,11 +41,12 @@
 
 ## 5. Court API and corrections (web app)
 
-- [ ] 5.1 Add the `court_corrections` table and a single read function that overlays corrections on `court.json`, and verify tests that a correction wins and that clearing restores the model result
-- [ ] 5.2 Add `GET /videos/{id}/court` and `PUT` / `DELETE /videos/{id}/court/{shot}` and verify API tests for both, including 404s
-- [ ] 5.3 Queue a job from `events` on correction (or rely on the active job) and verify tests that ball results are reused and that no second job is created while one is active
-- [ ] 5.4 Verify a rerun from `decode` keeps the correction (test)
-- [ ] 5.5 Update the web app `docs/architecture/ARCHITECTURE.md` API table and verify the endpoints listed match `/openapi.json`
+- [x] 5.1 Add the `court_corrections` table and a single read function that overlays corrections on `court.json`, and verify tests that a correction wins and that clearing restores the model result
+- [x] 5.2 Add `GET /videos/{id}/court` and `PUT` / `DELETE /videos/{id}/court/{shot}` and verify API tests for both, including 404s
+- [x] 5.3 Queue a job from `players` (first stage using the court; was `events` before the players stage existed) on correction (or rely on the active job) and verify tests that ball results are reused and that no second job is created while one is active
+- [x] 5.4 Verify a rerun from `decode` keeps the correction (test)
+- [x] 5.5 Update the web app `docs/architecture/ARCHITECTURE.md` API table and verify the endpoints listed match `/openapi.json`
+- [x] 5.6 Match page: court lines overlay, court per shot in the Analysis tab, and a corner picker (four corners or near half) verified in Chrome on the end-line clip
 
 ## 5b. Model per shot
 

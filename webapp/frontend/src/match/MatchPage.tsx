@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useJobStream } from '../api/jobStream'
-import { useActions, useAddTag, useCorrectRally, useDeleteTag, useDismissSuggestion, usePatchTag, useRallies, useStages, useTags, useVideo } from '../api/queries'
-import type { Rally, Suggestion, Tag, TagKind, Team } from '../api/types'
+import { useActions, useAddTag, useCorrectRally, useCourt, useCourtCorrection, useDeleteTag, useDismissSuggestion, usePatchTag, useRallies, useStages, useTags, useVideo } from '../api/queries'
+import type { CourtShotInfo, Rally, Suggestion, Tag, TagKind, Team } from '../api/types'
 import { BoardPanel } from '../board/BoardPanel'
 import { CourtMap } from '../court/CourtMap'
 import { ClockContext, createClock, useClock } from '../playback/clock'
@@ -17,6 +17,8 @@ import { Notice } from '../ui/Notice'
 import { Tabs } from '../ui/Tabs'
 import { panelClass } from '../ui/panel'
 import { STAGE_LABEL } from '../ui/format'
+import { CornerPicker } from './CornerPicker'
+import { CourtShots } from './CourtShots'
 import { LayerMenu } from './LayerMenu'
 import type { Layers } from './OverlayCanvas'
 import { RallyList } from './RallyList'
@@ -61,6 +63,21 @@ function MatchView({ id }: { id: string }) {
   const actionsAvailable = stages.data?.find((s) => s.name === 'actions')?.status === 'done'
   const actionsQ = useActions(id, actionsAvailable)
   const dismiss = useDismissSuggestion(id)
+  const courtDone = stages.data?.find((s) => s.name === 'court')?.status === 'done'
+  const court = useCourt(id, courtDone)
+  const courtFix = useCourtCorrection(id)
+  const [picking, setPicking] = useState<{ shot: number; frame: number } | null>(null)
+  const [courtNote, setCourtNote] = useState<string | null>(null)
+  const startPicking = useCallback((s: CourtShotInfo) => {
+    const fps = court.data?.fps ?? 30
+    const now = Math.round(clock.exactTime() * fps)
+    // the frame on screen when it is inside the shot, else the middle of the shot
+    const frame = now >= s.start_frame && now <= s.end_frame ? now : Math.round((s.start_frame + s.end_frame) / 2)
+    clock.pause()
+    clock.seek(frame / fps)
+    courtFix.save.reset()
+    setPicking({ shot: s.shot, frame })
+  }, [clock, court.data?.fps, courtFix.save])
 
   const seekTo = useCallback((r: Rally) => clock.seek(r.start_s), [clock])
   const correct = useCallback((idx: number, winner: Team | null) => correction.mutate({ idx, winner }), [correction])
@@ -107,6 +124,8 @@ function MatchView({ id }: { id: string }) {
       {demo && <Notice title="Demo data.">These rallies are placeholders, not analysis results; rally detection arrives with milestone M3.</Notice>}
       {correction.isError && <Notice title="Not saved.">{correction.error.message}. The previous winner was restored.</Notice>}
       {tagError && <Notice title="Tag not saved.">{tagError.message}</Notice>}
+      {courtNote && <Notice title="Court.">{courtNote}</Notice>}
+      {courtFix.clear.isError && <Notice title="Court not cleared.">{courtFix.clear.error.message}</Notice>}
 
       <div className="overflow-hidden rounded-[10px] border border-line bg-window shadow-[var(--shadow-window)]">
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-line bg-panel px-4 py-2.5">
@@ -125,7 +144,17 @@ function MatchView({ id }: { id: string }) {
 
         <div className="grid lg:grid-cols-[minmax(0,1fr)_24rem]">
           <div className="min-w-0">
-            <VideoStage video={v} layers={layers} />
+            <VideoStage video={v} layers={layers} picker={picking && (
+              <CornerPicker saving={courtFix.save.isPending} error={courtFix.save.error?.message ?? null}
+                onCancel={() => setPicking(null)}
+                onSave={(points, preset) => courtFix.save.mutate({ shot: picking.shot, frame: picking.frame, points, preset }, {
+                  onSuccess: (r) => {
+                    setPicking(null)
+                    setLayers((l) => ({ ...l, court: true }))
+                    setCourtNote(r.queued ? null : 'Court saved. An analysis is already running; if it has passed the court stage, re-analyse from the Analysis tab to use it.')
+                  },
+                })} />
+            )} />
             <div className="border-t border-line px-3 py-2">
               <LayerMenu layers={layers} onChange={setLayers} courtAvailable={courtAvailable} playersAvailable={playersAvailable} />
             </div>
@@ -172,6 +201,8 @@ function MatchView({ id }: { id: string }) {
               </section>
               <section id="panel-stages" role="tabpanel" aria-labelledby="tab-stages" className={`pt-1 ${panelClass(panel === 'stages')}`}>
                 {stages.data ? <StagePanel stages={stages.data} /> : <p className="py-2 text-ink-muted">Loading…</p>}
+                <CourtShots court={court.data} busy={Boolean(picking) || courtFix.save.isPending || courtFix.clear.isPending}
+                  onSet={startPicking} onClear={(s) => courtFix.clear.mutate(s.shot)} />
               </section>
             </div>
           </aside>

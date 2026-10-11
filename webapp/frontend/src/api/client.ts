@@ -1,6 +1,6 @@
 // Thin fetch wrapper for the backend. In dev, Vite proxies /api to the FastAPI server.
 import type {
-  Actions, BallCoverage, BallWindow, Flight, Job, PlayerWindow, Rally, RosterPlayer, StageInfo, StageName, Stats, Tag, TagIn, TagPatch, Team, Video,
+  Actions, BallCoverage, BallWindow, Court, CourtCorrected, Flight, Job, PlayerWindow, Rally, RosterPlayer, StageInfo, StageName, Stats, Tag, TagIn, TagPatch, Team, Video,
 } from './types'
 
 const BASE = '/api'
@@ -66,6 +66,10 @@ export const api = {
     request<{ players: RosterPlayer[] }>(`/videos/${id}/roster`, json('PUT', { players })),
   tags: (id: string) => request<Tag[]>(`/videos/${id}/tags`),
   actions: (id: string) => request<Actions>(`/videos/${id}/actions`),
+  court: (id: string) => request<Court>(`/videos/${id}/court`),
+  correctCourt: (id: string, shot: number, frame: number, points: number[][], preset: 'corners' | 'near_half') =>
+    request<CourtCorrected>(`/videos/${id}/court/${shot}`, json('PUT', { frame, points_px: points, preset })),
+  clearCourt: (id: string, shot: number) => request<CourtCorrected>(`/videos/${id}/court/${shot}`, { method: 'DELETE' }),
   dismissSuggestion: (id: string, sid: string) =>
     request<void>(`/videos/${id}/actions/suggestions/${encodeURIComponent(sid)}/dismiss`, { method: 'POST' }),
   addTag: (id: string, tag: TagIn) => request<Tag[]>(`/videos/${id}/tags`, json('POST', tag)),

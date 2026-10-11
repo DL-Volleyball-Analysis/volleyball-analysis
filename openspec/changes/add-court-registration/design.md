@@ -112,8 +112,19 @@ wrong, and a wrong mapping drops real players or misplaces landings, which is wo
 Corrections live in a new SQLite table `court_corrections(video_id, shot_idx, frame, corners_px)` and are never written into `court.json`. Anything that reads the court (API, events stage) goes through one function that overlays corrections on the stage result. This is what keeps corrections intact across reruns.
 *Alternative considered:* writing corrections into `court.json`. Rejected: a rerun of the court stage would overwrite them.
 
-### Correction triggers events onward
-Saving or clearing a correction queues a job from `events` (see delta in `specs/analysis-jobs`). Ball tracking does not use the court, so it is reused.
+### Correction triggers players onward
+Saving or clearing a correction queues a job from `players`, the first stage that uses the court since the
+players, actions and trajectory stages were added (see delta in `specs/analysis-jobs`). Ball tracking does not use
+the court, so it is reused. The worker reads corrections when the pipeline reaches the court stage, so a queued job
+applies a correction saved after it was queued.
+
+### Which points the user clicks (2026-10-11)
+Four known floor points define the floor homography, so the user may click either the four court corners (side
+views) or, for a camera behind an end line where the far corners are hidden behind the net, the ends of the centre
+line (at the net posts' feet) and of the near end line (`CORRECTION_PRESETS`). The other floor points follow from
+the homography and the net points from a camera calibrated on them (`court_keypoints.net_points_from_floor`), so a
+corrected shot also feeds 3D reconstruction. Checked on the Tokyo 2020 end-line clip: court lines on the floor
+lines and both teams on their own half of the 2D board.
 
 ### Model runtime
 Load the `.pt` weights with ultralytics (already a dependency). The PRD budget (court stage ≤ 0.5 × video duration) at 5 samples/s allows up to 100 ms per inference on the M1 Pro CPU; inference time has not been measured yet and is checked in the tasks. ONNX export is deferred until the web app needs to drop torch or the budget is missed.

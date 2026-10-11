@@ -377,9 +377,19 @@ def load_stage(results: Path, stage: str) -> dict | None:
     return json.loads(f.read_text()) if f.exists() else None
 
 
+def corrected_court(court: dict | None, decode: dict | None, corrections: list[dict]) -> dict | None:
+    """The court stage result with the user's corrections overlaid (never written to court.json)."""
+    if not corrections or not court or court.get("status") != "done" or not decode:
+        return court
+    return court_registration.apply_corrections(court, corrections, (decode["width"], decode["height"]))
+
+
 def run(video: Path, results: Path, from_stage: str = "decode",
-        on_progress: Callable[[str, float], None] = lambda stage, p: None) -> dict:
-    """Run the pipeline; returns {stage: result}. Raises on the first failing stage."""
+        on_progress: Callable[[str, float], None] = lambda stage, p: None,
+        court_corrections: Callable[[], list[dict]] | None = None) -> dict:
+    """Run the pipeline; returns {stage: result}. Raises on the first failing stage. Court corrections are read
+    (court_corrections()) when the court stage is reached and overlaid on the court result later stages see, so
+    a correction saved while a job waits or decodes is still applied."""
     if from_stage not in STAGES:
         raise ValueError(f"unknown stage {from_stage!r}; stages are {STAGES}")
     results.mkdir(parents=True, exist_ok=True)
@@ -395,6 +405,8 @@ def run(video: Path, results: Path, from_stage: str = "decode",
             res = {"version": VERSIONS[stage], **FUNCS[stage](video, results, out, tick)}
             stage_file(results, stage).write_text(json.dumps(res))
             cached = res
+        if stage == "court" and court_corrections is not None:
+            cached = corrected_court(cached, out.get("decode"), court_corrections())
         out[stage] = cached
         done_weight += WEIGHTS[stage]
         on_progress(stage, done_weight)

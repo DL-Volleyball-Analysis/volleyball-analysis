@@ -57,11 +57,19 @@ The system SHALL reject a fitted mapping whose projected court is not a convex q
 - **THEN** that fit is discarded
 
 ### Requirement: User court correction
-The user SHALL be able to set a shot's court by giving the image positions of the four court corners at one frame; the correction SHALL apply to the whole shot, take precedence over the model, be stored separately from model output, and remain after any rerun. Clearing it SHALL restore the model result.
+The user SHALL be able to set a shot's court by giving the image positions of four known floor points at one frame (the court corners, or the ends of the centre line and the near end line). The correction SHALL apply to the whole shot, take precedence over the model, be stored apart from model output, remain after any rerun, and include net points for 3D. Clearing it SHALL restore the model result.
 
 #### Scenario: Correcting a shot
 - **WHEN** the user places the four corners on a frame of shot 2
 - **THEN** shot 2 uses the corrected mapping with status ok and is marked as corrected
+
+#### Scenario: Camera behind an end line
+- **WHEN** the user places the ends of the centre line and of the near end line on a frame of an end-line view
+- **THEN** the shot uses the court these points define, including the hidden far half
+
+#### Scenario: Crossed points
+- **WHEN** the four points are given in an order that crosses the court
+- **THEN** the correction is rejected and nothing is stored
 
 #### Scenario: Rerun keeps the correction
 - **WHEN** the analysis is rerun from the decode stage

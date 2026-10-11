@@ -28,7 +28,8 @@ def process(db: Database, job: dict) -> None:
             last.update(stage=stage, p=p)
 
     try:
-        pipeline.run(Path(video["path"]), RESULTS / video["id"], job["from_stage"], on_progress)
+        pipeline.run(Path(video["path"]), RESULTS / video["id"], job["from_stage"], on_progress,
+                     court_corrections=lambda: db.court_corrections(video["id"]))
         db.update_job(job["id"], status="done", stage=None, progress=1.0)
     except Exception as e:
         traceback.print_exc()

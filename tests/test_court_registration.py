@@ -169,3 +169,37 @@ def test_pick_with_one_model_keeps_its_shots():
     from vball.court_registration import pick
     one = [{"start_frame": 0, "end_frame": 9, "status": "failed", "consistency": None, "error": None, "samples": []}]
     assert pick({"v2": one}) == [{**one[0], "model": "v2"}] and pick({}) == []
+
+
+def test_a_correction_overrides_its_shot_and_leaves_the_stored_court_alone():
+    from vball.court_registration import apply_corrections, mapping_at
+    corners = [[600, 300], [1320, 300], [1700, 800], [220, 800]]
+    court = {"status": "done", "shots": [
+        {"start_frame": 0, "end_frame": 99, "status": "needs_review", "error": 0.02, "samples": []},
+        {"start_frame": 100, "end_frame": 199, "status": "ok", "error": 0.001, "samples": []}]}
+    out = apply_corrections(court, [{"shot": 0, "frame": 40, "points_px": corners}], (1920, 1080))
+    s = out["shots"][0]
+    assert s["status"] == "ok" and s["corrected"] and court["shots"][0]["status"] == "needs_review"
+    kp = np.array(s["samples"][0]["keypoints"])
+    assert np.allclose(kp[[0, 4, 5, 9], :2], corners) and (kp[:10, 2] == 1).all()
+    assert kp[10:, 2].min() == 1 and (kp[10:12, 1] < kp[0, 1]).all()  # far net points above the far sideline
+    H = mapping_at(out, 70, (1920, 1080))
+    assert H is not None and out["shots"][1] == court["shots"][1]
+    assert apply_corrections(court, [], (1920, 1080)) is court
+
+
+def test_an_implausible_correction_is_rejected():
+    import pytest
+    from vball.court_registration import corrected_sample
+    with pytest.raises(ValueError):
+        corrected_sample(0, [[600, 300], [220, 800], [1700, 800], [1320, 300]], (1920, 1080))  # crossed
+
+
+def test_a_near_half_correction_for_a_camera_behind_the_end_line():
+    from vball.court_registration import CORRECTION_PRESETS, corrected_sample
+    # centre line left / right (at the net posts' feet), near end line right / left, on a Tokyo 2020 end-line view
+    pts = [[355, 680], [1606, 680], [1776, 1060], [190, 1060]]
+    s = corrected_sample(100, pts, (1920, 1080), CORRECTION_PRESETS["near_half"])
+    c = np.array(s["corners_px"])
+    assert c[:, 1].min() < 680  # the far end line lies beyond the centre line, higher in the image
+    assert np.allclose(np.array(s["keypoints"])[[2, 7, 9, 0], :2], pts)

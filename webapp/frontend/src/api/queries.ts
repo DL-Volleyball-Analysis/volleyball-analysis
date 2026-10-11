@@ -19,6 +19,7 @@ export const keys = {
   flights: (id: string, start: number, end: number) => ['video', id, 'flights', start, end] as const,
   players: (id: string, start: number, end: number) => ['video', id, 'players', start, end] as const,
   actions: (id: string) => ['video', id, 'actions'] as const,
+  court: (id: string) => ['video', id, 'court'] as const,
 }
 
 /** Ball data is fetched in fixed windows so a long match is never loaded at once. */
@@ -145,4 +146,25 @@ export function useDismissSuggestion(id: string) {
     mutationFn: (sid: string) => api.dismissSuggestion(id, sid),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.actions(id) }),
   })
+}
+
+/** The court per camera shot, with the user's corrections applied (pending until the court stage has run). */
+export const useCourt = (id: string, enabled = true) =>
+  useQuery({ queryKey: keys.court(id), queryFn: () => api.court(id), enabled })
+
+/** Setting or clearing a shot's corners re-analyses from the players stage: refresh everything about the video. */
+export function useCourtCorrection(id: string) {
+  const qc = useQueryClient()
+  const done = () => {
+    qc.invalidateQueries({ queryKey: keys.video(id) })
+    qc.invalidateQueries({ queryKey: keys.videos })
+  }
+  return {
+    save: useMutation({
+      mutationFn: ({ shot, frame, points, preset }: { shot: number; frame: number; points: number[][]; preset: 'corners' | 'near_half' }) =>
+        api.correctCourt(id, shot, frame, points, preset),
+      onSuccess: done,
+    }),
+    clear: useMutation({ mutationFn: (shot: number) => api.clearCourt(id, shot), onSuccess: done }),
+  }
 }

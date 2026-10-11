@@ -168,6 +168,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/videos/{vid}/court": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Court */
+        get: operations["get_court_videos__vid__court_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/videos/{vid}/court/{shot}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Correct Court */
+        put: operations["correct_court_videos__vid__court__shot__put"];
+        post?: never;
+        /** Clear Court */
+        delete: operations["clear_court_videos__vid__court__shot__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/videos/{vid}/ball": {
         parameters: {
             query?: never;
@@ -463,6 +498,63 @@ export interface components {
         Body_upload_video_videos_post: {
             /** File */
             file: string;
+        };
+        /** CourtCorrected */
+        CourtCorrected: {
+            court: components["schemas"]["CourtOut"];
+            /** Queued */
+            queued: boolean;
+        };
+        /** CourtCorrection */
+        CourtCorrection: {
+            /** Frame */
+            frame: number;
+            /** Corners Px */
+            corners_px: number[][];
+        };
+        /** CourtOut */
+        CourtOut: {
+            /** Status */
+            status: string;
+            /** Message */
+            message?: string | null;
+            /** Fps */
+            fps?: number | null;
+            /**
+             * Shots
+             * @default []
+             */
+            shots: components["schemas"]["CourtShot"][];
+        };
+        /** CourtSample */
+        CourtSample: {
+            /** Frame */
+            frame: number;
+            /** Corners Px */
+            corners_px: number[][];
+        };
+        /** CourtShot */
+        CourtShot: {
+            /** Shot */
+            shot: number;
+            /** Start Frame */
+            start_frame: number;
+            /** End Frame */
+            end_frame: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "needs_review" | "failed";
+            /** Model */
+            model?: string | null;
+            /**
+             * Corrected
+             * @default false
+             */
+            corrected: boolean;
+            /** Samples */
+            samples: components["schemas"]["CourtSample"][];
         };
         /** Flight */
         Flight: {
@@ -1240,6 +1332,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StageInfo"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_court_videos__vid__court_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourtOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    correct_court_videos__vid__court__shot__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vid: string;
+                shot: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CourtCorrection"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourtCorrected"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clear_court_videos__vid__court__shot__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                vid: string;
+                shot: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourtCorrected"];
                 };
             };
             /** @description Validation Error */

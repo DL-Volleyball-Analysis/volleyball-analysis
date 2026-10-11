@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
-import { BALL_WINDOW_S, ballWindow, useActions, useBallWindow, usePlayers } from '../api/queries'
-import type { BallWindow, PlayerWindow } from '../api/types'
+import { BALL_WINDOW_S, ballWindow, useActions, useBallWindow, useCourt, usePlayers } from '../api/queries'
+import type { BallWindow, CourtShotInfo, PlayerWindow } from '../api/types'
+import { cornersAt, courtSegments } from '../court/homography'
 import { useClock, usePlaybackTime } from '../playback/clock'
 import { boxesAt, letterbox, trailPoints } from './overlay'
 
@@ -12,6 +13,7 @@ const JUMP = 0.08 // same threshold as the ball-tracking jump proxy (vball.metri
 const BALL = '#ffd23f'
 const EDGE = 'rgba(0, 0, 0, 0.75)'
 const PLAYER = '#ffffff'
+const COURT = '#7fe3ff'
 
 /** Draws on top of the video every animation frame, reading video.currentTime directly. */
 export function OverlayCanvas({ videoId, fps, layers }: { videoId: string; fps: number; layers: Layers }) {
@@ -33,13 +35,16 @@ export function OverlayCanvas({ videoId, fps, layers }: { videoId: string; fps: 
   const previous = useBallWindow(videoId, w - 1, layers.ball && w > 0)
   useBallWindow(videoId, w + 1, layers.ball) // prefetch
   const players = usePlayers(videoId, w * BALL_WINDOW_S, (w + 1) * BALL_WINDOW_S, layers.players)
+  const court = useCourt(videoId, layers.court)
   // The draw loop below reads these refs; update them after each commit, not during render.
   const windows = useRef<BallWindow[]>([])
   const playerWindows = useRef<PlayerWindow[]>([])
+  const courtShots = useRef<CourtShotInfo[]>([])
   const layersRef = useRef(layers)
   useEffect(() => {
     windows.current = [previous.data, current.data].filter((d): d is BallWindow => d !== undefined)
     playerWindows.current = players.data ? [players.data] : []
+    courtShots.current = court.data?.shots ?? []
     layersRef.current = layers
   })
 
@@ -60,12 +65,30 @@ export function OverlayCanvas({ videoId, fps, layers }: { videoId: string; fps: 
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, w, h)
-      if (!video || !(layersRef.current.ball || layersRef.current.players)) return
+      if (!video || !(layersRef.current.ball || layersRef.current.players || layersRef.current.court)) return
 
       const lb = letterbox(video.videoWidth, video.videoHeight, w, h)
       if (!lb.scale) return // video size not known yet: every point would land in the corner
 
       const now = Math.round(video.currentTime * fps)
+      if (layersRef.current.court) {
+        // only shots whose court is ok (found or set by the user); doubtful courts are never drawn
+        const corners = cornersAt(courtShots.current, now)
+        if (corners) {
+          ctx.lineCap = 'round'
+          for (const [a, b] of courtSegments(corners)) {
+            ctx.beginPath()
+            ctx.moveTo(lb.x + a[0] * lb.scale, lb.y + a[1] * lb.scale)
+            ctx.lineTo(lb.x + b[0] * lb.scale, lb.y + b[1] * lb.scale)
+            ctx.strokeStyle = EDGE
+            ctx.lineWidth = 4
+            ctx.stroke()
+            ctx.strokeStyle = COURT
+            ctx.lineWidth = 2
+            ctx.stroke()
+          }
+        }
+      }
       if (layersRef.current.players) {
         ctx.font = '600 11px ui-monospace, monospace'
         for (const b of boxesAt(playerWindows.current, now)) {

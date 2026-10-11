@@ -5,6 +5,7 @@ of in API memory. Rallies keep the model's winner and the user's correction side
 corrections double as labels for measuring scoring accuracy. Rosters and tags are user data: re-analysis
 never touches them, and tags are keyed by video time, not by rally (see vball.stats).
 """
+import json
 import sqlite3
 import uuid
 from contextlib import contextmanager
@@ -67,6 +68,15 @@ CREATE TABLE IF NOT EXISTS dismissed_suggestions (
     suggestion_id TEXT NOT NULL,       -- '<kind>-<start frame>-<track id>' from the actions stage
     PRIMARY KEY (video_id, suggestion_id)
 );
+CREATE TABLE IF NOT EXISTS court_corrections (
+    video_id TEXT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+    shot INTEGER NOT NULL,             -- index into court.json shots
+    frame INTEGER NOT NULL,            -- the frame the points were given at
+    points_px TEXT NOT NULL,           -- JSON [[x, y] x 4], image pixels
+    ids TEXT NOT NULL,                 -- JSON [4 K6Y7R floor ids] the points are (vball.court_registration.CORRECTION_PRESETS)
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (video_id, shot)
+);
 """
 
 FINISHED = ("done", "failed")
@@ -82,6 +92,9 @@ class Database:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as c:
             c.execute("PRAGMA journal_mode=WAL")
+            cols = {r[1] for r in c.execute("PRAGMA table_info(court_corrections)")}
+            if "corners_px" in cols:  # first draft of the table (2026-10-11, never released): no data to keep
+                c.execute("DROP TABLE court_corrections")
             c.executescript(SCHEMA)
 
     @contextmanager
@@ -261,3 +274,20 @@ class Database:
         with self.connect() as c:
             rows = c.execute("SELECT suggestion_id FROM dismissed_suggestions WHERE video_id = ?", (video_id,))
             return {r[0] for r in rows}
+
+    # court corrections (overlaid on court.json when read: vball.court_registration.apply_corrections)
+    def court_corrections(self, video_id: str) -> list[dict]:
+        with self.connect() as c:
+            rows = c.execute("SELECT shot, frame, points_px, ids FROM court_corrections WHERE video_id = ? ORDER BY shot",
+                             (video_id,))
+            return [{"shot": r["shot"], "frame": r["frame"], "points_px": json.loads(r["points_px"]), "ids": json.loads(r["ids"])}
+                    for r in rows]
+
+    def set_court_correction(self, video_id: str, shot: int, frame: int, points_px: list, ids: list[int]) -> None:
+        with self.connect() as c:
+            c.execute("INSERT OR REPLACE INTO court_corrections VALUES (?, ?, ?, ?, ?, ?)",
+                      (video_id, shot, frame, json.dumps(points_px), json.dumps(ids), now()))
+
+    def clear_court_correction(self, video_id: str, shot: int) -> bool:
+        with self.connect() as c:
+            return c.execute("DELETE FROM court_corrections WHERE video_id = ? AND shot = ?", (video_id, shot)).rowcount > 0
