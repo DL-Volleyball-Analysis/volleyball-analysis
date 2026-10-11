@@ -15,9 +15,10 @@ jobs:
           python-version: '3.12'
           cache: pip
       # the vball package plus the web app backend; model weights are not needed by the tests
-      - run: pip install -e . -r webapp/requirements.txt
-      - run: pytest -q tests
-      - run: pytest -q webapp/backend/tests
+      - run: pip install -e . -r webapp/requirements.txt pytest-cov
+      # coverage gates: a change that drops below them fails the build (2026-10-11: vball 94%, backend 94%)
+      - run: pytest -q tests --cov=vball --cov-report=term --cov-fail-under=90
+      - run: pytest -q webapp/backend/tests --cov=webapp/backend --cov-report=term --cov-fail-under=85
 
   frontend:
     runs-on: ubuntu-latest

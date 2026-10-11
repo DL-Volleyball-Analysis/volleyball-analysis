@@ -109,8 +109,11 @@ def render(vid: str, path: Path, out: Path) -> Path:
     scale = h / 1080
     trail = int(TRAIL_S * fps)
 
+    out.parent.mkdir(parents=True, exist_ok=True)  # VideoWriter fails silently into a missing folder
     tmp = out.with_suffix(".raw.mp4")
     writer = cv2.VideoWriter(str(tmp), cv2.VideoWriter_fourcc(*"mp4v"), fps, size)
+    if not writer.isOpened():
+        raise OSError(f"cannot write {tmp}")
     cap = cv2.VideoCapture(str(path))
     for i in range(n):
         ok, img = cap.read()
