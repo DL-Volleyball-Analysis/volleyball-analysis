@@ -182,18 +182,25 @@ def classifier(args):
     probs = df[classes].to_numpy()
     is_action = np.array([c in LABEL_MAP for c in classes])
     cfg = ActorConfig(k=args.k, floor=args.floor)
-    w = np.ones(len(df))
-    for i, name in enumerate(df["crop"]):
-        m, c, f, player = map(int, name.split("_"))
-        w[i] = ball_prior(ann[m][c]["frames"][f][player][0], ball_at(Path(args.ann), m, c).get(f), cfg)
-    weighted = probs.copy()
-    weighted[:, is_action] *= w[:, None]
+    sources = {"labelled ball": lambda m, c: ball_at(Path(args.ann), m, c)}
+    for path in args.ball_preds or []:  # detected balls from scripts/eval_ball_detection.py
+        detected = detected_ball(Path(path))
+        sources[f"detected ball ({Path(path).name.split('.')[0]})"] = lambda m, c, d=detected: d.get((m, c), {})
+    variants = {"classifier": probs}
+    for label, balls in sources.items():
+        w = np.ones(len(df))
+        for i, name in enumerate(df["crop"]):
+            m, c, f, player = map(int, name.split("_"))
+            w[i] = ball_prior(ann[m][c]["frames"][f][player][0], balls(m, c).get(f), cfg)
+        weighted = probs.copy()
+        weighted[:, is_action] *= w[:, None]
+        variants[f"+ prior, {label}"] = weighted
     truth = df["label"].map(LABEL_MAP).tolist()
     out = {}
-    for name, P in (("classifier", probs), ("classifier + ball prior", weighted)):
+    for name, P in variants.items():
         pairs = [(t, LABEL_MAP.get(classes[k])) for t, k in zip(truth, P.argmax(axis=1))]
         out[name] = f1s(pairs)
-        print(f"{name:24s} macro F1 {out[name]['macro_f1']:.3f}  " + "  ".join(
+        print(f"{name:40s} macro F1 {out[name]['macro_f1']:.3f}  " + "  ".join(
             f"{a} P {out[name][a]['precision']:.3f} R {out[name][a]['recall']:.3f} F1 {out[name][a]['f1']:.3f}" for a in SCORED))
     Path(args.out).write_text(json.dumps(out, indent=2))
 
@@ -218,6 +225,7 @@ def main():
     c.add_argument("--probs", required=True)
     c.add_argument("--k", type=float, default=2.0)
     c.add_argument("--floor", type=float, default=0.6)
+    c.add_argument("--ball-preds", nargs="*", help="detected balls (eval_ball_detection outputs) to compare with labelled ones")
     c.add_argument("--out", default="actions_volleyball_classifier.json")
     args = ap.parse_args()
     {"detect": detect, "evaluate": evaluate, "classifier": classifier}[args.cmd](args)

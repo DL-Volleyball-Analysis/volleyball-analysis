@@ -197,3 +197,10 @@ weighted by the ball prior with the ball stage's detections; serves still come f
 serve label). On the women's evaluation clip the events read as a play: receive (track 14, 1.3-2.3 s), set (track 4,
 2.9-3.4 s, peak 1.00), spike (track 6, 3.3-3.7 s), blocks at the net (tracks 5 and 35, 3.9-4.7 s); the detector alone
 called most of these moments spike or block.
+
+### The ball prior with detected balls
+`eval_actions_volleyball.py classifier --ball-preds` with the detectors' outputs on the same test clips
+(docs/results/ball-tracking.md): macro F1 0.668 (classifier) -> 0.678 with labelled balls, but only 0.670 with V4c
+balls, 0.671 with RAVEL-011 and 0.670 with RAVEL-011 + tracker. Off-the-shelf detectors find 20-30% of the balls on
+these clips, and where no ball is detected the prior leaves the scores unchanged; the prior's benefit in practice is
+bounded by the ball detector.
