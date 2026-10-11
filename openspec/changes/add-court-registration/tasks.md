@@ -31,7 +31,7 @@
 
 - [x] 3.1 Write `scripts/eval_court_keypoints.py` reporting median and p90 keypoint error in metres plus no-mapping count for the k6y7r test and VNL splits, and verify it runs on the smoke-run weights
 - [x] 3.2 Measure inference time per image on the M1 Pro CPU in the same script and verify it is printed
-- [ ] 3.3 After Colab training, run the evaluation on the real weights, record the numbers in README "Status" and CLAUDE.md, and verify they match the script output (no proxy numbers presented as accuracy)
+- [x] 3.3 After Colab training, run the evaluation on the real weights, record the numbers in README "Status" and CLAUDE.md, and verify they match the script output (no proxy numbers presented as accuracy)
 - [ ] 3.4 Tune the status thresholds from the evaluation's error distribution and verify the threshold values are the only edit in `vball.court_registration`
 
 ## 4. Pipeline court stage (web app)
