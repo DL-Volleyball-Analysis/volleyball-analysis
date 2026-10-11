@@ -1,13 +1,16 @@
 """Ball tracking with VballNet ONNX models.
 
-Inference itself is delegated to the upstream script (kept unmodified in external/),
-so this module only standardises inputs and outputs:
-    track(video, model) -> DataFrame[frame, visible, x, y, radius]
+Two methods, same output columns:
+    track(video, model)          upstream script (kept unmodified in external/), whole frame at 512 x 288
+    track_refined(video, det)    a detector's candidates (vball.ball_detect), fixed objects dropped, linked
+                                 over time, short gaps filled (vball.ball_track)
+    -> DataFrame[frame, visible, x, y, radius]
 """
 import subprocess
 import sys
 from pathlib import Path
 
+import cv2
 import pandas as pd
 
 from .paths import BALL_MODELS, OUTPUTS, VBALLNET_SRC
@@ -38,3 +41,24 @@ def load(csv: Path) -> pd.DataFrame:
     df.loc[hidden, ["x", "y"]] = float("nan")
     df["visible"] = (~hidden).astype(int)
     return df[["frame", "visible", "x", "y", "radius"]]
+
+
+def read_frames(video: Path) -> list:
+    cap = cv2.VideoCapture(str(video))
+    frames = []
+    while True:
+        ok, f = cap.read()
+        if not ok:
+            break
+        frames.append(f)
+    cap.release()
+    return frames
+
+
+def track_refined(video: Path, detector: str = "ravel012", cfg=None) -> pd.DataFrame:
+    """Ball track from a detector's candidates with the fixed-object check, linking and gap filling
+    (vball.ball_detect, vball.ball_track). Reads the whole video: meant for clips and shots, not full matches."""
+    from . import ball_detect
+    from .ball_track import TrackConfig, track as link_track
+    frames = read_frames(Path(video))
+    return link_track(frames, ball_detect.load(detector).candidates(frames), cfg or TrackConfig())
