@@ -21,6 +21,7 @@ from settings import DB_PATH, RESULTS
 
 from vball import court as vcourt
 from vball import court_registration
+from vball.paths import OUTPUTS
 
 BALL, EDGE, WHITE = (63, 210, 255), (0, 0, 0), (255, 255, 255)  # BGR
 TEAM = {"a": (163, 118, 15), "b": (57, 18, 159), "": (230, 230, 230)}  # side of the net, as in the app
@@ -190,7 +191,7 @@ def main():
     v = next((x for x in Database(DB_PATH).list_videos() if args.video in (x["id"], x["name"])), None)
     if v is None:
         raise SystemExit(f"no video {args.video!r}")
-    out = args.out or (RESULTS / v["id"] / f"{v['name']}_analysis.mp4")
+    out = args.out or (OUTPUTS / "videos" / f"{v['name']}_analysis.mp4")
     print(render(v["id"], Path(v["path"]), out))
 
 
