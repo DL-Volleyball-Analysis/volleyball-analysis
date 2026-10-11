@@ -26,3 +26,19 @@ Chosen segmentation: smoothing 1 s, open and close at 0.5, rallies of at least 3
   F1 0.634, recall 0.550). Leave-one-match-out over six matches fixed it; the test matches were not used in either.
 - Not yet compared: the published VideoMAE game-state checkpoint (trained on this dataset, so only a reference if its
   split is known). Not yet in the pipeline: the rallies stage still shows labelled demo rallies (task 3.1).
+
+## In the pipeline, and where it does not apply (2026-10-12)
+Rallies stage version 1 runs the model above (retrained on all eight labelled matches; `models/rally_cues_hgb.joblib`)
+on the cues of `vball.rally_cues`, the same code that produced the training data. Detected rallies replace demo
+rallies; a user's winner correction moves to the detected rally that overlaps it on a rerun; actions outside detected
+rallies (warm-up, time-outs, replays) are left out of the actions API.
+
+On footage unlike the training broadcasts it does not transfer. On a 4K low end-line view (Canada vs Italy) and a 4K
+amateur-gym view (open gym, corner tripod) it found no rally at all: it learned play as "the court in view and the
+player-only detector seeing both teams", and there the court model rarely finds the court and the player-only detector
+sees 3-4 people. The stage now reports such videos as unavailable with the reason (court found in under 20% of the
+samples, or a median under 6 people) instead of claiming there was no rally. On a 6 s broadcast clip that starts and
+ends mid-rally it also found none (probabilities 0.1-0.6): the model sees rallies whole, with the time before and after.
+
+Next: cues that do not depend on the view (ball motion, motion of the people on the floor relative to the video's own
+range, cues normalised per video) and rally labels on gym footage to measure them.
