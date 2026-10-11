@@ -53,3 +53,15 @@ def test_build_splits_by_match_and_writes_input_frames(tmp_path):
     assert lab.visible.tolist() == [1, 0, 1, 1] and np.allclose(lab.loc[0, ["x", "y"]], [256, 144])
     assert m.loc[m.source == "volleyball", "visible"].tolist() == [4, 4]
     assert (tmp_path / "out" / "manifest.csv").exists()
+
+
+
+def test_orel_without_the_data_folder_and_never_predictions(tmp_path):
+    _, orel = fake_sources(tmp_path)
+    flat = tmp_path / "flat"
+    (orel / "data").rename(flat)  # Kaggle's copy: train/ and test/ at the top
+    pred = flat / "train" / "match3" / "csv" / "a_predict_ball.csv"
+    pred.write_text((flat / "train" / "match3" / "csv" / "a_ball.csv").read_text())
+    (flat / "train" / "match3" / "video" / "a_predict.mp4").write_bytes((flat / "train" / "match3" / "video" / "a.mp4").read_bytes())
+    clips = [c[1] for c in bbc.orel_clips(flat)]
+    assert sorted(clips) == ["a", "b"]  # the beach match left out, the prediction file ignored

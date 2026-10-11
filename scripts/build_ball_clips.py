@@ -72,8 +72,13 @@ def volleyball_clips(videos: Path, ann: Path):
 
 
 def orel_clips(root: Path):
-    """(match, clip, video path, xy, visible) for every video with a ball CSV, both of the author's folders."""
-    for csv_path in sorted(root.glob("data/*/*/csv/*_ball.csv")):
+    """(match, clip, video path, xy, visible) for every video with a ball CSV, both of the author's folders. The
+    archive has a top-level data/ folder; a copy may not (Kaggle drops it), so both layouts are read. Files named
+    *_predict_ball.csv are a model's predictions, not labels, and are never used."""
+    paths = sorted(root.glob("data/*/*/csv/*_ball.csv")) or sorted(root.glob("*/*/csv/*_ball.csv"))
+    for csv_path in paths:
+        if csv_path.name.endswith("_predict_ball.csv"):
+            continue
         match = csv_path.parts[-3]
         if match in OREL_SKIP:
             continue
