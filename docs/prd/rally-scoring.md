@@ -25,7 +25,7 @@ The capstone's score field is always empty and a "rally" is any frame with a det
 7. User corrections win over the model; all later scores recompute after a correction.
 
 ## Landing detection: approach with one camera
-Tennis (Hawk-Eye: 10 cameras at 340 fps, within the ITF's 5 mm limit) and professional volleyball (FIVB's challenge system: 16-19 cameras) call bounces by triangulating the ball in 3D from many synchronised cameras. We have one camera, so the method is different and the accuracy will be lower (expected tens of centimetres, to be measured):
+Tennis (Hawk-Eye, several synchronised high-speed cameras; Owens et al., VIE 2003) and professional volleyball (the FIVB Video Challenge System, a dedicated multi-camera system; FIVB VCS regulations 2025) call bounces with several cameras; the FIVB document does not state a camera count, so none is given here. We have one camera, so the method is different and the accuracy will be lower (expected tens of centimetres, to be measured):
 1. **Physics in 3D:** the court keypoints include the net band, which calibrates the camera fully. Between touches the ball follows a ballistic arc; fit it to the 2D track and intersect with the floor (z = 0) to get the landing point, even when the landing frame is hidden by a player.
 2. **Learned event spotting**, as TTNet does for table tennis (single camera, bounce events): a model trained on volleyball event labels (VNL-STES) marks landings and touches in time.
 3. **Sound:** the ball hitting the floor is loud and sharp in gym recordings; an audio onset fixes the time, vision fixes the place.
