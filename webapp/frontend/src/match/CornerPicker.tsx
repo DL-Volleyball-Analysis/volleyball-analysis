@@ -96,7 +96,7 @@ export function CornerPicker({ saving, error, onSave, onCancel }: {
         <p className="mr-auto" aria-live="polite">
           {done
             ? ok ? 'Check the lines, then save.' : 'These corners do not form a court. Press Backspace to move the last one.'
-            : <>Click the <strong>{PRESETS[preset].steps[points.length]}</strong> ({points.length + 1} of 4).{preset === 'corners' && ' Far is the sideline away from the camera.'}</>}
+            : <>Click the <strong>{PRESETS[preset].steps[points.length]}</strong> ({points.length + 1} of 4).{preset === 'corners' ? ' Far is the sideline away from the camera.' : points.length < 2 ? ' The centre line is on the floor where the net posts stand, not the bottom of the net.' : ''}</>}
           {error && <span className="ml-2 text-review">{error}</span>}
         </p>
         <label className="flex items-center gap-1.5">
