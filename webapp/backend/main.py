@@ -687,6 +687,7 @@ class ActionsOut(BaseModel):
 
 SUGGEST = {"spike": "attack", "serve": "serve"}
 ACCEPT_WINDOW_S = 1.0  # a tag of the same kind this close to a suggestion accepts it
+RALLY_MARGIN_S = 1.0  # actions this close to a detected rally still count (a serve toss starts before it)
 
 
 @app.get("/videos/{vid}/actions", response_model=ActionsOut)
@@ -723,6 +724,11 @@ def actions(vid: str):
                           peak_conf=e["peak_conf"], number=number_at(e["track_id"], e["start_frame"]),
                           team=team_of.get(e["track_id"]) if e["track_id"] is not None else None)
               for e in data.get("events", [])]
+    detected = [(r["start_s"], r["end_s"]) for r in db.list_rallies(vid) if r["source"] == "model"]
+    if detected:  # with detected rallies, actions outside play (warm-up, time-outs, replays) are left out
+        keep = [any(a - RALLY_MARGIN_S <= e.start_s <= b + RALLY_MARGIN_S for a, b in detected) for e in events]
+        events = [e for e, k in zip(events, keep) if k]
+        data["events"] = [raw for raw, k in zip(data.get("events", []), keep) if k]
     tags, dismissed = db.list_tags(vid), db.dismissed_suggestions(vid)
     suggestions = []
     for e, raw in zip(events, data.get("events", [])):

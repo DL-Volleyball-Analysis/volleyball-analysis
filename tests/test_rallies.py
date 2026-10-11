@@ -54,17 +54,8 @@ def test_evaluate_matches_by_iou_one_to_one():
     assert iou((0, 10), (5, 15)) == 5 / 15 and evaluate([], labelled)["recall"] == 0
 
 
-def _cues():
-    import importlib.util
-    from pathlib import Path
-    spec = importlib.util.spec_from_file_location("cues", Path(__file__).resolve().parents[1] / "scripts" / "extract_rally_cues.py")
-    m = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(m)
-    return m
-
-
 def test_player_motion_in_box_heights():
-    m = _cues()
+    import vball.rally_cues as m
     prev = np.array([[0, 0, 10, 100], [200, 0, 210, 100.0]])
     cur = np.array([[50, 0, 60, 100], [200, 0, 210, 100.0]])  # one moved 50 px (half a box height), one stood still
     assert np.isclose(m.player_motion(prev, cur), 0.25)
@@ -72,7 +63,25 @@ def test_player_motion_in_box_heights():
 
 
 def test_ball_summary_share_and_speed():
-    m = _cues()
+    import vball.rally_cues as m
     seen, speed = m.ball_summary([(0, 0), (19.2, 0), None, (38.4, 0)], fps=25.0, width=1920)
     assert seen == 0.75 and np.isclose(speed, 0.25)  # 19.2 px per frame = 1% of the width, 25 frames / s
     assert m.ball_summary([], 25.0, 1920) == (0.0, 0.0)
+
+
+def test_saved_model_detects_rallies(tmp_path):
+    import pandas as pd
+    from sklearn.ensemble import HistGradientBoostingClassifier
+
+    from vball.rallies import CUES, RallyConfig, detect, features, load_model, save_model
+    t = np.arange(0, 60, 0.2)
+    play = ((t > 10) & (t < 20)) | ((t > 35) & (t < 45))
+    cues = pd.DataFrame({"t": t, **{c: np.where(play, 1.0, 0.0) for c in CUES}})
+    f = features(cues, 5.0)
+    assert f.shape == (len(t), len(CUES) * 5)  # the cue, mean and std over 1 s and 3 s
+    clf = HistGradientBoostingClassifier(max_iter=20).fit(f, play)
+    save_model(tmp_path / "m.joblib", clf, RallyConfig(smooth_s=0.2), 5.0, {"note": "test"})
+    m = load_model(tmp_path / "m.joblib")
+    rallies = detect(m, cues)
+    assert [(round(a), round(b)) for a, b, _ in rallies] == [(10, 20), (35, 45)]
+    assert detect(m, cues.iloc[:0]) == []

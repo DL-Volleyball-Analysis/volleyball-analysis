@@ -10,5 +10,6 @@
 - [ ] 2.3 VideoMAE checkpoint as a reference if its training split allows a fair test
 
 ## 3. Pipeline
-- [ ] 3.1 Rallies stage from the detector (stage version bump), demo data only when no result; API and UI unchanged
+- [x] 3.1 Rallies stage from the detector (stage version bump), demo data only when no result; API and UI unchanged
+  (vball.rally_cues shared by the script and the stage; models/rally_cues_hgb.joblib; the worker writes detected rallies and moves winner corrections to the overlapping rally; actions outside detected rallies are left out of the API)
 - [ ] 3.2 README, papers, `openspec validate add-rally-detection --strict`

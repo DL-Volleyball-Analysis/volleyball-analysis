@@ -201,6 +201,26 @@ class Database:
                 [(video_id, *(r.get(k) for k in cols)) for r in rallies],
             )
 
+    def replace_detected_rallies(self, video_id: str, found: list[dict], min_iou: float = 0.5) -> None:
+        """Detected rallies (start_s, end_s, confidence) replace the video's rallies; a user's winner correction moves
+        to the new rally that overlaps its old one (temporal IoU >= min_iou), so a rerun keeps it."""
+        old = self.list_rallies(video_id)
+
+        def iou(a, b):
+            inter = max(0.0, min(a[1], b[1]) - max(a[0], b[0]))
+            union = max(a[1], b[1]) - min(a[0], b[0])
+            return inter / union if union > 0 else 0.0
+        rows = [{"idx": k, "start_s": r["start_s"], "end_s": r["end_s"], "winner": None, "reason": None,
+                 "confidence": r.get("confidence"), "landing_x": None, "landing_y": None, "source": "model"}
+                for k, r in enumerate(found)]
+        self.replace_rallies(video_id, rows)
+        for o in old:
+            if not o.get("winner_override"):
+                continue
+            best = max(rows, key=lambda r: iou((o["start_s"], o["end_s"]), (r["start_s"], r["end_s"])), default=None)
+            if best and iou((o["start_s"], o["end_s"]), (best["start_s"], best["end_s"])) >= min_iou:
+                self.set_rally_override(video_id, best["idx"], o["winner_override"])
+
     def list_rallies(self, video_id: str) -> list[dict]:
         with self.connect() as c:
             rows = c.execute(

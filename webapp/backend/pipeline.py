@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 
 from vball import actions, actors, ball, court_registration, jersey, players, teams, trajectory
+from vball import rallies as vrallies
 from vball.calibration import calibrate
 from vball.court_keypoints import detect as detect_keypoints
 from vball.paths import MODELS
@@ -30,6 +31,7 @@ BALL_MODEL = "v4c"
 COURT_MODELS = {"gym": MODELS / "court_kpt.pt", "broadcast": MODELS / "court_kpt_broadcast.pt"}
 # capstone action recogniser (test mAP@0.5 0.957, same matches as training) and the retrained digit detector;
 # shirt numbers are read only once the digit model is installed (docs/results/actions.md)
+RALLY_MODEL = MODELS / "rally_cues_hgb.joblib"  # docs/results/rallies.md
 ACTION_MODEL = MODELS / "action_yolo11m.pt"  # serves (the person classifier has no serve class)
 PERSON_MODEL = MODELS / "person_action_yolo26s_cls.pt"  # block / receive / set / spike per player (docs/results/actions.md)
 BALL_PRIOR = actors.ActorConfig(k=2.0, floor=0.6)  # chosen on the Volleyball dataset's validation matches
@@ -435,8 +437,24 @@ def events(video: Path, out: Path, prev: dict, tick) -> dict:
     return {"status": "todo", "message": "Contacts and landings arrive with milestone M3."}
 
 
+def rally_cues(video: Path, tick):
+    """Cues at 5 Hz (vball.rally_cues). Tests replace this function with a fake."""
+    from vball.rally_cues import cues
+    df, _, _ = cues(video, tick=tick)
+    return df
+
+
 def rallies(video: Path, out: Path, prev: dict, tick) -> dict:
-    return {"status": "todo", "message": "Rally detection and scoring arrive with milestone M3."}
+    """Rallies (start, end, confidence) from the system's cues with the trained rally model (docs/results/rallies.md).
+    Winners stay a user decision until landing calls exist; the worker writes the rallies to the database."""
+    if not RALLY_MODEL.exists():
+        return {"status": "unavailable", "message": "The rally model is not installed."}
+    found = vrallies.detect(vrallies.load_model(RALLY_MODEL), rally_cues(video, tick))
+    rows = [{"start_s": round(a, 2), "end_s": round(b, 2), "confidence": round(c, 3)} for a, b, c in found]
+    res = {"status": "done", "model": RALLY_MODEL.name, "count": len(rows), "rallies": rows}
+    if not rows:
+        res["message"] = "No rally found: the court, players and ball never looked like play."
+    return res
 
 
 FUNCS = {"decode": decode, "court": court, "ball": ball_stage, "players": players_stage, "actions": actions_stage,
@@ -444,7 +462,7 @@ FUNCS = {"decode": decode, "court": court, "ball": ball_stage, "players": player
 # players -4: the general detector where the player-only one misses players
 VERSIONS = {"decode": "1", "court": "2", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-4",
             "actions": "3",  # 3: per-player classifier + ball prior
-            "trajectory": "3", "events": "0.3", "rallies": "0.1"}
+            "trajectory": "3", "events": "0.3", "rallies": "1"}  # rallies 1: detected from cues
 
 
 def stage_file(results: Path, stage: str) -> Path:

@@ -45,7 +45,7 @@ def test_pipeline_stages_and_ball_window(client, clip, fake_ball, monkeypatch, t
     assert [s["start_frame"] for s in stages["decode"]["summary"]["shots"]] == [0, 25]
     assert stages["court"]["status"] == "unavailable"
     assert stages["ball"]["summary"]["detected"] == 25
-    assert stages["rallies"]["status"] == "todo"
+    assert stages["rallies"]["status"] == "unavailable"  # no rally model in tests
 
     w = client.get(f"/videos/{v['id']}/ball", params={"start": 0.2, "end": 0.4}).json()
     assert w["frame"] == [5, 6, 7, 8, 9, 10]

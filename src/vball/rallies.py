@@ -11,10 +11,11 @@ probability. Evaluation matches detected and labelled rallies one to one by temp
 greedy from the best pair).
 """
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 
 @dataclass(frozen=True)
@@ -113,3 +114,38 @@ def evaluate(detected, labelled, min_iou: float = 0.5) -> dict:
             "start_err_median_s": float(np.median(ds)) if len(ds) else None,
             "end_err_median_s": float(np.median(de)) if len(de) else None,
             "within_1s": float(np.mean(np.concatenate([ds, de]) <= 1.0)) if len(ds) else None}
+
+
+# --- classifier on rally cues (vball.rally_cues) -------------------------------------------------------------------
+CUES = ["court_conf", "court_ok", "players", "player_motion", "ball_seen", "ball_speed"]
+WINDOW_S = (1.0, 3.0)  # rolling statistics over these spans (centred)
+
+
+def features(cues: pd.DataFrame, rate: float) -> pd.DataFrame:
+    """Each cue plus its centred rolling mean and std over WINDOW_S: a sample is judged with its context."""
+    out = cues[CUES].astype(float).copy()
+    for w in WINDOW_S:
+        n = max(1, int(round(w * rate)))
+        roll = cues[CUES].astype(float).rolling(n, center=True, min_periods=1)
+        out = out.join(roll.mean().add_suffix(f"_m{w:g}")).join(roll.std().fillna(0).add_suffix(f"_s{w:g}"))
+    return out
+
+
+def save_model(path: Path, classifier, cfg: RallyConfig, rate: float, info: dict) -> None:
+    import joblib
+    joblib.dump({"classifier": classifier, "config": asdict(cfg), "rate": rate, "info": info}, path)
+
+
+def load_model(path: Path) -> dict:
+    import joblib
+    m = joblib.load(path)
+    m["config"] = RallyConfig(**m["config"])
+    return m
+
+
+def detect(model: dict, cues: pd.DataFrame) -> list[tuple[float, float, float]]:
+    """Rallies (start s, end s, confidence) from a video's cues with a saved model."""
+    if not len(cues):
+        return []
+    p = model["classifier"].predict_proba(features(cues, model["rate"]))[:, 1]
+    return segment(cues["t"].to_numpy(), p, model["config"])

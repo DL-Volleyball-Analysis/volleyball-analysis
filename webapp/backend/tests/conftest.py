@@ -86,3 +86,4 @@ def no_action_models(monkeypatch, tmp_path):
     monkeypatch.setattr(pipeline, "JERSEY_MODEL", tmp_path / "missing_digits.pt")
     monkeypatch.setattr(pipeline, "PERSON_MODEL", tmp_path / "missing_person.pt")
     monkeypatch.setattr(pipeline, "GENERAL_PLAYER_MODEL", tmp_path / "missing_general.pt")
+    monkeypatch.setattr(pipeline, "RALLY_MODEL", tmp_path / "missing_rally.joblib")

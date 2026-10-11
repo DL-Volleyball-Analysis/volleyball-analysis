@@ -22,22 +22,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from vball.rallies import RallyConfig, evaluate, match, read_cvat, segment
+from vball.rallies import RallyConfig, evaluate, features, match, read_cvat, save_model, segment
 
 DEV = [2, 3, 4, 8, 10, 13]   # training + leave-one-match-out model selection
 TEST = [6, 9]
-CUES = ["court_conf", "court_ok", "players", "player_motion", "ball_seen", "ball_speed"]
-WINDOW_S = (1.0, 3.0)  # rolling statistics over these spans (centred)
-
-
-def features(cues: pd.DataFrame, rate: float) -> pd.DataFrame:
-    """Each cue plus its centred rolling mean and std over WINDOW_S: a sample is judged with its context."""
-    out = cues[CUES].astype(float).copy()
-    for w in WINDOW_S:
-        n = max(1, int(round(w * rate)))
-        roll = cues[CUES].astype(float).rolling(n, center=True, min_periods=1)
-        out = out.join(roll.mean().add_suffix(f"_m{w:g}")).join(roll.std().fillna(0).add_suffix(f"_s{w:g}"))
-    return out
 
 
 def play_labels(times: np.ndarray, rallies_s: list[tuple[float, float]]) -> np.ndarray:
@@ -112,6 +100,7 @@ def main():
     ap.add_argument("--labels", required=True)
     ap.add_argument("--rate", type=float, default=5.0)
     ap.add_argument("--out", default="outputs/rallies")
+    ap.add_argument("--save", default=None, help="also save a model trained on all eight matches (pipeline use)")
     args = ap.parse_args()
     dev = load(Path(args.cues), Path(args.labels), DEV)
     test = load(Path(args.cues), Path(args.labels), TEST)
@@ -135,6 +124,12 @@ def main():
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     (out / "results.json").write_text(json.dumps(results, indent=2, default=str))
+    if args.save:  # the reported numbers come from the model above; this one has also seen the test matches
+        everything = {**dev, **test}
+        cfg = RallyConfig(**results["classifier"]["test"]["config"])
+        save_model(Path(args.save), fit(everything, DEV + TEST, args.rate), cfg, args.rate,
+                   {"trained_on": "game-state dataset, all 8 matches", "test_f1_of_dev_model": results["classifier"]["test"]["f1"]})
+        print("saved", args.save)
     print("written", out / "results.json")
 
 
