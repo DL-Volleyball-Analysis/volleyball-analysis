@@ -21,7 +21,7 @@
 ## 4. Performance
 
 - [x] 4.1 Lazy-load the hero video with a poster frame and verify in the network panel that the video is not requested before it is near the viewport (the hero became an interactive drawing; the real analysis clip uses `preload="none"` and a poster, so it loads only when played)
-- [ ] 4.2 Verify initial load < 2 MB and Lighthouse mobile performance and accessibility ≥ 90; record the numbers in the repo README
+- [x] 4.2 Verify initial load < 2 MB and Lighthouse mobile performance and accessibility ≥ 90; record the numbers in the repo README (2026-10-11: performance 97, accessibility 100, 0.51 MB)
 
 ## 5. After M2
 
