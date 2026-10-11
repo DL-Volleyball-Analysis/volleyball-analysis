@@ -5,8 +5,8 @@ from stage S recomputes S and everything after it; earlier stages are reused whe
 version still matches, so a new court model does not redo ball tracking.
 """
 import json
-from dataclasses import replace
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 
 import cv2
