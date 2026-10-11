@@ -137,3 +137,28 @@ beats the ideal-filter upper bound: besides leaving out officials and spectators
 so identities break less often. The recall target (0.95) is met; IDF1 is 0.01 short of 0.70. By eye on the five
 re-rendered clips no referee, line judge, ball boy, bench member or camera operator is boxed, including the back
 view without a usable court, and every player on court is. The colour role check and the cap stay as fallbacks.
+
+## Amateur gym footage and the detector fallback (2026-10-11)
+A 4K (3840 x 2160, 59 fps) recording of an open-gym game from a tripod in a corner of the hall (YouTube, Choforo55;
+2.5 min kept locally for testing, not redistributed) exposed a limit of the player-only detector: on the same frame it
+finds 2-3 people where the COCO person detector finds 12-16, at 960 px and at 1920 px. Fine-tuned on SportsMOT broadcast
+labels, it has not seen casual clothes, a low corner view or a half-empty hall.
+
+Players stage version 4 samples 8 frames per video and counts people with both detectors; the general detector is used
+when the player-only one finds fewer than half of the 12 players while the general one sees at least 8 (median over
+the samples). A first rule based on the ratio of the two counts switched the broadcast end-line clip too, where
+photographers in the stands double the general count (25.5 against 12.5). With the final rule:
+
+| Clip | Player-only (median people) | General | Used |
+|---|---|---|---|
+| broadcast_back_rally | 9.5 | 14.5 | player-only |
+| broadcast_back_view | 12.5 | 25.5 | player-only |
+| broadcast_side_high_men | 12.0 | 21.0 | player-only |
+| broadcast_side_high_women | 12.0 | 19.0 | player-only |
+| broadcast_side_rally | 14.0 | 22.0 | player-only |
+| gym_choforo55_4k60 | 3.0 | 12.0 | **general** |
+
+On the gym clip the stage now keeps a median of 12 people per frame (the cap), with the court set by hand (near-half
+points); 97 tracks outside the court are role `other`. Still weak there: 198 tracks for about 14 people (identity
+switches in a crowded, occluded scene) and actions from a classifier trained on broadcast players. The lasting fix is a
+player detector trained on gym data as well (VolliQ: one indoor match, 4 cameras, 1.16 M player boxes, CC BY-NC-SA 4.0).
