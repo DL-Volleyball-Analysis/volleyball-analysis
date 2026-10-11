@@ -85,3 +85,15 @@ def test_saved_model_detects_rallies(tmp_path):
     rallies = detect(m, cues)
     assert [(round(a), round(b)) for a, b, _ in rallies] == [(10, 20), (35, 45)]
     assert detect(m, cues.iloc[:0]) == []
+
+
+
+def test_cues_outside_training_are_reported():
+    import pandas as pd
+
+    from vball.rallies import outside_training
+    broadcast = pd.DataFrame({"court_ok": [1, 1, 0, 1], "players": [12, 11, 13, 12]})
+    end_line = pd.DataFrame({"court_ok": [0, 0, 0, 1, 0, 0], "players": [12] * 6})
+    gym = pd.DataFrame({"court_ok": [1] * 4, "players": [3, 2, 4, 3]})
+    assert outside_training(broadcast) is None
+    assert "court" in outside_training(end_line) and "player" in outside_training(gym)

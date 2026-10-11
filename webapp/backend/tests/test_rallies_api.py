@@ -45,3 +45,16 @@ def test_no_rally_model_keeps_the_stage_unavailable(client, clip, fake_ball):
     run_worker_once()
     s = {x["name"]: x for x in client.get(f"/videos/{v['id']}/stages").json()}["rallies"]
     assert s["status"] == "unavailable" and "not installed" in s["message"]
+
+
+def test_footage_outside_the_rally_model_is_reported_not_guessed(client, clip, fake_ball, monkeypatch, tmp_path):
+    import pandas as pd
+    import pipeline
+    fake_rally_model(monkeypatch, tmp_path, [(0.1, 0.9, 0.8)])
+    gym = pd.DataFrame({"t": [0.0, 0.2, 0.4], "court_ok": [1, 1, 1], "players": [3, 2, 3]})  # few players seen
+    monkeypatch.setattr(pipeline, "rally_cues", lambda video, tick: gym)
+    v = upload(client, clip)
+    run_worker_once()
+    s = {x["name"]: x for x in client.get(f"/videos/{v['id']}/stages").json()}["rallies"]
+    assert s["status"] == "unavailable" and "cannot be told" in s["message"]
+    assert all(r["source"] != "model" for r in client.get(f"/videos/{v['id']}/rallies").json())

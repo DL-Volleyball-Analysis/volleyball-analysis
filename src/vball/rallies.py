@@ -143,6 +143,19 @@ def load_model(path: Path) -> dict:
     return m
 
 
+def outside_training(cues: pd.DataFrame, min_court_share: float = 0.2, min_players: float = 6.0) -> str | None:
+    """Why a video's cues lie outside what the rally model was trained on (broadcast views with the court in view and
+    the player-only detector seeing the teams), or None. Low end-line and amateur-gym views fail both: the model would
+    report no rally rather than the truth, so the caller should say it cannot tell."""
+    if not len(cues):
+        return "no frames"
+    if cues["court_ok"].mean() < min_court_share:
+        return f"the court is found in only {cues['court_ok'].mean():.0%} of the samples"
+    if cues["players"].median() < min_players:
+        return f"the player detector sees a median of {cues['players'].median():g} people"
+    return None
+
+
 def detect(model: dict, cues: pd.DataFrame) -> list[tuple[float, float, float]]:
     """Rallies (start s, end s, confidence) from a video's cues with a saved model."""
     if not len(cues):

@@ -449,7 +449,13 @@ def rallies(video: Path, out: Path, prev: dict, tick) -> dict:
     Winners stay a user decision until landing calls exist; the worker writes the rallies to the database."""
     if not RALLY_MODEL.exists():
         return {"status": "unavailable", "message": "The rally model is not installed."}
-    found = vrallies.detect(vrallies.load_model(RALLY_MODEL), rally_cues(video, tick))
+    cues = rally_cues(video, tick)
+    why = vrallies.outside_training(cues) if cues is not None else None
+    if why:
+        return {"status": "unavailable",
+                "message": f"Rallies cannot be told on this footage: {why}. The rally model was trained on broadcast "
+                           "views with the court in view."}
+    found = vrallies.detect(vrallies.load_model(RALLY_MODEL), cues)
     rows = [{"start_s": round(a, 2), "end_s": round(b, 2), "confidence": round(c, 3)} for a, b, c in found]
     res = {"status": "done", "model": RALLY_MODEL.name, "count": len(rows), "rallies": rows}
     if not rows:
