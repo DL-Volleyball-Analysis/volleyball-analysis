@@ -18,6 +18,7 @@ This PRD answers *why, for whom, and what counts as success*. How the system mus
 | [player-actions.md](player-actions.md) | action events and shirt numbers per player, suggested tags |
 | [player-filtering.md](player-filtering.md) | only the players on court: player-only detector, 12-player cap, team check |
 | [constrained-3d.md](constrained-3d.md) | 3D ball flights on real footage: bounds, robust flights, player-anchored touches |
+| [ball-and-actors.md](ball-and-actors.md) | ball detection and actor attribution measured on labelled volleyball data |
 
 Background: analysis of the capstone web app in [`docs/webapp_redesign.md`](../webapp_redesign.md); organisation-wide repo plan in [`docs/repo-organization.md`](../repo-organization.md).
 
