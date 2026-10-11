@@ -1,0 +1,106 @@
+"""Person action crops from the Volleyball dataset, for a per-player action classifier.
+
+The Volleyball dataset (Ibrahim et al., CVPR 2016) labels every player at each clip's key frame with one of 9
+actions (blocking, digging, falling, jumping, moving, setting, spiking, standing, waiting); `annot_all.pkl` holds
+the boxes, tracked over 9 frames around the key frame. Crops are written as an image-classification folder
+(<split>/<class>/<name>.jpg) with the official split by match.
+
+  train / val: the key frame and frames key +-2 and +-4 of every player (5 views of each action); 'standing'
+               is thinned to `--standing-share` of a split's crops, since it is 70% of all players.
+  test:        the key frame only, every player (the usual protocol for person action accuracy).
+Each crop is the box widened by `--margin` on every side (arms and the ball near the hands stay in view), then
+padded to a square with grey (classifiers resize or centre-crop to a square; a tall player would lose head or feet).
+
+  python scripts/build_volleyball_actions.py --videos <dir with <match>/<clip>/<frame>.jpg> \
+      --pkl annot_all.pkl --out <dir> [--margin 0.15] [--standing-share 0.2]
+"""
+import argparse
+import random
+import sys
+from pathlib import Path
+
+import cv2
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from eval_actions_volleyball import TEST_MATCHES, VAL_MATCHES, load_annotations  # noqa: E402
+
+CLASSES = ["blocking", "digging", "falling", "jumping", "moving", "setting", "spiking", "standing", "waiting"]
+OFFSETS = (-4, -2, 0, 2, 4)
+
+
+def split_of(match: int) -> str:
+    return "test" if match in TEST_MATCHES else "val" if match in VAL_MATCHES else "train"
+
+
+def crop(img, box, margin: float):
+    """box: (x1, y1, x2, y2) pixels; widened by margin x size on every side, clipped to the image."""
+    x1, y1, x2, y2 = box
+    w, h = x2 - x1, y2 - y1
+    H, W = img.shape[:2]
+    a, b = int(max(0, x1 - margin * w)), int(max(0, y1 - margin * h))
+    c, d = int(min(W, x2 + margin * w)), int(min(H, y2 + margin * h))
+    return img[b:d, a:c] if c > a and d > b else None
+
+
+def square(img, value: int = 114):
+    """Pad to a square, image centred."""
+    h, w = img.shape[:2]
+    n = max(h, w)
+    top, left = (n - h) // 2, (n - w) // 2
+    return cv2.copyMakeBorder(img, top, n - h - top, left, n - w - left, cv2.BORDER_CONSTANT, value=(value,) * 3)
+
+
+def build(videos: Path, pkl: Path, out: Path, margin: float = 0.15, standing_share: float = 0.2, seed: int = 0) -> dict:
+    ann = load_annotations(pkl)
+    rng = random.Random(seed)
+    jobs = []  # (split, class, match, clip, frame, player, box)
+    for m, clips in ann.items():
+        split = split_of(m)
+        offsets = (0,) if split == "test" else OFFSETS
+        for c, d in clips.items():
+            key = d["frames"].get(c, {})
+            for player, (_, label) in key.items():
+                for o in offsets:
+                    fb = d["frames"].get(c + o, {}).get(player)
+                    if fb is not None:
+                        jobs.append((split, label, m, c, c + o, player, fb[0]))
+    # thin 'standing' in train / val so it is at most standing_share of the split
+    kept = []
+    for split in ("train", "val", "test"):
+        js = [j for j in jobs if j[0] == split]
+        if split != "test":
+            stand = [j for j in js if j[1] == "standing"]
+            other = [j for j in js if j[1] != "standing"]
+            n = int(standing_share / (1 - standing_share) * len(other))
+            js = other + rng.sample(stand, min(n, len(stand)))
+        kept += js
+    counts: dict = {}
+    for split, label, m, c, f, player, box in kept:
+        img = cv2.imread(str(videos / str(m) / str(c) / f"{f}.jpg"))
+        if img is None:
+            continue
+        x = crop(img, box, margin)
+        if x is None or x.size == 0:
+            continue
+        d = out / split / label
+        d.mkdir(parents=True, exist_ok=True)
+        cv2.imwrite(str(d / f"{m}_{c}_{f}_{player}.jpg"), square(x), [cv2.IMWRITE_JPEG_QUALITY, 92])
+        counts[(split, label)] = counts.get((split, label), 0) + 1
+    return counts
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--videos", required=True)
+    ap.add_argument("--pkl", required=True)
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--margin", type=float, default=0.15)
+    ap.add_argument("--standing-share", type=float, default=0.2)
+    args = ap.parse_args()
+    counts = build(Path(args.videos), Path(args.pkl), Path(args.out), args.margin, args.standing_share)
+    for split in ("train", "val", "test"):
+        print(split, {c: counts.get((split, c), 0) for c in CLASSES})
+
+
+if __name__ == "__main__":
+    main()
