@@ -359,8 +359,11 @@ def stages(vid: str):
             out.append(StageInfo(name=name, status="pending"))
             continue
         res = dict(res)
+        message = res.pop("message", None)
+        if name == "court" and (n := len(db.court_corrections(vid))):
+            message = f"{message or ''} {n} camera shot{'s' if n > 1 else ''} set by you.".strip()
         out.append(StageInfo(name=name, status=res.pop("status"), version=res.pop("version", None),
-                             message=res.pop("message", None), summary=res))
+                             message=message, summary=res))
     return out
 
 

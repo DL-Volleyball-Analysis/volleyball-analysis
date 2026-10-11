@@ -7,7 +7,7 @@ import { fakeApi } from '../test/fakeApi'
 import { rallies } from '../test/fixtures'
 import { renderApp } from '../test/render'
 import { MatchTimeline } from './MatchTimeline'
-import { rulerStep, timeAt } from './timeline'
+import { labelRows, rulerStep, timeAt } from './timeline'
 
 describe('timeline helpers', () => {
   test('ruler step keeps labels to about ten', () => {
@@ -145,4 +145,10 @@ describe('MatchTimeline rendering cost', () => {
     await userEvent.click(open[0])
     expect(onSelectSuggestion).toHaveBeenCalledWith(expect.objectContaining({ id: 'attack-100-3' }))
   })
+})
+
+test('action labels take a second row when close, then become ticks', () => {
+  // 10 s over the lane, minimum gap 0.5 s: 1.0 row 0, 1.2 row 1, 1.3 tick, 2.0 row 0 again
+  expect(labelRows([1.0, 1.2, 1.3, 2.0, 2.1], 10, 0.05)).toEqual([0, 1, null, 0, 1])
+  expect(labelRows([], 10)).toEqual([])
 })

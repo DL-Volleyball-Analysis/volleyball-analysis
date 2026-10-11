@@ -6,7 +6,7 @@ import { useClock } from '../playback/clock'
 import { tagLabel } from '../stats/tagText'
 import { formatDuration } from '../ui/format'
 import { needsReview, reasonText } from './rallyText'
-import { rulerStep, timeAt } from './timeline'
+import { labelRows, rulerStep, timeAt } from './timeline'
 
 const LANES = ['Rallies', 'Ball', 'Landings', 'Actions', 'Tags', 'Review'] as const
 const ACTION_SHORT: Record<ActionEvent['action'], string> = { serve: 'Srv', receive: 'Rec', set: 'Set', spike: 'Spk', block: 'Blk' }
@@ -38,6 +38,8 @@ export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSele
   const dragging = useRef(false)
   const coverage = useBallCoverage(videoId)
   const [trackWidth, setTrackWidth] = useState(800)
+  // action labels about 24 px wide: two rows, then ticks, so dense moments stay readable
+  const actionRows = labelRows(actions.map((a) => a.start_s), duration, 24 / Math.max(trackWidth, 1))
 
   // Re-measure on resize only (not during playback) to choose how many ruler labels fit.
   useEffect(() => {
@@ -155,6 +157,7 @@ export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSele
         {/* Actions: recognised by the action model, in the team's colour when known; click to seek */}
         <div className="relative h-6 border-b border-line" data-testid="lane-actions">
           {actions.map((a, i) => {
+            const row = actionRows[i]
             const who = a.number != null ? `#${a.number}` : a.track_id != null ? `ID ${a.track_id}` : 'unknown player'
             const label = `${a.action} by ${who}${a.team ? ` (${a.team.toUpperCase()})` : ''} at ${a.start_s.toFixed(1)} s`
             return (
@@ -165,10 +168,10 @@ export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSele
                 title={label}
                 aria-label={label}
                 onClick={() => clock.seek(a.start_s)}
-                className={`absolute top-1/2 -translate-y-1/2 rounded-[2px] px-0.5 font-mono text-[10px] leading-none ${a.team === 'a' ? 'text-team-a' : a.team === 'b' ? 'text-team-b' : 'text-ink-muted'}`}
-                style={{ left: pct(a.start_s) }}
+                className={`absolute rounded-[2px] font-mono text-[9px] leading-none ${row === null ? 'top-1/2 h-2 w-px -translate-y-1/2 bg-current' : 'px-0.5'} ${a.team === 'a' ? 'text-team-a' : a.team === 'b' ? 'text-team-b' : 'text-ink-muted'}`}
+                style={{ left: pct(a.start_s), ...(row === null ? {} : { top: row === 0 ? 1 : 12 }) }}
               >
-                {ACTION_SHORT[a.action]}
+                {row === null ? null : ACTION_SHORT[a.action]}
               </button>
             )
           })}

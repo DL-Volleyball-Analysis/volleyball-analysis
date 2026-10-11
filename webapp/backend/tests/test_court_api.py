@@ -105,6 +105,7 @@ def test_court_correction_places_players_and_survives_a_rerun(client, clip, fake
     assert shot["status"] == "ok" and shot["corrected"] and np.allclose(shot["samples"][0]["corners_px"], CORNERS)
     job = run_worker_once()
     assert job["status"] == "done" and job["from_stage"] == "players"
+    assert stage(client, v["id"], "court")["message"].endswith("1 camera shot set by you.")
     players = client.get(f"/videos/{v['id']}/players?start=0&end=0.9").json()
     assert players["placed"] is True and any(b["court_x"] is not None for b in players["boxes"])
 

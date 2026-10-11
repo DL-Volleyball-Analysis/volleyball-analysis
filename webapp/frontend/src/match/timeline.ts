@@ -12,3 +12,19 @@ export function timeAt(clientX: number, box: { left: number; width: number }, du
   if (!box.width) return 0
   return Math.min(duration, Math.max(0, ((clientX - box.left) / box.width) * duration))
 }
+
+/**
+ * Rows for labels on a lane so they do not overlap: each label takes the first of `rows` rows whose last label is
+ * at least `minGap` (a share of the duration) before it; with every row taken it gets null (drawn as a tick, the
+ * full description still in its title). Labels are given in time order.
+ */
+export function labelRows(starts: readonly number[], duration: number, minGap = 0.025, rows = 2): (number | null)[] {
+  const gap = minGap * duration
+  const last = Array<number>(rows).fill(-Infinity)
+  return starts.map((t) => {
+    const r = last.findIndex((l) => t - l >= gap)
+    if (r < 0) return null
+    last[r] = t
+    return r
+  })
+}
