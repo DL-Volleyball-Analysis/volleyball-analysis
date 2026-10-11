@@ -47,7 +47,7 @@ Every number comes from a script and a labelled split, or is named a proxy or sy
 | Player tracking | IDF1 0.690, HOTA 0.636, precision 0.970 on SportsMOT volleyball with a detector fine-tuned to box players only (no referees, line judges or spectators). | labelled benchmark · [player-tracking.md](docs/results/player-tracking.md) |
 | Ball tracking | VballNet V4c: 3.08 false jumps per 100 frames, 68.7% of frames detected on 5 broadcast clips; ~28% detection on wide high-angle shots. | label-free proxy · [ball-tracking.md](docs/results/ball-tracking.md) |
 | 3D trajectory | Robust, bounded ballistic fit anchored to the players at each touch: attack error 0.31 m, set 0.12 m (median) on synthetic rallies with 30% missed and 12% false detections. On real clips 5 of 9 flights are kept, all flagged low quality; the 2D ball track is now the bottleneck. | synthetic + real · [trajectory.md](docs/results/trajectory.md) |
-| Action recognition (YOLOv11m) | In the pipeline: action events per player and suggested attack / serve tags. mAP@0.5 0.957 on the test split, receive weakest (0.863); test frames come from the same matches as training, so not an unseen-match score. | labelled test split · [actions.md](docs/results/actions.md) |
+| Action recognition | Per-player classifier (YOLO26s-cls on player crops) weighted by the ball's position: macro F1 0.678 for block / receive / set / spike on 16 unseen matches of the Volleyball dataset, against 0.303 for the capstone's YOLOv11m detector (which fails on set and receive there); 9-class person action accuracy 72.8%. Serves still come from the detector. | labelled benchmark · [actions.md](docs/results/actions.md) |
 | Shirt numbers | In the pipeline, voted per player over time. Digit mAP@0.5 0.824 on matches whose teams the model never saw; whole numbers read exactly from 63% of single crops. | labelled test split · [actions.md](docs/results/actions.md) |
 | Player statistics | Attack efficiency, kill rate, aces and serve errors per player from coach tags, CSV export. | tests · [player-stats.md](docs/prd/player-stats.md) |
 
@@ -82,6 +82,14 @@ src/vball/          analysis package
   scoring.py          rally winners -> running score (indoor set rules)
   stats.py            attack / serve tags -> outcomes and player statistics
   metrics.py          ball-track metrics (label-free proxies + labelled F1)
+  ball_detect.py      ball candidates: VballNet (whole frame / tiles), RAVEL-VB
+  ball_track.py       ball tracker: fixed objects dropped, Viterbi linking, gap filling
+  actions.py          action detections -> events per player track
+  actors.py           per-player action classifier input and the ball prior
+  jersey.py           shirt numbers: digit readings voted over time
+  teams.py            team and role from torso colours
+  rallies.py          rally segmentation and boundary evaluation
+  court_registration.py  per-shot court mapping, model pick, user corrections
 scripts/            entry points (dataset build, evaluation, comparisons)
 webapp/             web app: FastAPI API + worker (backend/), React UI (frontend/); see webapp/README.md
 training/           capstone training code: action recognition, jersey numbers
