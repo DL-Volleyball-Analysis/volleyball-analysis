@@ -23,3 +23,32 @@ authors' test set ([fast-volleyball-tracking-inference](https://github.com/asiga
 
 ## Not measured yet
 F1 on our own labelled gym footage (PRD ball-tracking acceptance criterion).
+
+## Labelled evaluation: Volleyball dataset test split (2026-10-11)
+`scripts/eval_ball_detection.py` via `notebooks/eval_ball_volleyball.ipynb` (Kaggle; change measure-ball-and-actors).
+The Volleyball dataset (Ibrahim et al., CVPR 2016) with the ball position in every frame (Perez et al., Pattern
+Recognition 2022): 16 test matches, 1,337 clips, 54,817 frames, a ball labelled in 92.3% of them (positions of an
+occluded ball estimated by the annotators count as visible). A detection within tau pixels of the label is a true
+positive; a farther one is both a false positive and a miss. None of these detectors was trained on this dataset.
+
+| Method | P / R / F1 at 4 px | P / R / F1 at 10 px | Frames with a detection | ms / frame (T4) |
+|---|---|---|---|---|
+| VballNet V4c | 0.397 / 0.211 / 0.275 | 0.569 / 0.301 / 0.394 | 48.9% | 22 |
+| V4c + tracker | 0.500 / 0.165 / 0.248 | 0.729 / 0.240 / 0.361 | | 24 |
+| V4c on 2 x 2 tiles | 0.277 / 0.231 / 0.252 | 0.373 / 0.310 / 0.338 | 76.7% | 103 |
+| tiles + tracker | 0.391 / 0.170 / 0.236 | 0.542 / 0.235 / 0.328 | | 105 |
+| RAVEL-VB-011 | 0.455 / 0.190 / 0.268 | 0.749 / 0.313 / **0.441** | 38.5% | 17 |
+| RAVEL-011 + tracker | 0.568 / 0.148 / 0.235 | **0.871** / 0.227 / 0.360 | 24.0% | 20 |
+| RAVEL-VB-012 | 0.214 / 0.213 / 0.213 | 0.286 / 0.283 / 0.284 | 91.5% | 41 |
+| RAVEL-012 + tracker | 0.398 / 0.170 / 0.238 | 0.543 / 0.232 / 0.325 | | 43 |
+
+- **Not an evaluation error.** Predictions and labels share coordinates (median ratio 1.00 in x and y), and when a
+  detector finds the ball it is accurate: median 4.3 px from the label for RAVEL-011.
+- **The detectors do not transfer.** On these older 720p broadcasts they miss most balls (recall 0.2-0.3) and fire on
+  other objects (V4c precision 0.40 at 4 px). For reference, WASB trained on this dataset reports F1 0.865 at 4 px.
+- **The tracker trades recall for precision** (RAVEL-011 at 10 px: 0.749 -> 0.871 precision, 0.313 -> 0.227 recall),
+  so F1 does not improve; its thresholds were set on our own clips and not tuned here.
+- **Tiles do not help here**: more candidates, lower precision. They helped on our wide 1080p men's clip by eye, where the
+  ball is smaller than in these 720p clips.
+- Next: WASB's published Volleyball-dataset weights as a detector (`vball.ball_detect.Wasb`, ONNX export in
+  `notebooks/eval_wasb_volleyball.ipynb`), measured with the same script.
