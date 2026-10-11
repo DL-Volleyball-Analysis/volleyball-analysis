@@ -129,3 +129,15 @@ M1 Pro CPU (model call only, median).
 
 The court stage samples a few frames per shot, so even v3b's 285 ms adds about a second per shot. Net-point
 errors follow the floor errors: v2 places the net well on gym images, v3b does not.
+
+## Why most videos have no usable court (2026-10-12)
+Of nine analysed videos, three have a usable court shot. Overlays of the fitted floor on the first sample:
+
+- Broadcast back / side rally views: the floor fit is correct (projected lines on the sidelines and centre line), but
+  the net check fails (net error 0.04-0.07 of the image width, threshold 0.015): the model puts the net points at the
+  ends of the net, about 1 m outside the sidelines, where the check expects them above the sidelines.
+- 4K low end-line gym view (Canada vs Italy): the floor fit follows lines of other sports; the net check correctly
+  rejects it.
+- Measuring the net points' distance to the projected net line instead of to the points passes the correct back views
+  (0.007-0.021) but also the wrong gym fit (0.014): the net alone cannot tell the two apart. Change
+  `verify-court-by-lines` proposes line evidence from the image instead.
