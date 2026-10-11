@@ -15,7 +15,7 @@ from vball.paths import OUTPUTS  # noqa: E402
 
 
 def load_labels(label_path: Path, k: int) -> np.ndarray:
-    rows = [list(map(float, l.split())) for l in label_path.read_text().splitlines() if l.strip()]
+    rows = [list(map(float, line.split())) for line in label_path.read_text().splitlines() if line.strip()]
     return np.array([r[5:5 + 3 * k] for r in rows]).reshape(-1, k, 3)
 
 

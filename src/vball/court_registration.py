@@ -28,12 +28,19 @@ line the near half, CORRECTION_PRESETS) are stored apart from court.json and ove
 the four (the floor is a plane) and whose 4 net points come from a camera calibrated on them,
 so every later stage, 3D included, uses the correction as if the model had found it.
 """
-from typing import Callable, Iterable
+from collections.abc import Callable, Iterable
 
 import cv2
 import numpy as np
 
-from .court_keypoints import CORNER_IDS, K6Y7R_FLOOR, complete_floor, court_is_plausible, fit_homography, net_points_from_floor
+from .court_keypoints import (
+    CORNER_IDS,
+    K6Y7R_FLOOR,
+    complete_floor,
+    court_is_plausible,
+    fit_homography,
+    net_points_from_floor,
+)
 
 SAMPLE_FPS = 5.0
 SMOOTH_WINDOW = 5

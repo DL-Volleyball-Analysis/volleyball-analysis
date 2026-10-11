@@ -5,12 +5,13 @@ from stage S recomputes S and everything after it; earlier stages are reused whe
 version still matches, so a new court model does not redo ball tracking.
 """
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import cv2
 import numpy as np
 import pandas as pd
+
 from vball import actions, ball, court_registration, jersey, players, teams, trajectory
 from vball.calibration import calibrate
 from vball.court_keypoints import detect as detect_keypoints

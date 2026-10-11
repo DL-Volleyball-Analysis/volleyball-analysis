@@ -16,9 +16,9 @@ court mapping and drops people outside the court plus margins (referees, bench, 
 Stored by the web app as players.csv.gz with these columns. Teams are not assigned here: which team
 plays on which side changes between sets and belongs to rally scoring.
 """
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Iterable
 
 import numpy as np
 import pandas as pd

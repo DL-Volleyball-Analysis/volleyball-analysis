@@ -15,12 +15,12 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pandas as pd
-from vball import court as vcourt
-from vball import court_registration
-
 import pipeline
 from database import Database
 from settings import DB_PATH, RESULTS
+
+from vball import court as vcourt
+from vball import court_registration
 
 BALL, EDGE, WHITE = (63, 210, 255), (0, 0, 0), (255, 255, 255)  # BGR
 TEAM = {"a": (163, 118, 15), "b": (57, 18, 159), "": (230, 230, 230)}  # side of the net, as in the app

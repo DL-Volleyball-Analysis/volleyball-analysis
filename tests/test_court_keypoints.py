@@ -46,8 +46,10 @@ def synthetic_camera(f=1400.0, size=(1920, 1080), eye=(5.0, -14.0, 9.0)):
     w, h = size
     K = np.array([[f, 0, w / 2], [0, f, h / 2], [0, 0, 1]])
     eye, target = np.array(eye, float), np.array([9.0, 4.5, 0.0])
-    z = target - eye; z /= np.linalg.norm(z)
-    x = np.cross(z, [0, 0, 1.0]); x /= np.linalg.norm(x)
+    z = target - eye
+    z /= np.linalg.norm(z)
+    x = np.cross(z, [0, 0, 1.0])
+    x /= np.linalg.norm(x)
     y = np.cross(z, x)
     R = np.stack([x, y, z])
     tvec = -R @ eye

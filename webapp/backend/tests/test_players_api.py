@@ -1,9 +1,9 @@
 import cv2
 import numpy as np
 import pytest
-from vball.court_registration import COURT_CORNERS
-
 from test_api import run_worker_once, upload
+
+from vball.court_registration import COURT_CORNERS
 
 
 def test_players_stage_runs_after_ball_without_a_court(client, clip, fake_ball):
@@ -67,6 +67,7 @@ def test_homography_lookup_by_shot():
 
 def test_people_marked_other_are_returned_but_flagged(client, clip, fake_ball, monkeypatch):
     import pipeline
+
     from vball.teams import Assignment
     # track 2 (far outside the court in the fake tracker) looks like neither team: a referee
     monkeypatch.setattr(pipeline, "team_assignments", lambda video, df: {1: Assignment("a", False), 2: Assignment(None, True)})

@@ -11,3 +11,17 @@ dependencies = ["numpy", "pandas", "scipy", "opencv-python-headless", "onnxrunti
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ruff]
+line-length = 150  # the existing code wraps near 120 and never past 150
+target-version = "py312"
+extend-exclude = ["external", "private", "webapp/frontend", "notebooks"]
+
+[tool.ruff.lint]
+# pyflakes, pycodestyle, import order, bugbear, pyupgrade
+select = ["F", "E", "W", "I", "B", "UP"]
+# B008: frozen config dataclasses as default arguments are intended (immutable)
+ignore = ["B008", "B905"]  # B905: zips of equal-length sequences by construction
+
+[tool.ruff.lint.isort]
+known-first-party = ["vball"]

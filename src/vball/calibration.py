@@ -22,8 +22,14 @@ import cv2
 import numpy as np
 from scipy.optimize import least_squares
 
-from .court_keypoints import (K6Y7R_FLOOR_IDS, K6Y7R_NET_IDS, NET_TOP_MEN, NET_TOP_WOMEN,
-                              focal_from_homography, k6y7r_points_3d)
+from .court_keypoints import (
+    K6Y7R_FLOOR_IDS,
+    K6Y7R_NET_IDS,
+    NET_TOP_MEN,
+    NET_TOP_WOMEN,
+    focal_from_homography,
+    k6y7r_points_3d,
+)
 
 MAX_ERROR_FRACTION = 0.005  # default gate: median reprojection error <= 0.5% of the image width
 MAX_FOCAL_SD = 0.05         # default gate: focal length known to 5% (1 sd)

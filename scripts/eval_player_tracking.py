@@ -60,7 +60,7 @@ def run_tracker(seqs: list[str], cfg: TrackerConfig, label: str, max_frames: int
         step = ultralytics_step(cfg)  # fresh tracker state per sequence
         times = []
 
-        def timed(image):
+        def timed(image, step=step, times=times):  # bound per sequence
             t0 = time.perf_counter()
             rows = step(image)
             times.append(time.perf_counter() - t0)

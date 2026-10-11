@@ -1,11 +1,11 @@
 import numpy as np
 import pandas as pd
 import pytest
+from test_api import run_worker_once, upload
+
 from vball.calibration import look_at
 from vball.court_keypoints import k6y7r_points_3d
 from vball.trajectory.synthetic import render
-
-from test_api import run_worker_once, upload
 
 SIZE = (320, 180)  # the test clip
 CAM = look_at([9.0, -14.0, 7.5], [9.0, 4.5, 0.5], 300.0, SIZE)

@@ -102,8 +102,9 @@ def test_rally_scores_and_correction(client, rallies):
 
 
 def test_delete_removes_upload(client, clip):
-    import main
     from pathlib import Path
+
+    import main
     v = upload(client, clip)
     path = Path(main.db.get_video(v["id"])["path"])
     assert client.delete(f"/videos/{v['id']}").status_code == 204
@@ -162,8 +163,8 @@ def test_ball_coverage(client, clip, fake_ball):
 
 
 def test_ball_coverage_first_half_only(client, clip, monkeypatch):
-    import pandas as pd
     import numpy as np
+    import pandas as pd
     import pipeline
     n = 50
     f = np.arange(n)

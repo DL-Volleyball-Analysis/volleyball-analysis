@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 
 from vball.calibration import look_at
-from vball.trajectory import BALL_RADIUS, G, Flight, FlightConfig, FlightFit, fit, reconstruct, segment
-from vball.trajectory.synthetic import rally, render
+from vball.trajectory import BALL_RADIUS, Flight, FlightConfig, FlightFit, G, fit, reconstruct, segment
+from vball.trajectory.synthetic import render
 
 SIZE = (1920, 1080)
 CAM = look_at([9.0, -14.0, 7.5], [9.0, 4.5, 0.5], 1600.0, SIZE)

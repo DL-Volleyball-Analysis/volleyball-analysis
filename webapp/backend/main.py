@@ -14,17 +14,17 @@ from typing import Literal
 
 import numpy as np
 import pandas as pd
-from vball import court_registration, jersey
+import pipeline
+from database import FINISHED, Database
 from fastapi import FastAPI, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
 from pydantic import BaseModel
-from vball.scoring import running_score
-from vball import stats as vstats
-
-import pipeline
-from database import FINISHED, Database
 from settings import DB_PATH, RESULTS, UPLOADS, VIDEO_SUFFIXES
+
+from vball import court_registration, jersey
+from vball import stats as vstats
+from vball.scoring import running_score
 
 app = FastAPI(title="Volleyball Analysis API", version="2.0.0")
 app.add_middleware(
@@ -249,7 +249,7 @@ def register(name: str, path: Path) -> Video:
     try:
         meta = pipeline.video_meta(path)
     except ValueError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from e
     v = db.add_video(name, str(path), meta)
     db.add_job(v["id"], "decode")  # analysis starts right after upload
     return video_out(v)
@@ -408,7 +408,7 @@ def correct_court(vid: str, shot: int, req: CourtCorrection):
     try:
         court_registration.corrected_sample(req.frame, req.points_px, (dec["width"], dec["height"]), ids)
     except ValueError as e:
-        raise HTTPException(422, str(e))
+        raise HTTPException(422, str(e)) from e
     db.set_court_correction(vid, shot, req.frame, req.points_px, list(ids))
     return CourtCorrected(court=court_out(vid), queued=requeue_from_players(vid))
 
@@ -782,7 +782,7 @@ def valid_tag(kind: str, team: str, number: int, outcome: str | None) -> None:
     try:
         vstats.Tag("check", 0.0, kind, team, number, outcome)
     except ValueError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from e
 
 
 @app.get("/videos/{vid}/tags", response_model=list[TagOut])

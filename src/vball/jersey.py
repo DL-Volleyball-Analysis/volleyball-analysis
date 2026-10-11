@@ -66,7 +66,7 @@ def segments(frames: list[int], readings: list[str | None], window: int,
     f = np.asarray(frames)[order]
     r = [readings[i] for i in order]
     local = []
-    for k, fk in enumerate(f):
+    for fk in f:
         near = [r[j] for j in range(len(f)) if abs(f[j] - fk) <= window]
         local.append(vote(near, cfg).number)
     out: list[tuple[int, int, int | None]] = []

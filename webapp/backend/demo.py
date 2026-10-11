@@ -9,11 +9,11 @@ Usage: python backend/demo.py
 import random
 
 import numpy as np
-from vball.paths import VIDEOS
-from vball.trajectory import BALL_RADIUS, G, FlightFit
-
 from database import Database
 from settings import DB_PATH
+
+from vball.paths import VIDEOS
+from vball.trajectory import BALL_RADIUS, FlightFit, G
 
 REASONS = ("in", "in", "in", "out", "net", "fault")
 

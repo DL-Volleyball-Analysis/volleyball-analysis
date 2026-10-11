@@ -1,5 +1,4 @@
 import cv2
-
 from test_api import run_worker_once, upload
 
 

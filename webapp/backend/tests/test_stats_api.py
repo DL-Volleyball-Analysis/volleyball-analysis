@@ -2,7 +2,6 @@ import csv
 import io
 
 import pytest
-
 from test_api import upload
 
 

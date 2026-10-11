@@ -61,7 +61,6 @@ def test_every_frame_when_detecting_at_full_rate():
 
 # --- on-court filter and positions (synthetic homography: 50 px per metre, court origin at (100, 600),
 # image y grows downwards, so court y goes up the image) ---
-import numpy as np  # noqa: E402
 
 from vball.players import place_on_court  # noqa: E402
 

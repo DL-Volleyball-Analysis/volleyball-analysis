@@ -59,6 +59,7 @@ def track_refined(video: Path, detector: str = "ravel012", cfg=None) -> pd.DataF
     """Ball track from a detector's candidates with the fixed-object check, linking and gap filling
     (vball.ball_detect, vball.ball_track). Reads the whole video: meant for clips and shots, not full matches."""
     from . import ball_detect
-    from .ball_track import TrackConfig, track as link_track
+    from .ball_track import TrackConfig
+    from .ball_track import track as link_track
     frames = read_frames(Path(video))
     return link_track(frames, ball_detect.load(detector).candidates(frames), cfg or TrackConfig())

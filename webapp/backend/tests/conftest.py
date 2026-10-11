@@ -23,7 +23,8 @@ def data_dir(tmp_path_factory):
 def empty_db(data_dir):
     import main
     with main.db.connect() as c:
-        c.executescript("DELETE FROM dismissed_suggestions; DELETE FROM tags; DELETE FROM rosters; DELETE FROM rallies; DELETE FROM jobs; DELETE FROM videos;")
+        tables = ("court_corrections", "dismissed_suggestions", "tags", "rosters", "rallies", "jobs", "videos")
+        c.executescript("".join(f"DELETE FROM {t};" for t in tables))
 
 
 @pytest.fixture(scope="session")
@@ -56,9 +57,8 @@ def fake_ball(monkeypatch):
 
 @pytest.fixture
 def client():
-    from fastapi.testclient import TestClient
-
     import main
+    from fastapi.testclient import TestClient
     return TestClient(main.app)
 
 

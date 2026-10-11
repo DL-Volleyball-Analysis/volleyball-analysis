@@ -2,10 +2,24 @@ import numpy as np
 import pytest
 
 from vball.calibration import look_at
-from vball.court_keypoints import (CORNER_IDS, K6Y7R_FLIP_IDX, corners_from_homography, court_is_plausible,
-                                   fit_homography, k6y7r_points_3d)
-from vball.court_registration import (CONFIG, calibration_samples, corners_at, mapping_at, register_shot,
-                                      sample_frames, shot_status, smooth_corners)
+from vball.court_keypoints import (
+    CORNER_IDS,
+    K6Y7R_FLIP_IDX,
+    corners_from_homography,
+    court_is_plausible,
+    fit_homography,
+    k6y7r_points_3d,
+)
+from vball.court_registration import (
+    CONFIG,
+    calibration_samples,
+    corners_at,
+    mapping_at,
+    register_shot,
+    sample_frames,
+    shot_status,
+    smooth_corners,
+)
 
 SIZE = (1920, 1080)
 CAM = look_at([9.0, -14.0, 7.5], [9.0, 4.5, 0.5], 1600.0, SIZE)
@@ -106,7 +120,7 @@ def test_status_rules():
 
 def test_noisy_keypoints_need_review():
     for noise in (60.0, 100.0):  # 100 px once fooled an inlier-RMS error into ~0 (four exact inliers)
-        shot = register_shot(0, 30, 30.0, SIZE, lambda f: keypoints(noise=noise, seed=f))
+        shot = register_shot(0, 30, 30.0, SIZE, lambda f, noise=noise: keypoints(noise=noise, seed=f))
         assert shot["status"] in ("needs_review", "failed")
     clean = register_shot(0, 30, 30.0, SIZE, lambda f: keypoints(noise=1.0, seed=f))
     assert clean["status"] == "ok"
@@ -190,6 +204,7 @@ def test_a_correction_overrides_its_shot_and_leaves_the_stored_court_alone():
 
 def test_an_implausible_correction_is_rejected():
     import pytest
+
     from vball.court_registration import corrected_sample
     with pytest.raises(ValueError):
         corrected_sample(0, [[600, 300], [220, 800], [1700, 800], [1320, 300]], (1920, 1080))  # crossed
