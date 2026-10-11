@@ -133,3 +133,34 @@ segment at that moment. On the same frame the blocker is now "ID 6 block" (unrea
 libero #27 and #24 stay right. Some tracks now show two numbers over time (e.g. 7 -> 17 -> 17 -> 7), more likely
 the dropped-digit misread measured on the test crops than a real switch; quantifying this needs a clip with
 labelled numbers.
+
+## The action detector on another dataset: Volleyball dataset (2026-10-11)
+`scripts/eval_actions_volleyball.py` (change measure-ball-and-actors). The Volleyball dataset (Ibrahim et al., CVPR
+2016; broadcast, 720p) labels every player at each clip's key frame; mapped to our classes (setting -> set, digging
+-> receive, spiking -> spike, blocking -> block, others none; no serves). Parameters chosen on the 15 validation
+matches, reported once on the 16 test matches (1,337 clips; 855 blocks, 659 receives, 372 sets, 372 spikes among
+the labelled players). Detections: `notebooks/eval_actions_volleyball.ipynb` on Kaggle.
+
+| Method | Val macro F1 | Test macro F1 | Block | Receive | Set | Spike |
+|---|---|---|---|---|---|---|
+| key frame | 0.257 | 0.273 | 0.545 | 0.003 | 0.011 | 0.533 |
+| 9 frames (best of top n) | 0.288 | **0.303** | 0.659 | 0.000 | 0.005 | 0.549 |
+| + ball prior (labelled ball) | 0.293 | 0.296 | 0.683 | 0.000 | 0.005 | 0.495 |
+
+Test confusion (9 frames, threshold 0.3; rows true, columns predicted):
+
+| true \ predicted | block | receive | serve | set | spike | none |
+|---|---|---|---|---|---|---|
+| block | 569 | 0 | 0 | 0 | 3 | 283 |
+| receive | 10 | 1 | 0 | 0 | 70 | 578 |
+| set | 29 | 0 | 0 | 4 | 288 | 51 |
+| spike | 10 | 0 | 0 | 0 | 310 | 52 |
+| none | 195 | 2 | 0 | 1 | 338 | 13,140 |
+
+- **The detector does not generalise.** On 24,102 frames it gives 10,401 spike and 7,721 block detections (conf >=
+  0.3) but 40 set and 9 receive. Sets are called spikes (288 of 372), receives are missed. The test-split mAP of
+  0.957 on the capstone's own data (above) measured the same matches it was trained on.
+- **The ball prior cannot fix a wrong class.** It moves the decision to the player at the ball (block +0.024) but
+  the action at the ball is still called spike; macro F1 does not improve, so it is not added to the pipeline.
+- Next: a per-player classifier trained on this dataset's training matches (`notebooks/train_person_actions.ipynb`),
+  so that the class comes from a model that has seen these views; the ball prior is re-tested with it.
