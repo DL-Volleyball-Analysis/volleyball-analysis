@@ -15,3 +15,8 @@ CLAUDE.md
 # model weights (ultralytics downloads them to the working directory)
 *.pt
 *.onnx
+
+# coverage data
+.coverage
+.coverage.*
+htmlcov/
