@@ -1,9 +1,11 @@
 """From ball candidates to one ball track: drop fixed objects, link over time, fill short gaps.
 
 1. Fixed objects. Floor dashes, logos and scoreboard digits look like a ball to the detector but move only with
-   the camera. The global camera shift between frames is estimated by phase correlation; a candidate whose patch
-   barely changes against the camera-aligned patches `motion_k` frames before and after it is a fixed object.
-   The ball in flight differs from both (on broadcast clips: fixed objects 9-24, the ball 40-85 grey levels).
+   the camera. The global camera shift between frames is estimated by phase correlation. A candidate is a fixed
+   object when (a) its patch barely changes against the camera-aligned patches `motion_k` frames before and after it
+   and (b) candidates keep appearing at the same camera-aligned spot in at least `fixed_frames` of the `fixed_window`
+   frames around it. (a) alone is not enough: on broadcast clips fixed objects change 9-24 and the ball 40-85 grey
+   levels, but on darker gym footage the ball in flight changes only 13-19.
 2. Linking. Viterbi over each frame's candidates plus a "no ball" state: cost = (1 - score) per detection,
    `miss_cost` per frame without one, and a motion term (step / (max_step x frames since the last
    detection))^2, infinite beyond 1. The best path is the track: one candidate per frame, or none.
@@ -25,7 +27,10 @@ from .ball_detect import Candidate
 class TrackConfig:
     motion_k: int = 3          # frames before and after used for the fixed-object check
     motion_r: int = 8          # half size of the compared patch, pixels
-    min_motion: float = 30.0   # mean absolute grey change below this: a fixed object
+    min_motion: float = 30.0   # mean absolute grey change below this: possibly a fixed object ...
+    fixed_window: int = 10     # ... if candidates also sit at the same aligned spot in the frames around it
+    fixed_frames: int = 6      # (at least this many of the +-fixed_window frames)
+    fixed_radius: float = 6.0  # pixels
     max_step: float = 0.04     # largest ball step per frame, as a share of the frame width
     miss_cost: float = 0.6
     forget: int = 15           # after this many frames without a detection, any position may follow
@@ -66,7 +71,17 @@ def motion(frames: list[np.ndarray], shift: np.ndarray, i: int, x: float, y: flo
 def drop_fixed(frames: list[np.ndarray], cands: list[list[Candidate]], cfg: TrackConfig = TrackConfig(),
                shift: np.ndarray | None = None) -> list[list[Candidate]]:
     shift = camera_shift(frames) if shift is None else shift
-    return [[c for c in cs if motion(frames, shift, i, c.x, c.y, cfg.motion_k, cfg.motion_r) >= cfg.min_motion]
+    aligned = [np.array([[c.x - shift[i][0], c.y - shift[i][1]] for c in cs]).reshape(-1, 2) for i, cs in enumerate(cands)]
+
+    def recurs(i: int, p: np.ndarray) -> bool:
+        lo, hi = max(0, i - cfg.fixed_window), min(len(cands), i + cfg.fixed_window + 1)
+        hits = sum(1 for j in range(lo, hi) if j != i and len(aligned[j])
+                   and np.min(np.hypot(*(aligned[j] - p).T)) <= cfg.fixed_radius)
+        return hits >= cfg.fixed_frames
+
+    return [[c for k, c in enumerate(cs)
+             if not (motion(frames, shift, i, c.x, c.y, cfg.motion_k, cfg.motion_r) < cfg.min_motion
+                     and recurs(i, aligned[i][k]))]
             for i, cs in enumerate(cands)]
 
 

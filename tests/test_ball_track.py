@@ -87,3 +87,12 @@ def test_unknown_detector_is_rejected():
     import pytest
     with pytest.raises(ValueError):
         load("tracknet9")
+
+
+def test_a_low_contrast_ball_in_flight_is_kept():
+    """Gym footage: the ball barely differs from the background (motion below min_motion) but never stays put."""
+    frames, ball = scene()
+    dim = [np.clip(f.astype(int) // 4 + 60, 0, 255).astype(np.uint8) for f in frames]  # low contrast everywhere
+    cands = [[Candidate(bx, by, 0.8)] for bx, by, _ in ball]
+    kept = drop_fixed(dim, cands, TrackConfig(min_motion=1000.0))  # every patch counts as "barely changing"
+    assert all(len(c) == 1 for c in kept)

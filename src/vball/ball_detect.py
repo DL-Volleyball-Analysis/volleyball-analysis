@@ -140,6 +140,22 @@ class Ravel:
         return out
 
 
+def letterbox(width: int, height: int, out_w: int, out_h: int) -> tuple[float, int, int]:
+    """(scale, x0, y0) placing a width x height frame centred in out_w x out_h without distortion; an image point
+    p maps to p * scale + (x0, y0). Shared by inference (Wasb) and training data (scripts/build_ball_clips.py)."""
+    s = min(out_w / width, out_h / height)
+    return s, (out_w - round(width * s)) // 2, (out_h - round(height * s)) // 2
+
+
+def letterbox_image(f: np.ndarray, out_w: int, out_h: int) -> np.ndarray:
+    h, w = f.shape[:2]
+    s, x0, y0 = letterbox(w, h, out_w, out_h)
+    canvas = np.zeros((out_h, out_w) + f.shape[2:], f.dtype)
+    nw, nh = round(w * s), round(h * s)
+    canvas[y0:y0 + nh, x0:x0 + nw] = cv2.resize(f, (nw, nh), interpolation=cv2.INTER_LINEAR)
+    return canvas
+
+
 class Wasb:
     W, H, FRAMES = 512, 288, 3
     MEAN = np.array([0.485, 0.456, 0.406], np.float32)
@@ -154,21 +170,14 @@ class Wasb:
         """3 x H x W, RGB, ImageNet-normalised; the frame is letterboxed to 512 x 288 like WASB's affine input."""
         if f.ndim == 2:
             f = cv2.cvtColor(f, cv2.COLOR_GRAY2BGR)
-        h, w = f.shape[:2]
-        s = min(self.W / w, self.H / h)
-        nw, nh = round(w * s), round(h * s)
-        canvas = np.zeros((self.H, self.W, 3), np.uint8)
-        x0, y0 = (self.W - nw) // 2, (self.H - nh) // 2
-        canvas[y0:y0 + nh, x0:x0 + nw] = cv2.resize(f, (nw, nh), interpolation=cv2.INTER_LINEAR)
-        rgb = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+        rgb = cv2.cvtColor(letterbox_image(f, self.W, self.H), cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
         return ((rgb - self.MEAN) / self.STD).transpose(2, 0, 1)
 
     def candidates(self, frames: list[np.ndarray]) -> list[list[Candidate]]:
         if not frames:
             return []
         h, w = frames[0].shape[:2]
-        s = min(self.W / w, self.H / h)
-        x0, y0 = (self.W - round(w * s)) // 2, (self.H - round(h * s)) // 2
+        s, x0, y0 = letterbox(w, h, self.W, self.H)
         out: list[list[Candidate]] = []
         for st in range(0, len(frames), self.FRAMES):
             win = frames[st:st + self.FRAMES]
