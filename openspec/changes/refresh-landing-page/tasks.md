@@ -9,7 +9,7 @@
 ## 2. Truthful claims
 
 - [x] 2.1 Add `lib/claims.ts` with required sources and render `Stats` from it; verify the build fails type-checking if an entry has no source (done as `CLAIMS` in `lib/site/content.ts`; `source` is a required field of `Claim`)
-- [x] 2.2 Fill the initial entries from `outputs/ball_model_comparison/metrics.csv` and the upstream benchmark; verify each value against its source file (2026-10-11: ball, court, player tracking, synthetic 3D, actions; each links its docs/results file)
+- [x] 2.2 Fill the initial entries from `outputs/ball/model_comparison/metrics.csv` and the upstream benchmark; verify each value against its source file (2026-10-11: ball, court, player tracking, synthetic 3D, actions; each links its docs/results file)
 - [x] 2.3 Remove the unsourced stats and the "automatic court detection" claim from both languages; verify `grep` finds no "98.5" or "100K" in the repo (0 hits, 2026-10-11)
 
 ## 3. Copy and sections

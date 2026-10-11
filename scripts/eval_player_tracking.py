@@ -26,7 +26,7 @@ from vball.players import TrackerConfig, track_frames, ultralytics_step  # noqa:
 
 SPORTSMOT = DATASETS / "sportsmot"
 GT_ROOT = SPORTSMOT / "val"
-RESULTS = OUTPUTS / "player_tracking"
+RESULTS = OUTPUTS / "players" / "tracking"
 
 
 def volleyball_val_seqs() -> list[str]:

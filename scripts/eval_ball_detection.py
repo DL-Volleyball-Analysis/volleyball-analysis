@@ -79,7 +79,7 @@ def main():
     ap.add_argument("--detectors", nargs="+", default=ball_detect.DETECTORS, choices=ball_detect.DETECTORS)
     ap.add_argument("--no-track", action="store_true", help="only the detectors alone")
     ap.add_argument("--max-clips", type=int, default=None, help="evenly spaced subset of the test clips")
-    ap.add_argument("--out", default=str(OUTPUTS / "ball_eval_volleyball"))
+    ap.add_argument("--out", default=str(OUTPUTS / "ball" / "eval_volleyball"))
     args = ap.parse_args()
 
     dets = {d: ball_detect.load(d) for d in args.detectors}

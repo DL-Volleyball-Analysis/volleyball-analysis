@@ -1,6 +1,6 @@
 """Compare VballNet ball models on every clip in data/videos.
 
-Writes outputs/ball_model_comparison/{metrics.csv, trajectories.jpg}.
+Writes outputs/ball/model_comparison/{metrics.csv, trajectories.jpg}.
 Usage: .venv/bin/python scripts/compare_ball_models.py [--models v4c fast_v1]
 """
 import argparse
@@ -41,7 +41,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--models", nargs="+", default=["fast_v1", "v4c"])
     args = ap.parse_args()
-    out = OUTPUTS / "ball_model_comparison"
+    out = OUTPUTS / "ball" / "model_comparison"
     out.mkdir(parents=True, exist_ok=True)
 
     rows, tiles = [], []

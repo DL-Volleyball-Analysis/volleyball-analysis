@@ -65,7 +65,7 @@ fewer VNL frames from pretrained weights.
 `vball.court_registration` in the web app's court stage (5 samples per second per shot, model v2 installed
 as `models/court_kpt.pt`), on the five 1080p evaluation clips:
 
-| Clip | View | Stage time / video | Status (self-reported) | By eye (`outputs/court_v2_overlays.jpg`) |
+| Clip | View | Stage time / video | Status (self-reported) | By eye (`outputs/court/v2_overlays.jpg`) |
 |---|---|---|---|---|
 | broadcast_back_rally | behind the end line | 0.60x (includes model load) | ok, error 0.0038 | wrong |
 | broadcast_back_view | behind the end line | 0.32x | ok, 0.0027 | wrong: full court squeezed into the near half |

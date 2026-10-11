@@ -88,17 +88,29 @@ src/vball/          analysis package
   actors.py           per-player action classifier input and the ball prior
   jersey.py           shirt numbers: digit readings voted over time
   teams.py            team and role from torso colours
-  rallies.py          rally segmentation and boundary evaluation
+  rallies.py          rally segmentation, the rally classifier and boundary evaluation
+  rally_cues.py       per-sample rally cues (court, players, ball) for training and the pipeline
   court_registration.py  per-shot court mapping, model pick, user corrections
 scripts/            entry points (dataset build, evaluation, comparisons)
 webapp/             web app: FastAPI API + worker (backend/), React UI (frontend/); see webapp/README.md
-training/           capstone training code: action recognition, jersey numbers
-notebooks/          Colab training notebooks (GPU work runs on Colab)
+training/           training code: ball detector (WASB), action recognition, jersey numbers
+notebooks/          Kaggle / Colab notebooks (GPU work runs there, never locally)
 tests/              pytest
-docs/               PRD, results, design notes
+docs/               PRD (prd/), measured results (results/), design notes
 openspec/           specifications and changes
-models/ data/ outputs/ external/   not in git (weights, datasets, results, third-party repos)
 ```
+
+Not in git (local only):
+```
+models/             weights the code loads by name (src/vball/paths.py, webapp/backend/pipeline.py)
+data/videos/        test videos; hires/ holds 4K clips (kept local, never redistributed)
+data/datasets/      public datasets as downloaded + the training sets built from them by scripts/build_*.py
+outputs/<topic>/    results of scripts and notebooks, one folder per topic:
+                      ball/ court/ players/ actions/ rallies/ videos/ (rendered analyses)
+external/           third-party repositories, untouched
+trash/              files staged for deletion during a clean-up (review, then delete)
+```
+A new result goes to `outputs/<topic>/<experiment>/`; a number worth keeping is written up in `docs/results/`.
 
 ## Setup
 ```

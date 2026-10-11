@@ -6,8 +6,8 @@ landing call would see. Splits: `test` (k6y7r, all 10 floor points) and `test_vn
 front-zone corners). Per clip for the broadcast split. Also: pixel error of the four net points (10-13) where
 they are labelled (k6y7r only), and inference time per image (model call only, this machine's CPU).
 
-  .venv/bin/python scripts/eval_court_keypoints.py --model models/court_kpt_yolo26n_v2.pt
-  .venv/bin/python scripts/eval_court_keypoints.py --model models/court_kpt_yolo26s_v3.pt --dataset court_keypoints_v3
+  .venv/bin/python scripts/eval_court_keypoints.py --model models/court_kpt.pt
+  .venv/bin/python scripts/eval_court_keypoints.py --model models/court_kpt_broadcast.pt
 """
 import argparse
 import time
@@ -73,7 +73,7 @@ def evaluate(model, root: Path, split: str, imgsz: int, conf_min: float = 0.5) -
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
-    ap.add_argument("--dataset", default="court_keypoints_v3", help="folder under data/datasets")
+    ap.add_argument("--dataset", default="court_keypoints_v3b", help="folder under data/datasets")
     ap.add_argument("--imgsz", type=int, default=None, help="default: the model's training size")
     args = ap.parse_args()
 

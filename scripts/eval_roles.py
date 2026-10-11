@@ -11,7 +11,7 @@ the SportsMOT training sequences.
 Reports the share of non-player tracks and boxes marked other (caught), of player tracks and boxes marked other
 (lost), and the box precision before and after dropping `other` boxes.
 
-  .venv/bin/python scripts/eval_roles.py [--tracks outputs/player_tracking/yolo26s_960_botsort_10fps/data]
+  .venv/bin/python scripts/eval_roles.py [--tracks outputs/players/tracking/yolo26s_960_botsort_10fps/data]
 """
 import argparse
 from collections import Counter
@@ -53,7 +53,7 @@ def is_player(pred: pd.DataFrame, gt_by_frame: dict) -> pd.Series:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--tracks", default=str(OUTPUTS / "player_tracking" / "yolo26s_960_botsort_10fps" / "data"))
+    ap.add_argument("--tracks", default=str(OUTPUTS / "players" / "tracking" / "yolo26s_960_botsort_10fps" / "data"))
     ap.add_argument("--samples", type=int, default=10, help="boxes per track for its colour")
     args = ap.parse_args()
     val = DATASETS / "sportsmot" / "val"

@@ -20,3 +20,5 @@ CLAUDE.md
 .coverage
 .coverage.*
 htmlcov/
+# files staged for deletion during clean-ups (review, then delete)
+trash/

@@ -9,7 +9,7 @@ Change: `openspec/changes/add-player-actions`.
 | Jersey digits, YOLOv8m, 10 classes (0-9), 640 px | `jersey_digits_yolov8m.pt` (capstone model, replaced by `jersey_digits_yolo26s.pt` below and deleted) | team Drive `專題/jersey-number-detection-main/runs/jersey_detection/weights/best.pt` |
 
 ## Action recogniser on its test split
-`scripts/eval_actions.py --train-zip <capstone zip>` (output kept in `outputs/actions_eval.txt`). The capstone's
+`scripts/eval_actions.py --train-zip <capstone zip>` (output kept in `outputs/actions/capstone_eval.txt`). The capstone's
 dataset (the same 18,616 / 3,636 / 2,554 split as the report) was taken from the capstone zip on the team Drive;
 the test split was never used for training or model selection.
 
@@ -107,7 +107,7 @@ mAP@0.5 **0.824**, mAP@0.5:0.95 0.519, precision 0.809, recall 0.740.
 |---|---|---|---|---|---|---|---|---|---|---|
 | AP@0.5 | 0.690 | 0.932 | 0.936 | 0.904 | 0.810 | 0.906 | 0.767 | 0.890 | 0.681 | 0.727 |
 
-**Whole numbers, one crop at a time** (`scripts/eval_jersey.py`, output in `outputs/jersey_eval.txt`): read exactly
+**Whole numbers, one crop at a time** (`scripts/eval_jersey.py`, output in `outputs/players/jersey_eval.txt`): read exactly
 **63.2%**, wrong 29.9%, not read 7.0%; one-digit numbers 70.8% / 12.4% / 16.8%, two-digit numbers 60.1% / 36.8% /
 3.1%. The most common error drops one digit of a two-digit number (19 -> 1, 11 -> 1, 15 -> 1, 17 -> 7), then
 look-alike digits (18 -> 16, 5 -> 9). The web app votes over a track's readings (at least 3, 60% agreeing), which

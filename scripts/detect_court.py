@@ -3,7 +3,7 @@
 Runs both court keypoint models (gym: court_kpt.pt, broadcast: court_kpt_broadcast.pt) on the frame, registers the
 frame as a one-frame shot with each, and keeps the better one the way the pipeline does (vball.court_registration:
 status, then floor-net consistency, then fit error). Only an ok court is drawn; a doubtful one is named, not drawn.
-Writes outputs/court_detection/<clip>.jpg and <clip>.json.
+Writes outputs/court/detection/<clip>.jpg and <clip>.json.
 
   .venv/bin/python scripts/detect_court.py [--at 0.5]
 """
@@ -45,7 +45,7 @@ def main():
     models = {name: YOLO(str(p)) for name, p in COURT_MODELS.items() if p.exists()}
     if not models:
         raise SystemExit(f"no court model in {MODELS}")
-    out = OUTPUTS / "court_detection"
+    out = OUTPUTS / "court" / "detection"
     out.mkdir(parents=True, exist_ok=True)
     for video in sorted(VIDEOS.glob("*.mp4")):
         frame = frame_at(video, args.at)

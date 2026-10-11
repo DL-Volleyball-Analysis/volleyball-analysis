@@ -1,7 +1,7 @@
 """Draw numbered keypoints on sample images of a YOLO-pose dataset and print visibility stats.
 
 Usage: .venv/bin/python scripts/inspect_court_keypoints.py <dataset_dir> [n_samples]
-Overlays go to outputs/court_keypoints_inspect/<dataset_name>/.
+Overlays go to outputs/court/keypoints_inspect/<dataset_name>/.
 """
 import sys
 from pathlib import Path
@@ -23,7 +23,7 @@ def main():
     root = Path(sys.argv[1])
     n = int(sys.argv[2]) if len(sys.argv) > 2 else 12
     k = yaml.safe_load((root / "data.yaml").read_text())["kpt_shape"][0]
-    out = OUTPUTS / "court_keypoints_inspect" / root.name
+    out = OUTPUTS / "court" / "keypoints_inspect" / root.name
     out.mkdir(parents=True, exist_ok=True)
 
     labels = sorted(root.glob("*/labels/*.txt"))

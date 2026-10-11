@@ -24,7 +24,7 @@ between, all 15 sequences; TrackEval's combined scores. Time: CPU (Apple M1 Pro)
 | YOLO26s | 1280 | BoT-SORT | 0.432 | 0.433 | −0.041 | 0.895 | 0.491 | 504 | 146 |
 | YOLO26s | 1280 | ByteTrack | 0.314 | 0.332 | −0.070 | 0.812 | 0.485 | 1238 | 140 |
 
-Raw outputs: `outputs/player_tracking/<config>.txt` (per-sequence rows included).
+Raw outputs: `outputs/players/tracking/<config>.txt` (per-sequence rows included).
 
 **Reading.** BoT-SORT halves the ID switches of ByteTrack in every setting. The small model beats the nano
 model; 1280 px input adds recall but more false boxes and costs 50% more time. Best: YOLO26s, 960 px,
@@ -91,10 +91,10 @@ three sampling intervals (`MAX_GAP_SAMPLES`). Rerun of the best setting (YOLO26s
 
 The ghost boxes were counted as false positives: precision +3.3 points, MOTA +0.08, at a small recall cost
 (some long gaps had been bridged correctly). The PRD targets are still missed. Raw output:
-`outputs/player_tracking/yolo26s_960_botsort_10fps_gap3*.txt`.
+`outputs/players/tracking/yolo26s_960_botsort_10fps_gap3*.txt`.
 
 ## Role check by appearance (2026-10-11, change filter-on-court-players)
-`scripts/eval_roles.py` (output in `outputs/roles_eval.txt`): on the saved YOLO26s 960 BoT-SORT tracks of the 15
+`scripts/eval_roles.py` (output in `outputs/players/roles_eval.txt`): on the saved YOLO26s 960 BoT-SORT tracks of the 15
 SportsMOT volleyball val sequences, a predicted track is a non-player when it matches no labelled player (IoU >=
 0.5 on at least half its boxes). No court mapping here, so this is colour alone (no libero override).
 
@@ -124,7 +124,7 @@ frame), so it overstates how many tracks are officials.
 `notebooks/train_player_detector.ipynb` on Kaggle (T4): YOLO26s from the COCO weights, 960 px, one class, on the 15
 SportsMOT volleyball training sequences (every 3rd frame; match video v_Dk3EpDDa3o0 held out for validation:
 mAP@0.5 0.995). Evaluated on the 15 val sequences with `scripts/eval_player_tracking.py` (BoT-SORT, 10 fps; raw
-output `outputs/player_tracking_sportsmot_ft.txt`):
+output `outputs/players/tracking_sportsmot_ft.txt`):
 
 | Detector | HOTA | IDF1 | MOTA | Recall | Precision | ID switches |
 |---|---|---|---|---|---|---|

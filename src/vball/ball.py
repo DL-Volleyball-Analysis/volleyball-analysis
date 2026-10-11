@@ -20,7 +20,7 @@ def track(video: Path, model: str = "v4c", out_dir: Path | None = None, force: b
     """Run ball detection on a video and return one row per frame."""
     video = Path(video)
     model_path = BALL_MODELS.get(model, Path(model))
-    out_dir = Path(out_dir or OUTPUTS / "ball_tracks" / model)
+    out_dir = Path(out_dir or OUTPUTS / "ball" / "tracks" / model)
     csv = out_dir / video.stem / "ball.csv"
     if force or not csv.exists():
         out_dir.mkdir(parents=True, exist_ok=True)

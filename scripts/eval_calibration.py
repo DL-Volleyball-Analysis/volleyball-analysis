@@ -4,7 +4,7 @@ For each image, `vball.calibration.calibrate` runs on (a) the labelled keypoints
 (b) the court model's keypoints with confidence >= 0.5. Reports the status counts, the median
 reprojection error (pixels and % of image width), and the recovered camera height and focal length.
 
-  .venv/bin/python scripts/eval_calibration.py [--model models/court_kpt_yolo26n_v2.pt] [--split test]
+  .venv/bin/python scripts/eval_calibration.py [--model models/court_kpt.pt] [--split test]
 """
 import argparse
 from pathlib import Path
@@ -15,7 +15,7 @@ import numpy as np
 from vball.calibration import calibrate
 from vball.paths import DATASETS, MODELS
 
-DATASET = DATASETS / "court_keypoints_v3"
+DATASET = DATASETS / "court_keypoints_v3b"
 K = 14
 
 
@@ -70,7 +70,7 @@ def summarise(name: str, cals: list, widths: list[int]) -> None:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", default=str(MODELS / "court_kpt_yolo26n_v2.pt"))
+    ap.add_argument("--model", default=str(MODELS / "court_kpt.pt"))
     ap.add_argument("--split", default="test")
     args = ap.parse_args()
 
