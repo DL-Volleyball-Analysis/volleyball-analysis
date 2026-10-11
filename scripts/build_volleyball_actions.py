@@ -24,30 +24,14 @@ import cv2
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from eval_actions_volleyball import TEST_MATCHES, VAL_MATCHES, load_annotations  # noqa: E402
 
+from vball.actors import person_crop  # noqa: E402
+
 CLASSES = ["blocking", "digging", "falling", "jumping", "moving", "setting", "spiking", "standing", "waiting"]
 OFFSETS = (-4, -2, 0, 2, 4)
 
 
 def split_of(match: int) -> str:
     return "test" if match in TEST_MATCHES else "val" if match in VAL_MATCHES else "train"
-
-
-def crop(img, box, margin: float):
-    """box: (x1, y1, x2, y2) pixels; widened by margin x size on every side, clipped to the image."""
-    x1, y1, x2, y2 = box
-    w, h = x2 - x1, y2 - y1
-    H, W = img.shape[:2]
-    a, b = int(max(0, x1 - margin * w)), int(max(0, y1 - margin * h))
-    c, d = int(min(W, x2 + margin * w)), int(min(H, y2 + margin * h))
-    return img[b:d, a:c] if c > a and d > b else None
-
-
-def square(img, value: int = 114):
-    """Pad to a square, image centred."""
-    h, w = img.shape[:2]
-    n = max(h, w)
-    top, left = (n - h) // 2, (n - w) // 2
-    return cv2.copyMakeBorder(img, top, n - h - top, left, n - w - left, cv2.BORDER_CONSTANT, value=(value,) * 3)
 
 
 def build(videos: Path, pkl: Path, out: Path, margin: float = 0.15, standing_share: float = 0.2, seed: int = 0) -> dict:
@@ -79,12 +63,12 @@ def build(videos: Path, pkl: Path, out: Path, margin: float = 0.15, standing_sha
         img = cv2.imread(str(videos / str(m) / str(c) / f"{f}.jpg"))
         if img is None:
             continue
-        x = crop(img, box, margin)
+        x = person_crop(img, box, margin)  # the same crop the pipeline classifies
         if x is None or x.size == 0:
             continue
         d = out / split / label
         d.mkdir(parents=True, exist_ok=True)
-        cv2.imwrite(str(d / f"{m}_{c}_{f}_{player}.jpg"), square(x), [cv2.IMWRITE_JPEG_QUALITY, 92])
+        cv2.imwrite(str(d / f"{m}_{c}_{f}_{player}.jpg"), x, [cv2.IMWRITE_JPEG_QUALITY, 92])
         counts[(split, label)] = counts.get((split, label), 0) + 1
     return counts
 

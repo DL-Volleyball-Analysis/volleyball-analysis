@@ -53,17 +53,3 @@ def test_crops_follow_the_match_split_and_thin_standing(tmp_path):
     assert counts[("test", "setting")] == 1 and counts[("test", "standing")] == 1  # test: key frame, all players
     img = cv2.imread(str(next((tmp_path / "out" / "test" / "setting").glob("*.jpg"))))
     assert img.shape[:2] == (102, 102)  # 40 x 80 box widened by 15% each side (52 x 102, clipped at the top), padded square
-
-
-def test_crop_is_clipped_to_the_image():
-    b = load("build_volleyball_actions")
-    img = np.zeros((100, 100, 3), np.uint8)
-    assert b.crop(img, (90, 90, 120, 130), 0.1).shape[:2] == (14, 13)  # widened to (87, 86), clipped at 100
-    assert b.crop(img, (200, 200, 210, 210), 0.1) is None
-
-
-def test_square_padding_keeps_the_image_centred():
-    b = load("build_volleyball_actions")
-    img = np.full((10, 4, 3), 255, np.uint8)
-    sq = b.square(img)
-    assert sq.shape == (10, 10, 3) and (sq[:, 3:7] == 255).all() and (sq[:, :3] == 114).all()

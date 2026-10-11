@@ -12,7 +12,7 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from vball import actions, ball, court_registration, jersey, players, teams, trajectory
+from vball import actions, actors, ball, court_registration, jersey, players, teams, trajectory
 from vball.calibration import calibrate
 from vball.court_keypoints import detect as detect_keypoints
 from vball.paths import MODELS
@@ -29,7 +29,9 @@ BALL_MODEL = "v4c"
 COURT_MODELS = {"gym": MODELS / "court_kpt.pt", "broadcast": MODELS / "court_kpt_broadcast.pt"}
 # capstone action recogniser (test mAP@0.5 0.957, same matches as training) and the retrained digit detector;
 # shirt numbers are read only once the digit model is installed (docs/results/actions.md)
-ACTION_MODEL = MODELS / "action_yolo11m.pt"
+ACTION_MODEL = MODELS / "action_yolo11m.pt"  # serves (the person classifier has no serve class)
+PERSON_MODEL = MODELS / "person_action_yolo26s_cls.pt"  # block / receive / set / spike per player (docs/results/actions.md)
+BALL_PRIOR = actors.ActorConfig(k=2.0, floor=0.6)  # chosen on the Volleyball dataset's validation matches
 JERSEY_MODEL = MODELS / "jersey_digits_yolo26s.pt"
 ACTION_FPS, JERSEY_FPS = 10.0, 2.0
 # YOLO26s fine-tuned on SportsMOT volleyball training sequences (players only): IDF1 0.690, precision 0.970 on
@@ -177,6 +179,29 @@ def action_detector():
     return detect
 
 
+def person_classifier():
+    """-> (class names, crops -> (n, classes) probabilities). Tests replace this function with a fake."""
+    from ultralytics import YOLO
+    model = YOLO(str(PERSON_MODEL))
+    names = [model.names[i] for i in range(len(model.names))]
+
+    def classify(crops):
+        if not crops:
+            return np.zeros((0, len(names)))
+        return np.stack([r.probs.data.cpu().numpy() for r in model(crops, imgsz=224, verbose=False)])
+    return names, classify
+
+
+def ball_points(out: Path) -> dict[int, np.ndarray]:
+    """frame -> detected ball (x, y) from the ball stage, for the actors' ball prior."""
+    p = out / "ball.csv"
+    if not p.exists():
+        return {}
+    df = pd.read_csv(p)
+    df = df[df["visible"] > 0]
+    return {int(f): np.array([x, y]) for f, x, y in zip(df["frame"], df["x"], df["y"])}
+
+
 def digit_detector():
     """player crop -> rows of (digit, conf, x1, y1, x2, y2). Tests replace this function with a fake."""
     from ultralytics import YOLO
@@ -201,19 +226,24 @@ def player_crop(frame: np.ndarray, row) -> np.ndarray | None:
 
 
 def actions_stage(video: Path, out: Path, prev: dict, tick) -> dict:
-    """Action events per player track (vball.actions) and shirt numbers per track (vball.jersey)."""
-    if not ACTION_MODEL.exists():
+    """Action events per player track (vball.actions) and shirt numbers per track (vball.jersey). Block, receive, set
+    and spike come from the per-player classifier weighted by the ball's position (vball.actors) when it is installed,
+    serves from the action detector; without the classifier every action comes from the detector."""
+    if not ACTION_MODEL.exists() and not PERSON_MODEL.exists():
         return {"status": "unavailable", "message": "The action model is not installed."}
     tracks_csv = out / "players.csv.gz"
     tracks = pd.read_csv(tracks_csv) if tracks_csv.exists() else pd.DataFrame(columns=players.COLUMNS)
     n, fps = prev["decode"].get("frames") or 0, prev["decode"].get("fps") or 30.0
     a_step, j_step = players.sample_every(fps, ACTION_FPS), players.sample_every(fps, JERSEY_FPS)
-    detect = action_detector()
+    detect = action_detector() if ACTION_MODEL.exists() else None
+    person = person_classifier() if PERSON_MODEL.exists() else None
     read = digit_detector() if JERSEY_MODEL.exists() else None
     if "role" in tracks:
         tracks = tracks[tracks["role"] == "player"]  # officials and staff are not given actions or numbers
     seen = tracks[~tracks["interpolated"].astype(bool)] if len(tracks) else tracks
     by_frame = {f: g for f, g in seen.groupby("frame")} if read and len(seen) else {}
+    boxes_at = {f: g for f, g in tracks.groupby("frame")} if person and len(tracks) else {}
+    balls = ball_points(out) if person else {}
     rows, readings = [], {}
     cap, i = cv2.VideoCapture(str(video)), 0
     while True:
@@ -223,7 +253,19 @@ def actions_stage(video: Path, out: Path, prev: dict, tick) -> dict:
             break
         if wanted:
             if i % a_step == 0:
-                rows.extend((i, *d) for d in detect(frame))
+                if detect is not None:
+                    # with the classifier, the detector only contributes serves
+                    rows.extend((i, *d) for d in detect(frame) if person is None or d[0] == "serve")
+                if person is not None and i in boxes_at:
+                    g = boxes_at[i]
+                    boxes = g[["x1", "y1", "x2", "y2"]].to_numpy(float)
+                    crops = [actors.person_crop(frame, b) for b in boxes]
+                    keep = [k for k, c in enumerate(crops) if c is not None]
+                    if keep:
+                        names, classify = person
+                        probs = classify([crops[k] for k in keep])
+                        rows.extend(actors.classifier_rows(i, boxes[keep], probs, names, balls.get(i), BALL_PRIOR,
+                                                           min_conf=actions.ActionConfig().min_conf))
             if read is not None and i % j_step == 0:
                 for row in by_frame.get(i, pd.DataFrame()).itertuples():
                     crop = player_crop(frame, row)
@@ -249,7 +291,9 @@ def actions_stage(video: Path, out: Path, prev: dict, tick) -> dict:
     }
     (out / "action_events.json").write_text(json.dumps(data))  # actions.json is the stage result
     by_action = {a: sum(e.action == a for e in evs) for a in actions.ACTIONS}
-    res = {"status": "done", "models": {"actions": ACTION_MODEL.name, "digits": JERSEY_MODEL.name if read else None},
+    res = {"status": "done", "models": {"actions": ACTION_MODEL.name if detect else None,
+                                        "person": PERSON_MODEL.name if person else None,
+                                        "digits": JERSEY_MODEL.name if read else None},
            "events": len(evs), "by_action": by_action,
            "numbered_tracks": sum(any(n is not None for _, _, n in sg) for sg in segs.values())}
     if read is None:
@@ -366,7 +410,8 @@ def rallies(video: Path, out: Path, prev: dict, tick) -> dict:
 FUNCS = {"decode": decode, "court": court, "ball": ball_stage, "players": players_stage, "actions": actions_stage,
          "trajectory": trajectory_stage, "events": events, "rallies": rallies}
 VERSIONS = {"decode": "1", "court": "2", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-3",  # -3: team and role columns, 12-player cap
-            "actions": "2", "trajectory": "3", "events": "0.3", "rallies": "0.1"}
+            "actions": "3",  # 3: per-player classifier + ball prior
+            "trajectory": "3", "events": "0.3", "rallies": "0.1"}
 
 
 def stage_file(results: Path, stage: str) -> Path:

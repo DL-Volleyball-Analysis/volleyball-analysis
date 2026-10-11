@@ -190,3 +190,10 @@ Same test players and classes as the detector table above (`eval_actions_volleyb
 - The ball prior raises precision in every class (block 0.679 -> 0.698, receive 0.455 -> 0.503, set 0.607 -> 0.618,
   spike 0.628 -> 0.644) at a small cost in recall; +0.010 macro F1. Its parameters were not tuned on test.
 - Remaining gap to the literature: one frame instead of a temporal window; receive (digging) is the weakest class.
+
+### In the pipeline (actions stage version 3)
+Block, receive, set and spike now come from the per-player classifier on each player track (10 samples per second),
+weighted by the ball prior with the ball stage's detections; serves still come from the detector (the dataset has no
+serve label). On the women's evaluation clip the events read as a play: receive (track 14, 1.3-2.3 s), set (track 4,
+2.9-3.4 s, peak 1.00), spike (track 6, 3.3-3.7 s), blocks at the net (tracks 5 and 35, 3.9-4.7 s); the detector alone
+called most of these moments spike or block.

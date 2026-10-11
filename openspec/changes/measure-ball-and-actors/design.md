@@ -27,3 +27,11 @@ block; serves are not labelled in this dataset, so serve predictions count as wr
 - The Volleyball dataset is from older broadcasts at 720p; numbers may differ on our clips. Reported as such.
 - VballNet and RAVEL were not trained on it (cross-dataset), unlike WASB's published volleyball model; the WASB
   reference run is labelled as in-domain.
+
+## Per-player classifier (added 2026-10-11)
+The detector measured on this dataset almost never predicts set or receive (macro F1 0.303), and a ball prior cannot
+change a wrong class. A YOLO26s-cls classifier on square player crops (box + 15%, `vball.actors.person_crop`, the same
+crop in training and in the pipeline) is trained on the 9 person actions of the training matches and selected on
+validation. In the actions stage it classifies every player track at the action sampling rate;
+`vball.actors.classifier_rows` turns its output, times the ball prior, into the detection rows `vball.actions` already
+merges into events, so event merging, suggestions and the API are unchanged. Serves stay with the detector.

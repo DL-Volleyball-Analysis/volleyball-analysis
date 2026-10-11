@@ -19,6 +19,7 @@ of the top `top_n` frames, so a single noisy frame neither creates nor erases an
 """
 from dataclasses import dataclass
 
+import cv2
 import numpy as np
 
 from .actions import ACTIONS, iou
@@ -91,3 +92,42 @@ def with_ball(scores: dict[int, np.ndarray], boxes: dict[int, np.ndarray], ball_
 def decide(scores: dict[int, np.ndarray], threshold: float = ActorConfig().threshold) -> dict[int, int | None]:
     """Per player: the index of its best action if its score reaches the threshold, else None."""
     return {p: (int(np.argmax(s)) if s.max() >= threshold else None) for p, s in scores.items()}
+
+
+# --- per-player action classifier (notebooks/train_person_actions.ipynb) ----------------------------------------
+# The Volleyball dataset's person actions that are ours; its other classes (standing, moving, ...) mean no action.
+PERSON_ACTIONS = {"blocking": "block", "digging": "receive", "setting": "set", "spiking": "spike"}
+
+
+def person_crop(frame: np.ndarray, box, margin: float = 0.15, pad_value: int = 114) -> np.ndarray | None:
+    """The classifier's input: the box widened by `margin` on every side, clipped to the image, padded to a square
+    (as in training: scripts/build_volleyball_actions.py). None when nothing is left."""
+    x1, y1, x2, y2 = (float(v) for v in box)
+    w, h = x2 - x1, y2 - y1
+    H, W = frame.shape[:2]
+    a, b = int(max(0, x1 - margin * w)), int(max(0, y1 - margin * h))
+    c, d = int(min(W, x2 + margin * w)), int(min(H, y2 + margin * h))
+    if c <= a or d <= b:
+        return None
+    crop = frame[b:d, a:c]
+    n = max(crop.shape[:2])
+    top, left = (n - crop.shape[0]) // 2, (n - crop.shape[1]) // 2
+    return cv2.copyMakeBorder(crop, top, n - crop.shape[0] - top, left, n - crop.shape[1] - left,
+                              cv2.BORDER_CONSTANT, value=(pad_value,) * 3)
+
+
+def classifier_rows(frame: int, boxes: np.ndarray, probs: np.ndarray, names: list[str], ball_xy=None,
+                    cfg: ActorConfig = ActorConfig(), min_conf: float = 0.25) -> list[tuple]:
+    """Detection rows (frame, action, conf, x1, y1, x2, y2) for vball.actions from the classifier's output on the
+    players of one frame. boxes: (n, 4); probs: (n, len(names)). A player gets a row when its most likely class is
+    one of ours; conf is that probability times the ball prior (unchanged without a ball)."""
+    rows = []
+    for box, p in zip(np.asarray(boxes, float).reshape(-1, 4), np.asarray(probs, float).reshape(len(boxes), -1)):
+        k = int(np.argmax(p))
+        action = PERSON_ACTIONS.get(names[k])
+        if action is None:
+            continue
+        conf = float(p[k]) * ball_prior(box, ball_xy, cfg)
+        if conf >= min_conf:
+            rows.append((frame, action, conf, *map(float, box)))
+    return rows

@@ -1,7 +1,17 @@
 import numpy as np
 
 from vball.actions import ACTIONS
-from vball.actors import ActorConfig, ball_prior, box_distance, combine, decide, player_scores, with_ball
+from vball.actors import (
+    ActorConfig,
+    ball_prior,
+    box_distance,
+    classifier_rows,
+    combine,
+    decide,
+    person_crop,
+    player_scores,
+    with_ball,
+)
 
 SET, SPIKE = ACTIONS.index("set"), ACTIONS.index("spike")
 
@@ -44,3 +54,26 @@ def test_per_frame_ball_weighting():
     ball = {0: np.array([5.0, 5.0]), 1: None}   # frame 0: the ball is at player 1, not at the "setter" 2
     s = player_scores(det, boxes, ActorConfig(floor=0.25), ball=ball)
     assert np.isclose(s[2][0, SET], 0.8 * 0.25, atol=1e-6) and np.isclose(s[1][1, SET], 0.8)
+
+
+def test_person_crop_is_clipped_and_square():
+    img = np.full((100, 100, 3), 255, np.uint8)
+    c = person_crop(img, (90, 90, 120, 130), 0.1)  # widened to (87, 86), clipped at 100: 13 x 14, padded to 14 x 14
+    assert c.shape == (14, 14, 3) and (c[:, -1] == 114).all() and (c[:, 0] == 255).all()  # odd padding goes right
+    assert person_crop(img, (200, 200, 210, 210), 0.1) is None
+    tall = person_crop(np.full((200, 200, 3), 255, np.uint8), (50, 20, 70, 100), 0.0)
+    assert tall.shape == (80, 80, 3) and (tall[:, 30:50] == 255).all() and (tall[:, :30] == 114).all()
+
+
+NAMES = ["blocking", "digging", "falling", "jumping", "moving", "setting", "spiking", "standing", "waiting"]
+
+
+def test_classifier_rows_keep_our_actions_weighted_by_the_ball():
+    boxes = np.array([[0, 0, 10, 40], [300, 0, 310, 40], [500, 0, 510, 40]])
+    probs = np.zeros((3, 9))
+    probs[0, NAMES.index("setting")] = 0.9    # the setter, at the ball
+    probs[1, NAMES.index("setting")] = 0.9    # looks like setting, far from the ball
+    probs[2, NAMES.index("standing")] = 0.95  # no action
+    rows = classifier_rows(7, boxes, probs, NAMES, np.array([5.0, -2.0]), ActorConfig(k=1.0, floor=0.2), min_conf=0.25)
+    assert [(r[0], r[1]) for r in rows] == [(7, "set")] and np.isclose(rows[0][2], 0.9, atol=0.02)
+    assert len(classifier_rows(7, boxes, probs, NAMES, None)) == 2  # without a ball both look-alikes stay

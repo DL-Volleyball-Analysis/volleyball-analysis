@@ -97,3 +97,40 @@ def test_accepting_posts_an_ordinary_tag_and_dismissing_is_remembered(client, cl
 def test_actions_404_before_the_stage_ran(client, clip):
     v = upload(client, clip)
     assert client.get(f"/videos/{v['id']}/actions").status_code == 404
+
+
+def test_person_classifier_with_the_ball_and_serves_from_the_detector(client, clip, fake_ball, monkeypatch, tmp_path):
+    """Track 1 (130,60-170,100) is classified as setting, track 2 (280,0-320,20) as spiking; the fake ball flies at
+    y = 90 on the left, nearer track 1. The detector reports a spike (ignored: the classifier decides) and a serve."""
+    import numpy as np
+    import pipeline
+    calls = install(monkeypatch, tmp_path, digits=False)
+    (tmp_path / "person.pt").write_bytes(b"")
+    monkeypatch.setattr(pipeline, "PERSON_MODEL", tmp_path / "person.pt")
+    names = ["blocking", "digging", "falling", "jumping", "moving", "setting", "spiking", "standing", "waiting"]
+
+    def person_classifier():
+        def classify(crops):
+            out = np.zeros((len(crops), len(names)))
+            for k, c in enumerate(crops):  # crops are square: the larger one is track 1
+                out[k, names.index("setting" if c.shape[0] > 30 else "spiking")] = 0.95
+            return out
+        return names, classify
+
+    def action_detector():
+        def detect(frame):
+            calls["frames"] += 1
+            return [("spike", 0.9, 132.0, 58.0, 172.0, 100.0), ("serve", 0.9, 280.0, 0.0, 320.0, 20.0)]
+        return detect
+    monkeypatch.setattr(pipeline, "person_classifier", person_classifier)
+    monkeypatch.setattr(pipeline, "action_detector", action_detector)
+    v = upload(client, clip)
+    assert run_worker_once()["status"] == "done"
+    a = stage(client, v["id"], "actions")
+    assert a["summary"]["models"]["person"] == "person.pt"
+    by = a["summary"]["by_action"]
+    # set by track 1 (near the ball); track 2's spike falls below the event peak (far from the ball); no detector spike
+    assert by["set"] >= 1 and by["spike"] == 0 and by["serve"] >= 1
+    from settings import RESULTS
+    data = json.loads((RESULTS / v["id"] / "action_events.json").read_text())
+    assert {e["track_id"] for e in data["events"] if e["action"] == "set"} == {1}
