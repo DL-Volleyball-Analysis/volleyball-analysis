@@ -164,3 +164,29 @@ Test confusion (9 frames, threshold 0.3; rows true, columns predicted):
   the action at the ball is still called spike; macro F1 does not improve, so it is not added to the pipeline.
 - Next: a per-player classifier trained on this dataset's training matches (`notebooks/train_person_actions.ipynb`),
   so that the class comes from a model that has seen these views; the ball prior is re-tested with it.
+
+## Per-player action classifier (2026-10-11)
+`notebooks/train_person_actions.ipynb` (Kaggle T4): YOLO26s-cls at 224 px on square player crops (box + 15% margin)
+from `scripts/build_volleyball_actions.py`; the Volleyball dataset's 9 person actions; train 41,025 crops (key frame
+and +-2, +-4 frames of the 24 training matches, 'standing' thinned to 20%), validation 25,730 (15 matches; model
+selection), test 15,934 (key frame, every player of the 16 test matches). Early stop at epoch 14 (patience 8), 0.59 h.
+Weights: `models/person_action_yolo26s_cls.pt`.
+
+**9-class test accuracy 72.8%** (mean per-class 69.1%). Per class: blocking 0.93, setting 0.87, spiking 0.83, falling
+0.82, moving 0.79, waiting 0.72, standing 0.71, digging 0.46, jumping 0.08. For reference, Bagautdinov et al.
+(CVPR 2017) report 82.4% person action accuracy with ground-truth boxes using a temporal model over 10 frames; this
+classifier sees one frame. Digging is confused with waiting (163 of 659) and standing (91): the moment before the
+pass looks like waiting in one frame. Jumping (88 test crops) is mostly called spiking.
+
+Same test players and classes as the detector table above (`eval_actions_volleyball.py classifier`):
+
+| Method | Macro F1 | Block | Receive | Set | Spike |
+|---|---|---|---|---|---|
+| detector, 9 frames (above) | 0.303 | 0.659 | 0.000 | 0.005 | 0.549 |
+| per-player classifier | 0.668 | 0.786 | 0.455 | 0.715 | 0.715 |
+| + ball prior (k 2.0, floor 0.6, chosen on validation with the detector) | **0.678** | 0.797 | 0.465 | 0.723 | 0.725 |
+
+- The class now comes from a model that has seen these views: macro F1 x2.2 over the detector.
+- The ball prior raises precision in every class (block 0.679 -> 0.698, receive 0.455 -> 0.503, set 0.607 -> 0.618,
+  spike 0.628 -> 0.644) at a small cost in recall; +0.010 macro F1. Its parameters were not tuned on test.
+- Remaining gap to the literature: one frame instead of a temporal window; receive (digging) is the weakest class.

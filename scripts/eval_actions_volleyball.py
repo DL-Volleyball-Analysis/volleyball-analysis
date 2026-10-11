@@ -17,6 +17,10 @@ Metric: per player, F1 of each action class and their macro mean.
   python scripts/eval_actions_volleyball.py detect --videos <dir> --pkl annot_all.pkl --out dets.json
   python scripts/eval_actions_volleyball.py evaluate --pkl annot_all.pkl --ann <ball annotations> \
       --dets dets.json [--ball-preds <ball eval csv.gz>]
+  python scripts/eval_actions_volleyball.py classifier --pkl annot_all.pkl --ann <ball annotations> \
+      --probs person_action_test_probs.csv --k 2.0 --floor 0.6
+The `classifier` command scores the per-player classifier (notebooks/train_person_actions.ipynb) on the same test
+players and classes, alone and with the ball prior (k and floor as chosen on validation by `evaluate`).
 """
 import argparse
 import itertools
@@ -168,6 +172,32 @@ def evaluate(args):
     print("support (test players):", {a: rows[0][3][a]["support"] for a in SCORED})
 
 
+def classifier(args):
+    import pandas as pd
+
+    from vball.actors import ball_prior
+    ann = load_annotations(Path(args.pkl))
+    df = pd.read_csv(args.probs)
+    classes = [c for c in df.columns if c not in ("crop", "label")]
+    probs = df[classes].to_numpy()
+    is_action = np.array([c in LABEL_MAP for c in classes])
+    cfg = ActorConfig(k=args.k, floor=args.floor)
+    w = np.ones(len(df))
+    for i, name in enumerate(df["crop"]):
+        m, c, f, player = map(int, name.split("_"))
+        w[i] = ball_prior(ann[m][c]["frames"][f][player][0], ball_at(Path(args.ann), m, c).get(f), cfg)
+    weighted = probs.copy()
+    weighted[:, is_action] *= w[:, None]
+    truth = df["label"].map(LABEL_MAP).tolist()
+    out = {}
+    for name, P in (("classifier", probs), ("classifier + ball prior", weighted)):
+        pairs = [(t, LABEL_MAP.get(classes[k])) for t, k in zip(truth, P.argmax(axis=1))]
+        out[name] = f1s(pairs)
+        print(f"{name:24s} macro F1 {out[name]['macro_f1']:.3f}  " + "  ".join(
+            f"{a} P {out[name][a]['precision']:.3f} R {out[name][a]['recall']:.3f} F1 {out[name][a]['f1']:.3f}" for a in SCORED))
+    Path(args.out).write_text(json.dumps(out, indent=2))
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -182,8 +212,15 @@ def main():
     e.add_argument("--dets", required=True)
     e.add_argument("--ball-preds", default=None)
     e.add_argument("--out", default="actions_volleyball.json")
+    c = sub.add_parser("classifier")
+    c.add_argument("--pkl", required=True)
+    c.add_argument("--ann", required=True)
+    c.add_argument("--probs", required=True)
+    c.add_argument("--k", type=float, default=2.0)
+    c.add_argument("--floor", type=float, default=0.6)
+    c.add_argument("--out", default="actions_volleyball_classifier.json")
     args = ap.parse_args()
-    (detect if args.cmd == "detect" else evaluate)(args)
+    {"detect": detect, "evaluate": evaluate, "classifier": classifier}[args.cmd](args)
 
 
 if __name__ == "__main__":
