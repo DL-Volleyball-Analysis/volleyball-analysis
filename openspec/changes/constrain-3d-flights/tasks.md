@@ -23,4 +23,4 @@
 
 ## 5. Docs
 
-- [ ] 5.1 Update docs/results/trajectory.md, README status and the papers' 3D section; `openspec validate constrain-3d-flights --strict`
+- [x] 5.1 Update docs/results/trajectory.md, README status and the papers' 3D section; `openspec validate constrain-3d-flights --strict`
