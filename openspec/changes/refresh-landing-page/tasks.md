@@ -25,7 +25,7 @@
 
 ## 5. After M2
 
-- [ ] 5.1 Replace the hero capture with a recording of the new match page and verify the poster and video show the new UI
+- [x] 5.1 Replace the hero capture with a recording of the new match page and verify the poster and video show the new UI (2026-10-11: output section shows the current match page and a re-rendered analysis video with the player-only detector)
 
 ## Workflow follow-up
 

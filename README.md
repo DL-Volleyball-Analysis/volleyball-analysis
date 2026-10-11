@@ -11,10 +11,11 @@ the court in metres, the players, rallies and the score.
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 <p align="center">
-  <img src="docs/assets/analysis.gif" width="720" alt="Analysed broadcast clip: ball trail, tracked players, detected court lines and a top-down court map">
-  <br><sub>Output of <code>webapp/backend/render.py</code> on a 6 s broadcast clip: ball trail (VballNet), player
-  tracks (YOLO26s + BoT-SORT; labels are tracking ids, not shirt numbers), court lines from the keypoint model and
-  the players on a top-down court map. Footage: Volleyball World broadcast, used for research only.</sub>
+  <img src="docs/assets/analysis.gif" width="720" alt="Analysed broadcast clip: ball trail, the players only with their current action, detected court lines and a top-down court map">
+  <br><sub>Output of <code>webapp/backend/render.py</code> on a 6 s broadcast clip: ball trail (VballNet), the players
+  only (YOLO26s fine-tuned on SportsMOT + BoT-SORT; tracking id, or shirt number once read, and the action in
+  progress), court lines from the keypoint model and the players on a top-down court map. Referees and line judges
+  are not boxed. Footage: Volleyball World broadcast, used for research only.</sub>
 </p>
 
 ## Pipeline
