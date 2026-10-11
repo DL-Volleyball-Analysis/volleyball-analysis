@@ -21,6 +21,10 @@ The system SHALL analyse a video in the fixed stage order decode, court, ball, p
 - **WHEN** the action or number model is not installed
 - **THEN** the actions stage is recorded as unavailable, and later stages still run
 
+#### Scenario: Players before events
+- **WHEN** a video is analysed from the decode stage
+- **THEN** the players stage runs after ball and before events, so events can use player positions
+
 ### Requirement: Stage result reuse
 The system SHALL recompute a requested start stage and every stage after it, and SHALL reuse an earlier stage's stored result when it exists and its version matches the current code.
 

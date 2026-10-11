@@ -26,13 +26,15 @@
 
 ## 5. Fine-tuning (only if 1.3 misses the PRD targets)
 
-- [ ] 5.1 Decide from 1.3: if targets are met, record "not needed" with the numbers and mark 5.2-5.3 not applicable in this file; otherwise continue
-- [ ] 5.2 Colab notebook fine-tuning the detector on SportsMOT volleyball training sequences with checkpoints and resume on Drive; verify a 1-epoch local smoke run
-- [ ] 5.3 Re-run 1.3 with the fine-tuned weights and record both results side by side
+- [x] 5.1 Decide from 1.3: if targets are met, record "not needed" with the numbers and mark 5.2-5.3 not applicable in this file; otherwise continue
+  (Targets missed: IDF1 0.484, precision 0.614; fine-tuning done in change filter-on-court-players.)
+- [x] 5.2 Colab notebook fine-tuning the detector on SportsMOT volleyball training sequences with checkpoints and resume on Drive; verify a 1-epoch local smoke run
+- [x] 5.3 Re-run 1.3 with the fine-tuned weights and record both results side by side
+  (5.2-5.3 done in filter-on-court-players: `notebooks/train_player_detector.ipynb` runs on Colab or Kaggle, trained on Kaggle; IDF1 0.484 -> 0.690.)
 
 ## 6. Docs
 
-- [ ] 6.1 Update README status, CLAUDE.md and the PRD acceptance numbers (provisional → measured) and verify they cite `docs/results/player-tracking.md`
+- [x] 6.1 Update README status, CLAUDE.md and the PRD acceptance numbers (provisional → measured) and verify they cite `docs/results/player-tracking.md`
 
 ## Workflow follow-up
 

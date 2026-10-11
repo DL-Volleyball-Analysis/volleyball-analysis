@@ -23,10 +23,13 @@ The analysis has no player detection today. The capstone used YOLOv8 + Norfair, 
 2. **Measure** on labelled volleyball sequences: SportsMOT volleyball split (MCG-NJU, ICCV 2023; CC BY-NC 4.0, research use only) and our own labelled gym clips (M5).
 3. **Train only if needed:** fine-tune the detector on SportsMOT volleyball training sequences on Colab when the baseline misses the targets below.
 
-## Acceptance criteria (provisional, revisited after the baseline is measured)
-- SportsMOT volleyball validation: IDF1 ≥ 0.70 and detection recall ≥ 0.95 for on-court players.
-- Own gym footage: ≤ 1 non-player kept per 100 frames after on-court filtering.
-- Throughput on the M1 Pro CPU: a 2-hour match analysed in ≤ 1 hour for this stage (detection at a reduced frame rate is acceptable).
+## Acceptance criteria (measured 2026-10-11, details in `docs/results/player-tracking.md`)
+| Criterion | Target | Measured | Met |
+|---|---|---|---|
+| SportsMOT volleyball validation IDF1 | ≥ 0.70 | 0.690 (fine-tuned detector; 0.484 with COCO weights) | no, 0.01 short |
+| Detection recall, on-court players | ≥ 0.95 | 0.956 | yes |
+| Own gym footage: non-players kept per 100 frames | ≤ 1 | not measured (no labelled gym clips yet); by eye none boxed on the 5 broadcast clips | not measured |
+| 2-hour match on the M1 Pro CPU, this stage | ≤ 1 h | ~1.9 h at 10 fps detection | no |
 
 ## Out of scope
 - Player identity across rallies and jersey numbers (separate change; the capstone OCR has no accuracy data).
