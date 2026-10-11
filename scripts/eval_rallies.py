@@ -2,8 +2,11 @@
 matches.
 
 Inputs: cues per match (`scripts/extract_rally_cues.py`, 5 samples per second) and the CVAT labels (serving-start ->
-in-game-end per rally). Split by match (design of change add-rally-detection): train 2, 4, 8, 13; validation 3, 10;
-test 6, 9. Methods:
+in-game-end per rally). Split by match: test 6, 9; the other six matches (2, 3, 4, 8, 10, 13) are used for training
+and model selection by leave-one-match-out: for each of them the classifier is trained on the other five and predicts
+it, and the segmentation thresholds are chosen on these out-of-fold predictions (a fixed two-match validation set had
+long rallies only and chose a minimum rally length that dropped the short rallies of match 9). The final classifier is
+trained on all six. Methods:
   ball rule     P(play) = share of frames with a ball detection over the surrounding second
   classifier    gradient boosting on a window of cues around each sample (court, players, ball), trained on train
 Segmentation thresholds (vball.rallies.RallyConfig) are chosen on validation by F1; test is reported once.
@@ -21,7 +24,8 @@ import pandas as pd
 
 from vball.rallies import RallyConfig, evaluate, match, read_cvat, segment
 
-SPLIT = {"train": [2, 4, 8, 13], "val": [3, 10], "test": [6, 9]}
+DEV = [2, 3, 4, 8, 10, 13]   # training + leave-one-match-out model selection
+TEST = [6, 9]
 CUES = ["court_conf", "court_ok", "players", "player_motion", "ball_seen", "ball_speed"]
 WINDOW_S = (1.0, 3.0)  # rolling statistics over these spans (centred)
 
@@ -58,7 +62,7 @@ def ball_rule(c: pd.DataFrame, rate: float) -> np.ndarray:
     return c["ball_seen"].rolling(max(1, int(round(rate))), center=True, min_periods=1).mean().to_numpy()
 
 
-def choose_config(val: dict, probs: dict) -> RallyConfig:
+def choose_config(val: dict, probs: dict) -> RallyConfig:  # val: matches with labels, probs: their P(play)
     grid = {"p_on": [0.5, 0.6, 0.7], "p_off": [0.3, 0.4, 0.5], "min_rally_s": [2.0, 3.0, 4.0],
             "min_gap_s": [0.5, 1.0, 2.0], "smooth_s": [0.5, 1.0, 2.0]}
     best = None
@@ -95,6 +99,13 @@ def report(name: str, data: dict, probs: dict, cfg: RallyConfig) -> dict:
     return res
 
 
+def fit(data: dict, matches: list[int], rate: float):
+    from sklearn.ensemble import HistGradientBoostingClassifier
+    X = pd.concat([features(data[m][1], rate) for m in matches])
+    y = np.concatenate([play_labels(data[m][0], data[m][2]) for m in matches])
+    return HistGradientBoostingClassifier(max_iter=300, learning_rate=0.05, random_state=0).fit(X, y)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--cues", required=True)
@@ -102,22 +113,24 @@ def main():
     ap.add_argument("--rate", type=float, default=5.0)
     ap.add_argument("--out", default="outputs/rallies")
     args = ap.parse_args()
-    data = {s: load(Path(args.cues), Path(args.labels), ms) for s, ms in SPLIT.items()}
+    dev = load(Path(args.cues), Path(args.labels), DEV)
+    test = load(Path(args.cues), Path(args.labels), TEST)
 
-    from sklearn.ensemble import HistGradientBoostingClassifier
-    X = pd.concat([features(data["train"][m][1], args.rate) for m in data["train"]])
-    y = np.concatenate([play_labels(data["train"][m][0], data["train"][m][2]) for m in data["train"]])
-    clf = HistGradientBoostingClassifier(max_iter=300, learning_rate=0.05, random_state=0).fit(X, y)
-
+    # out-of-fold probabilities on the development matches
+    oof = {m: fit(dev, [n for n in DEV if n != m], args.rate).predict_proba(features(dev[m][1], args.rate))[:, 1]
+           for m in DEV}
+    final = fit(dev, DEV, args.rate)
+    methods = {
+        "ball rule": ({m: ball_rule(dev[m][1], args.rate) for m in DEV},
+                      {m: ball_rule(test[m][1], args.rate) for m in TEST}),
+        "classifier": (oof, {m: final.predict_proba(features(test[m][1], args.rate))[:, 1] for m in TEST}),
+    }
     results = {}
-    for name, prob_fn in (("ball rule", lambda c: ball_rule(c, args.rate)),
-                          ("classifier", lambda c: clf.predict_proba(features(c, args.rate))[:, 1])):
-        probs = {s: {m: prob_fn(data[s][m][1]) for m in data[s]} for s in ("val", "test")}
-        cfg = choose_config(data["val"], probs["val"])
-        results[name] = {"val": report(f"{name} val", data["val"], probs["val"], cfg),
-                         "test": report(f"{name} test", data["test"], probs["test"], cfg)}
-        acc = np.mean([((probs["test"][m] >= 0.5) == play_labels(data["test"][m][0], data["test"][m][2])).mean()
-                       for m in data["test"]])
+    for name, (p_dev, p_test) in methods.items():
+        cfg = choose_config(dev, p_dev)
+        results[name] = {"dev (out of fold)": report(f"{name} dev", dev, p_dev, cfg),
+                         "test": report(f"{name} test", test, p_test, cfg)}
+        acc = np.mean([((p_test[m] >= 0.5) == play_labels(test[m][0], test[m][2])).mean() for m in TEST])
         results[name]["test_sample_accuracy"] = float(acc)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
