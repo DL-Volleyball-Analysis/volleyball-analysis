@@ -11,13 +11,20 @@ the court in metres, the players, rallies and the score.
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 <p align="center">
-  <img src="docs/assets/analysis.gif" width="720" alt="Analysed fixed end-line clip: court lines fitted to the painted lines, tracked players, ball trail, a top-down court map and a 3D view of the current flight">
-  <br><sub>Output of <code>webapp/backend/render.py</code> on a fixed end-line camera (the most common amateur set-up):
-  the court fitted to the painted lines of an empty-court background plate (both keypoint models fail on this view),
-  players tracked with YOLO26s + BoT-SORT and coloured by side, the ball trail (VballNet), a top-down map with the
-  players' court positions, and a 3D view with the current 3D flight (USC vs Pepperdine). Footage: NCAA men's
-  volleyball (VolleyballWatchdog), used for research only.</sub>
+  <img src="docs/assets/analysis.gif" width="720" alt="Analysed fixed end-line clip (GCU vs UCLA): black volleyball lines found on a multi-sport floor, tracked players, ball trail, a top-down court map and a 3D view">
+  <br><sub>Output of <code>webapp/backend/render.py</code> on a fixed end-line camera (GCU vs UCLA): the court fitted
+  to the painted lines of an empty-court background plate (here the volleyball lines are black and the basketball
+  lines white; both keypoint models fail on this view), players tracked with YOLO26s + BoT-SORT and coloured by side,
+  the ball trail (VballNet), a top-down map and a 3D view with the current 3D flight. On this clip 115 flights are
+  kept (29 rejected as impossible) and 12 of 13 rally ends are found in a leave-one-clip-out check.</sub>
 </p>
+
+| Floor with basketball lines (UCLA) | Most accurate court lines (Hawaii) | Broadcast view (Tokyo 2020) |
+|:---:|:---:|:---:|
+| <img src="docs/assets/gallery-basketball-lines.gif" width="260" alt="UCLA floor with basketball lines: volleyball court found"> | <img src="docs/assets/gallery-court-lines.gif" width="260" alt="Hawaii: court lines on the painted lines, players and ball"> | <img src="docs/assets/gallery-broadcast.gif" width="260" alt="Broadcast clip: court, players, ball and 3D view"> |
+| fewest rejected 3D flights of the fixed clips (17%) | 94% of court-line samples on painted lines | 12 3D flights, none rejected |
+
+<sub>All footage used for research only: NCAA men's volleyball (VolleyballWatchdog) and a Volleyball World broadcast.</sub>
 
 ## Pipeline
 
