@@ -22,3 +22,6 @@ CLAUDE.md
 htmlcov/
 # files staged for deletion during clean-ups (review, then delete)
 trash/
+
+# evaluation outputs written to the working directory by ad-hoc runs (they belong in outputs/)
+/*.pt.json
