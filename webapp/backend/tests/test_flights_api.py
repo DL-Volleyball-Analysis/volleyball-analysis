@@ -189,3 +189,20 @@ def test_samples_without_keypoints_do_not_break_the_stage(client, clip, fake_bal
     assert run_worker_once()["status"] == "done"
     t = stage(client, v["id"], "trajectory")
     assert t["summary"]["flights"] == 0 and "no court keypoints" in t["message"]
+
+
+def test_demo_import_registers_clips_once_with_demo_rallies(clip, monkeypatch, tmp_path, capsys):
+    import shutil
+
+    from vball_app import demo, deps
+
+    folder = tmp_path / "videos"
+    folder.mkdir()
+    shutil.copy(clip, folder / "sample.mp4")
+    monkeypatch.setattr(demo, "VIDEOS", folder)
+    demo.main()
+    demo.main()  # a second run finds the clip already imported
+    out = capsys.readouterr().out
+    assert "sample.mp4: imported as" in out and "sample.mp4: already imported" in out
+    v = next(v for v in deps.db.list_videos() if v["name"] == "sample")
+    assert deps.db.list_rallies(v["id"]) and all(r["source"] == "demo" for r in deps.db.list_rallies(v["id"]))

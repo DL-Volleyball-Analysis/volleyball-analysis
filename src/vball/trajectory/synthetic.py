@@ -69,8 +69,10 @@ def corrupt(
         lost[a : a + max(1, int(rng.poisson(burst)))] = True
     lost[np.flatnonzero(lost)[target:]] = False  # trim the last burst to the exact share
     out[lost] = np.nan
-    seen = np.flatnonzero(~np.isnan(out).any(axis=1))
-    bad = rng.choice(seen, size=int(round(false * len(seen))), replace=False) if len(seen) else np.zeros(0, int)
+    visible = np.flatnonzero(~np.isnan(out).any(axis=1))  # frame indices still detected
+    bad = (
+        rng.choice(visible, size=int(round(false * len(visible))), replace=False) if len(visible) else np.zeros(0, int)
+    )
     out[bad] = rng.uniform([0, 0], image_size, (len(bad), 2))
     return out
 

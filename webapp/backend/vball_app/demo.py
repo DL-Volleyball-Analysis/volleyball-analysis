@@ -126,7 +126,7 @@ def demo_flights(rallies: list[dict], fps: float) -> list[dict]:
 
 
 def main():
-    from main import register  # registering also queues the analysis job
+    from .api.videos import register  # registering also queues the analysis job
 
     db = Database(DB_PATH)
     known = {v["path"] for v in db.list_videos()}
