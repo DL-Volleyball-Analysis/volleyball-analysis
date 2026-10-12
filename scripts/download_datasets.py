@@ -7,16 +7,15 @@ The roboflow SDK download hung on a large zip, so this asks the REST API for the
 link and fetches it with curl (resumable, retried). URLs are never printed: the API
 request carries the key.
 """
+import argparse
 import json
 import os
 import subprocess
-import sys
 import urllib.request
 import zipfile
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from vball.paths import DATASETS  # noqa: E402
+from vball.paths import DATASETS
 
 API = "https://api.roboflow.com"
 EXPORT_FORMAT = "yolov8"  # YOLO pose txt labels + data.yaml with kpt_shape / flip_idx
@@ -56,6 +55,7 @@ def download(url: str, zip_path: Path) -> None:
 
 
 def main():
+    argparse.ArgumentParser(description=__doc__.splitlines()[0]).parse_args()
     key = os.environ.get("ROBOFLOW_API_KEY")
     if not key:
         raise SystemExit("ROBOFLOW_API_KEY is not set")

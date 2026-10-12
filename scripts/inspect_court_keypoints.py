@@ -3,15 +3,14 @@
 Usage: .venv/bin/python scripts/inspect_court_keypoints.py <dataset_dir> [n_samples]
 Overlays go to outputs/court/keypoints_inspect/<dataset_name>/.
 """
-import sys
+import argparse
 from pathlib import Path
 
 import cv2
 import numpy as np
 import yaml
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from vball.paths import OUTPUTS  # noqa: E402
+from vball.paths import OUTPUTS
 
 
 def load_labels(label_path: Path, k: int) -> np.ndarray:
@@ -20,8 +19,11 @@ def load_labels(label_path: Path, k: int) -> np.ndarray:
 
 
 def main():
-    root = Path(sys.argv[1])
-    n = int(sys.argv[2]) if len(sys.argv) > 2 else 12
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("dataset_dir", type=Path)
+    ap.add_argument("n_samples", type=int, nargs="?", default=12)
+    args = ap.parse_args()
+    root, n = args.dataset_dir, args.n_samples
     k = yaml.safe_load((root / "data.yaml").read_text())["kpt_shape"][0]
     out = OUTPUTS / "court" / "keypoints_inspect" / root.name
     out.mkdir(parents=True, exist_ok=True)

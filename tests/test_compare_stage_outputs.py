@@ -1,14 +1,9 @@
-import importlib.util
 import json
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-spec = importlib.util.spec_from_file_location("cso", Path(__file__).resolve().parents[1] / "scripts" / "compare_stage_outputs.py")
-cso = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(cso)
-compare, json_diff = cso.compare, cso.json_diff
+from vball.pipeline.compare import compare, json_diff
 
 
 def write(folder, court=1.0, rows=(1.0, 2.0), extra=False):

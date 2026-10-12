@@ -1,4 +1,3 @@
-import importlib.util
 import pickle
 import sys
 import types
@@ -8,14 +7,6 @@ import cv2
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
-
-
-def load(name):
-    spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / f"{name}.py")
-    mod = importlib.util.module_from_spec(spec)
-    sys.path.insert(0, str(ROOT / "scripts"))
-    spec.loader.exec_module(mod)
-    return mod
 
 
 def fake_dataset(tmp: Path) -> tuple[Path, Path]:
@@ -45,7 +36,7 @@ def fake_dataset(tmp: Path) -> tuple[Path, Path]:
 
 
 def test_crops_follow_the_match_split_and_thin_standing(tmp_path):
-    b = load("build_volleyball_actions")
+    from vball.datasets import volleyball_actions as b
     videos, pkl = fake_dataset(tmp_path)
     counts = b.build(videos, pkl, tmp_path / "out", margin=0.15, standing_share=0.2)
     assert counts[("train", "setting")] == 5            # key frame and +-2, +-4

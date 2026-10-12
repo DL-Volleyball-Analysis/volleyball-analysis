@@ -15,62 +15,9 @@ padded to a square with grey (classifiers resize or centre-crop to a square; a t
       --pkl annot_all.pkl --out <dir> [--margin 0.15] [--standing-share 0.2]
 """
 import argparse
-import random
-import sys
 from pathlib import Path
 
-import cv2
-
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from eval_actions_volleyball import TEST_MATCHES, VAL_MATCHES, load_annotations  # noqa: E402
-
-from vball.actors import person_crop  # noqa: E402
-
-CLASSES = ["blocking", "digging", "falling", "jumping", "moving", "setting", "spiking", "standing", "waiting"]
-OFFSETS = (-4, -2, 0, 2, 4)
-
-
-def split_of(match: int) -> str:
-    return "test" if match in TEST_MATCHES else "val" if match in VAL_MATCHES else "train"
-
-
-def build(videos: Path, pkl: Path, out: Path, margin: float = 0.15, standing_share: float = 0.2, seed: int = 0) -> dict:
-    ann = load_annotations(pkl)
-    rng = random.Random(seed)
-    jobs = []  # (split, class, match, clip, frame, player, box)
-    for m, clips in ann.items():
-        split = split_of(m)
-        offsets = (0,) if split == "test" else OFFSETS
-        for c, d in clips.items():
-            key = d["frames"].get(c, {})
-            for player, (_, label) in key.items():
-                for o in offsets:
-                    fb = d["frames"].get(c + o, {}).get(player)
-                    if fb is not None:
-                        jobs.append((split, label, m, c, c + o, player, fb[0]))
-    # thin 'standing' in train / val so it is at most standing_share of the split
-    kept = []
-    for split in ("train", "val", "test"):
-        js = [j for j in jobs if j[0] == split]
-        if split != "test":
-            stand = [j for j in js if j[1] == "standing"]
-            other = [j for j in js if j[1] != "standing"]
-            n = int(standing_share / (1 - standing_share) * len(other))
-            js = other + rng.sample(stand, min(n, len(stand)))
-        kept += js
-    counts: dict = {}
-    for split, label, m, c, f, player, box in kept:
-        img = cv2.imread(str(videos / str(m) / str(c) / f"{f}.jpg"))
-        if img is None:
-            continue
-        x = person_crop(img, box, margin)  # the same crop the pipeline classifies
-        if x is None or x.size == 0:
-            continue
-        d = out / split / label
-        d.mkdir(parents=True, exist_ok=True)
-        cv2.imwrite(str(d / f"{m}_{c}_{f}_{player}.jpg"), x, [cv2.IMWRITE_JPEG_QUALITY, 92])
-        counts[(split, label)] = counts.get((split, label), 0) + 1
-    return counts
+from vball.datasets.volleyball_actions import CLASSES, build
 
 
 def main():

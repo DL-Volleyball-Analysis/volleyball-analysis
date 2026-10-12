@@ -13,13 +13,18 @@ src/vball/pipeline/          # owner: analysis package
   __init__.py                # run, load_stage, stage_file, STAGES, VERSIONS (public API)
   config.py                  # model paths, detector settings, rates (was module constants)
   stages/decode.py court.py ball.py players.py actions.py trajectory.py rallies.py
-  corrections.py             # corrected_court
-  render.py                  # overlay video (was webapp/backend/render.py; no web dependency)
+  models.py                  # adapters that load trained weights (what tests replace)
+  results.py                 # the results folder: stage files, corrected_court, shared readers
+  compare.py                 # compare two results folders (design D2)
+src/vball/datasets/          # dataset builders (were scripts/build_*.py)
+src/vball/evaluation/        # evaluation drivers (were scripts/eval_*.py, train_fixed_rallies.py)
 webapp/backend/vball_app/    # owner: web app
-  main.py                    # FastAPI app factory, router registration only
-  api/videos.py jobs.py court.py tracks.py rallies.py stats.py
-  schemas.py  db.py  worker.py  settings.py  demo.py
+  main.py                    # FastAPI app, middleware and routers only
+  api/videos.py jobs.py court.py tracks.py rallies.py actions.py stats.py
+  schemas.py  deps.py  db.py  worker.py  settings.py  render.py  demo.py
 ```
+The renderer stays in the web app: it overlays the user's court corrections, which live in the app's database.
+Scripts keep their `main()` (argument parsing); everything a test or another script uses lives in the package.
 The backend is installed as its own small distribution (`webapp/backend/pyproject.toml`, name `vball-app`) depending
 on `vball`. Run with `uvicorn vball_app.main:app`.
 

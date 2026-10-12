@@ -1,10 +1,5 @@
-import importlib.util
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("build_sportsmot_detection", ROOT / "scripts" / "build_sportsmot_detection.py")
-b = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(b)
+from vball.datasets import sportsmot_detection as b
 
 
 def test_mot_boxes_become_normalised_yolo_lines_clipped_to_the_image():
@@ -20,3 +15,23 @@ def test_validation_holds_out_whole_match_videos():
     valid = [s for s in b.VOLLEYBALL_TRAIN if b.video_of(s) in b.VALID_VIDEOS]
     train_videos = {b.video_of(s) for s in b.VOLLEYBALL_TRAIN} - b.VALID_VIDEOS
     assert len(valid) == 2 and len(b.VOLLEYBALL_TRAIN) == 15 and not (train_videos & b.VALID_VIDEOS)
+
+
+def test_build_writes_every_third_frame_with_yolo_labels(tmp_path):
+    import cv2
+    import numpy as np
+    seq = tmp_path / "src" / "v_x_c001"
+    (seq / "gt").mkdir(parents=True)
+    (seq / "img1").mkdir()
+    (seq / "seqinfo.ini").write_text("[Sequence]\nimWidth=100\nimHeight=50\nimExt=.jpg\nseqLength=4\n")
+    (seq / "gt" / "gt.txt").write_text("1,1,10,10,20,20,1,1,1\n4,1,0,0,10,10,1,1,1\n")
+    for f in range(1, 5):
+        cv2.imwrite(str(seq / "img1" / f"{f:06d}.jpg"), np.zeros((50, 100, 3), np.uint8))
+    counts = b.build(tmp_path / "src", tmp_path / "out", ["v_x_c001"], every=3)
+    assert counts == {"train": 2, "valid": 0}
+    assert (tmp_path / "out" / "train" / "labels" / "v_x_c001_000001.txt").read_text() == "0 0.200000 0.400000 0.200000 0.400000\n"
+    assert "nc: 1" in (tmp_path / "out" / "data.yaml").read_text()
+    try:
+        b.build(tmp_path / "src", tmp_path / "out", ["missing"])
+    except SystemExit as e:
+        assert "missing" in str(e)

@@ -3,18 +3,7 @@ import pytest
 
 from vball.calibration import look_at
 from vball.trajectory import BALL_RADIUS, Flight, FlightConfig, FlightFit, G, fit, reconstruct, segment
-from vball.trajectory.synthetic import render
-
-SIZE = (1920, 1080)
-CAM = look_at([9.0, -14.0, 7.5], [9.0, 4.5, 0.5], 1600.0, SIZE)
-FPS = 50.0
-# serve -> receive -> set -> attack to the floor (court metres; side A is x < 9)
-TOUCHES = [[-1.0, 7.0, 3.0], [14.5, 3.0, 0.8], [10.0, 5.5, 2.6], [10.5, 1.0, 3.2], [4.0, 6.0, BALL_RADIUS]]
-DURATIONS = [1.3, 1.1, 0.9, 0.45]
-
-
-def true_flights(r):
-    return [Flight(a, b) for a, b in zip(r.touches, r.touches[1:])]
+from vball.trajectory.synthetic import CAM, DURATIONS, FPS, SIZE, TOUCHES, render, true_flights
 
 
 def test_render_without_noise_is_the_exact_projection():

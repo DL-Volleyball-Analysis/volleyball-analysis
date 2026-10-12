@@ -1,14 +1,10 @@
-import importlib.util
 from pathlib import Path
 
 import cv2
 import numpy as np
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("bbc", ROOT / "scripts" / "build_ball_clips.py")
-bbc = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(bbc)
+from vball.datasets import ball_clips as bbc
 
 
 def test_labels_follow_the_letterbox():

@@ -13,16 +13,11 @@ points, noise), true flight boundaries, and four fit settings: no constraints, b
 + player anchors (a player near each touch, ~0.3 m from the touch's ground point).
 """
 import argparse
-import sys
-from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tests"))
-from test_trajectory import CAM, DURATIONS, FPS, SIZE, TOUCHES, true_flights  # noqa: E402  same scenario as the tests
-
-from vball.trajectory import FlightConfig, fit, segment  # noqa: E402
-from vball.trajectory.synthetic import corrupt, render, touch_players  # noqa: E402
+from vball.trajectory import FlightConfig, fit, segment
+from vball.trajectory.synthetic import CAM, DURATIONS, FPS, SIZE, TOUCHES, corrupt, render, touch_players, true_flights
 
 NAMES = ["serve", "receive", "set", "attack"]
 

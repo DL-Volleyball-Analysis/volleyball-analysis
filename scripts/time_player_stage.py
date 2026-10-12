@@ -5,6 +5,7 @@ time to a 2-hour match at the same frame rate.
 
   .venv/bin/python scripts/time_player_stage.py
 """
+import argparse
 import time
 from pathlib import Path
 
@@ -25,6 +26,7 @@ def frames(path: Path):
 
 
 def main():
+    argparse.ArgumentParser(description=__doc__.splitlines()[0]).parse_args()
     cfg = pipeline.config.PLAYER_CFG
     print(f"config {cfg.label()}")
     total_s = total_video_s = 0.0

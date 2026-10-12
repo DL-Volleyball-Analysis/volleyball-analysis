@@ -15,16 +15,14 @@ Usage: .venv/bin/python scripts/build_court_dataset.py [--no-drive]
 """
 import argparse
 import shutil
-import sys
 from pathlib import Path
 
 import cv2
 import numpy as np
 import yaml
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from vball.court_keypoints import FRONT_ZONE_IDS, K6Y7R_FLIP_IDX, complete_floor  # noqa: E402
-from vball.paths import DATASETS, drive_root  # noqa: E402
+from vball.court_keypoints import FRONT_ZONE_IDS, K6Y7R_FLIP_IDX, complete_floor
+from vball.paths import DATASETS, drive_root
 
 K6Y7R = DATASETS / "volleyball-court-keypoints-k6y7r-v1"
 VNL = DATASETS / "volleyball_court_key_points_regression_dataset-v7"

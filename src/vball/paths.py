@@ -24,6 +24,22 @@ BALL_MODELS = {
 }
 
 
+def import_external(repo: str, package: str):
+    """A third-party package kept untouched in external/<repo>/<package> (not installed), imported by file location."""
+    import importlib.util
+    import sys
+    if package in sys.modules:
+        return sys.modules[package]
+    init = EXTERNAL / repo / package / "__init__.py"
+    if not init.exists():
+        raise SystemExit(f"clone {repo} into {EXTERNAL / repo} first")
+    spec = importlib.util.spec_from_file_location(package, init, submodule_search_locations=[str(init.parent)])
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[package] = module  # before running it, so the package's own absolute imports find it
+    spec.loader.exec_module(module)
+    return module
+
+
 # The Google Drive desktop folder that Colab sees as /content/drive/MyDrive: VBALL_DRIVE_ACCOUNT if set, else the
 # only Drive account found.
 DRIVE_ACCOUNT_ENV = "VBALL_DRIVE_ACCOUNT"

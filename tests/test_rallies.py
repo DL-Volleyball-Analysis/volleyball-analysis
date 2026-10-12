@@ -100,11 +100,7 @@ def test_cues_outside_training_are_reported():
 
 
 def test_fixed_camera_weak_labels_and_end_matching():
-    import importlib.util
-    from pathlib import Path
-    spec = importlib.util.spec_from_file_location("tfr", Path(__file__).resolve().parents[1] / "scripts" / "train_fixed_rallies.py")
-    tfr = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(tfr)
+    from vball.evaluation import fixed_rallies as tfr
     t = np.arange(0, 60, 1.0)
     y = tfr.weak_labels(t, [24.0, 50.0])  # rallies end at 20 s and 46 s
     assert (y[14:21] == 1).all() and (y[22:39] == 0).all() and y[39] == -1 and (y[40:47] == 1).all()

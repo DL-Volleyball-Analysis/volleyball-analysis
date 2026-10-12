@@ -8,8 +8,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ..calibration import Camera
-from . import G
+from ..calibration import Camera, look_at
+from . import BALL_RADIUS, Flight, G
 
 
 @dataclass
@@ -74,3 +74,17 @@ def touch_players(touch_points, jitter_m: float = 0.3, last_is_floor: bool = Tru
     if last_is_floor:
         out[-1] = None
     return out
+
+
+# Reference scenario shared by the tests and scripts/eval_trajectory_synthetic.py: a 1080p side camera at 50 fps and
+# serve -> receive -> set -> attack to the floor (court metres; side A is x < 9)
+SIZE = (1920, 1080)
+CAM = look_at([9.0, -14.0, 7.5], [9.0, 4.5, 0.5], 1600.0, SIZE)
+FPS = 50.0
+TOUCHES = [[-1.0, 7.0, 3.0], [14.5, 3.0, 0.8], [10.0, 5.5, 2.6], [10.5, 1.0, 3.2], [4.0, 6.0, BALL_RADIUS]]
+DURATIONS = [1.3, 1.1, 0.9, 0.45]
+
+
+def true_flights(r: SyntheticRally) -> list[Flight]:
+    """The flights between consecutive touches of a synthetic rally."""
+    return [Flight(a, b) for a, b in zip(r.touches, r.touches[1:])]

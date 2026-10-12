@@ -4,16 +4,14 @@ Writes outputs/ball/model_comparison/{metrics.csv, trajectories.jpg}.
 Usage: .venv/bin/python scripts/compare_ball_models.py [--models v4c fast_v1]
 """
 import argparse
-import sys
 from pathlib import Path
 
 import cv2
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from vball import ball, metrics  # noqa: E402
-from vball.paths import OUTPUTS, VIDEOS  # noqa: E402
+from vball import ball, metrics
+from vball.paths import OUTPUTS, VIDEOS
 
 COLORS = {"fast_v1": (0, 0, 255), "v4c": (0, 255, 0)}
 

@@ -40,10 +40,7 @@ def labels_frame(xy: np.ndarray, vis: np.ndarray) -> pd.DataFrame:
 
 def orel_clips(root: Path):
     """(match, clip, frame loader, labels) for the held-out orel gym matches."""
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("bbc", Path(__file__).with_name("build_ball_clips.py"))
-    bbc = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(bbc)
+    from vball.datasets import ball_clips as bbc
     for match, clip, video, xy, vis in bbc.orel_clips(root):
         if match in bbc.OREL_TEST:
             yield match, clip, (lambda v=video: list(bbc.read_video(v))), labels_frame(xy, vis)

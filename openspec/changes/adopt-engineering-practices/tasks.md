@@ -2,13 +2,13 @@
 
 ## 1. Hygiene and baseline
 - [x] 1.1 Untrack `test_*court_kpt*.pt.json` (move to outputs/court/eval), ignore them; verify `git ls-files` and a clean `git status`
-- [ ] 1.2 Golden stage outputs for fixed_hawaii_irvine (60 s) and broadcast_side_rally; `scripts/compare_stage_outputs.py`; verify it reports identical on a rerun
+- [x] 1.2 Golden stage outputs for fixed_hawaii_irvine (60 s) and broadcast_side_rally; `scripts/compare_stage_outputs.py`; verify it reports identical on a rerun
 
 ## 2. Layering
-- [ ] 2.1 `vball.pipeline` package (config, stages, corrections, registry) moved from webapp/backend/pipeline.py; tests moved; verify golden identical and all tests pass
-- [ ] 2.2 `render` moved to `vball.pipeline.render`; verify test_render and one rendered clip identical frame count
-- [ ] 2.3 Backend package `vball_app` with routers per resource and `schemas.py`; verify API tests unchanged and OpenAPI schema identical (diff of /openapi.json)
-- [ ] 2.4 Script logic used by tests (`weak_labels`, `match_ends`, ...) moved into `vball`; all `sys.path` edits removed; verify `grep -r sys.path` is empty and scripts' `--help` runs
+- [x] 2.1 `vball.pipeline` package (config, stages, corrections, registry) moved from webapp/backend/pipeline.py; tests moved; verify golden identical and all tests pass
+- [x] 2.2 `render` stays in the web app (it reads the user's court corrections from the database) and moves with it into `vball_app.render`; verify test_render
+- [x] 2.3 Backend package `vball_app` with routers per resource and `schemas.py`; verify API tests unchanged and OpenAPI schema identical (diff of /openapi.json)
+- [x] 2.4 Script logic moved into `vball.datasets` / `vball.evaluation` / `vball.pipeline.compare` (scripts keep `main()`), tests for it; all `sys.path` edits removed; verify `grep -r sys.path src scripts webapp/backend tests` is empty and every script's `--help` runs
 
 ## 3. Tooling
 - [ ] 3.1 `ruff format` + `.git-blame-ignore-revs`; verify `ruff format --check` in CI

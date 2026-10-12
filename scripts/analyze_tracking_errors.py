@@ -7,15 +7,13 @@ to decide which tracks to drop, which the real filter (court mapping) cannot.
 
   .venv/bin/python scripts/analyze_tracking_errors.py yolo26s_960_botsort_10fps
 """
+import argparse
 import shutil
-import sys
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from eval_player_tracking import GT_ROOT, RESULTS, evaluate, volleyball_val_seqs  # noqa: E402
+from vball.evaluation.player_tracking import GT_ROOT, RESULTS, evaluate, volleyball_val_seqs
 
 
 def iou(a: np.ndarray, b: np.ndarray) -> np.ndarray:
@@ -39,7 +37,9 @@ def player_tracks(pred: pd.DataFrame, gt: pd.DataFrame) -> set:
 
 
 def main():
-    label = sys.argv[1]
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("label", help="tracker run label under outputs/players/tracking")
+    label = ap.parse_args().label
     out = f"{label}_oracle_players"
     seqs = volleyball_val_seqs()
     src, dst = RESULTS / label / "data", RESULTS / out / "data"

@@ -1,10 +1,5 @@
-import importlib.util
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("build_jersey_dataset", ROOT / "scripts" / "build_jersey_dataset.py")
-b = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(b)
+from vball.datasets import jersey_crops as b
 
 
 def test_classes_are_mapped_by_name_not_index():
@@ -29,3 +24,24 @@ def test_frames_are_grouped_by_match():
 
 def test_no_match_is_in_two_splits():
     assert not (b.SPLIT["test"] & b.SPLIT["valid"])
+
+
+def test_build_keeps_digit_crops_split_by_match(tmp_path, monkeypatch):
+    import yaml
+    sources = []
+    for name, img_name in (("set-a", "japan_poland_raw_out_1_jpg.rf.x.jpg"), ("set-b", "graz_1_cutted_f1_jpg.rf.y.jpg")):
+        src = tmp_path / name
+        (src / "train" / "images").mkdir(parents=True)
+        (src / "train" / "labels").mkdir(parents=True)
+        (src / "data.yaml").write_text(yaml.safe_dump({"names": ["Player", "7"]}))
+        (src / "README.roboflow.txt").write_text("CC BY 4.0")
+        (src / "train" / "images" / img_name).write_bytes(b"jpg")
+        (src / "train" / "labels" / f"{img_name[:-4]}.txt").write_text("0 .5 .5 .2 .2\n1 .4 .4 .1 .1\n")
+        (src / "train" / "images" / "notes.txt").write_text("not an image")
+        sources.append(src)
+    monkeypatch.setattr(b, "SOURCES", tuple(sources))
+    monkeypatch.setattr(b, "TRAIN_ONLY", {"set-b"})
+    out = b.build(tmp_path / "out")
+    assert out["images"] == {"test": 1, "train": 1}
+    assert out["test"][7] == 1 and out["train"][7] == 1
+    assert (tmp_path / "out" / "LICENSE_set-a.txt").exists()
