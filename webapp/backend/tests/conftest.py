@@ -87,3 +87,18 @@ def no_action_models(monkeypatch, tmp_path):
     monkeypatch.setattr(pipeline, "PERSON_MODEL", tmp_path / "missing_person.pt")
     monkeypatch.setattr(pipeline, "GENERAL_PLAYER_MODEL", tmp_path / "missing_general.pt")
     monkeypatch.setattr(pipeline, "RALLY_MODEL", tmp_path / "missing_rally.joblib")
+
+
+@pytest.fixture(autouse=True)
+def no_line_evidence(monkeypatch, request):
+    """The test clips are flat colour with no painted lines, so line evidence (still shots, change
+    verify-court-by-lines) would mark every fake court as doubtful. Off by default; tests marked `line_evidence`
+    keep it."""
+    if "line_evidence" in request.keywords:
+        return
+    import pipeline
+    monkeypatch.setattr(pipeline.court_registration, "still", lambda *a, **k: False)
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "line_evidence: keep the still-shot line evidence in the court stage")

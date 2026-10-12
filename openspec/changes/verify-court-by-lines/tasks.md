@@ -5,7 +5,7 @@
 - [ ] 1.2 Fit on the six fixed clips and five broadcast clips; overlays checked
 
 ## 2. Pipeline
-- [ ] 2.1 Court registration: still shots compare the line fit with the keypoint fit, status from line evidence (court stage version bump); tests
+- [x] 2.1 Court registration: still shots compare the line fit with the keypoint fit, status from line evidence (court stage version bump); tests
 - [ ] 2.2 Rerun the fixed and broadcast clips; court, players, 3D before / after
 
 ## 3. Evaluation

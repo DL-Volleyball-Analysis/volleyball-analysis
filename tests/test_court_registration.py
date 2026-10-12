@@ -274,3 +274,50 @@ def test_a_correction_follows_a_panning_camera():
     kp30 = np.array(next(s for s in out["shots"][0]["samples"] if s["frame"] == 30)["keypoints"])
     kp60 = np.array(next(s for s in out["shots"][0]["samples"] if s["frame"] == 60)["keypoints"])
     assert np.allclose(kp60[:, :2], kp30[:, :2] + [-90.0, 0])  # net points move too
+
+
+# --- line evidence for still shots (change verify-court-by-lines) ---
+
+def test_still_needs_motion_and_a_camera_that_does_not_move():
+    from vball.camera_motion import Motion
+    from vball.court_registration import still
+    assert not still(None, 0, 90, SIZE)
+    assert still(Motion(np.stack([np.eye(3)] * 91)), 0, 90, SIZE)
+    assert not still(shifting(91), 0, 90, SIZE)  # 3 px a frame: 270 px over the shot
+
+
+def test_status_from_line_evidence():
+    from vball.court_lines import Fit
+    from vball.court_registration import line_status
+    def fit(good, sup):
+        return Fit(np.eye(3), 0.0, sup, 100, good, False)
+    assert line_status(fit(6, 90)) == "ok"
+    assert line_status(fit(4, 90)) == "needs_review"
+    assert line_status(fit(6, 60)) == "needs_review"
+
+
+def test_line_evidence_on_a_plate_replaces_a_squeezed_court():
+    import cv2 as cv
+
+    from vball.court import LINES
+    from vball.court_registration import keypoint_homography, with_line_evidence
+    cam = look_at([-9.0, 4.5, 8.0], [8.0, 4.5, 0.0], 1000.0, SIZE)
+    pts = np.array([[0, 0], [18, 0], [18, 9], [0, 9]], float)
+    H, _ = cv.findHomography(pts, cam.project(np.c_[pts, np.zeros(4)]))
+    plate = np.full((SIZE[1], SIZE[0], 3), (70, 120, 180), np.uint8)
+    for a, b in LINES.values():
+        q = cv.perspectiveTransform(np.linspace(a, b, 200).reshape(-1, 1, 2), H).reshape(-1, 2)
+        cv.polylines(plate, [q.astype(np.int32)], False, (255, 255, 255), 4, cv.LINE_AA)
+    squeezed = k6y7r_points_3d()
+    squeezed[:, 0] *= 0.5
+    kp = np.column_stack([cam.project(squeezed), np.full(14, 0.9)])
+    shot = register_shot(0, 60, 30.0, SIZE, lambda f: kp)
+    assert keypoint_homography(shot) is not None
+    out = with_line_evidence(shot, plate, 30.0, SIZE)
+    assert out["source"] == "lines" and out["status"] == "ok" and len(out["samples"]) == len(shot["samples"])
+    true = cam.project(k6y7r_points_3d()[CORNER_IDS])
+    got = np.array(out["samples"][0]["corners_px"])
+    assert min(np.abs(got - true).max(), np.abs(got[[2, 3, 0, 1]] - true).max()) < 8.0
+    empty = with_line_evidence(register_shot(0, 60, 30.0, SIZE, lambda f: np.zeros((14, 3))),
+                               np.full_like(plate, 120), 30.0, SIZE)
+    assert empty["source"] == "keypoints" and empty["lines"] is None and empty["status"] == "failed"

@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from vball import actions, actors, ball, camera_motion, court_registration, jersey, players, teams, trajectory
+from vball import actions, actors, ball, camera_motion, court_lines, court_registration, jersey, players, teams, trajectory
 from vball import rallies as vrallies
 from vball.calibration import calibrate
 from vball.court_keypoints import detect as detect_keypoints
@@ -111,7 +111,8 @@ def court_detector(weights: Path):
 
 def court(video: Path, out: Path, prev: dict, tick) -> dict:
     """Per-shot court registration (vball.court_registration) with every installed court model, keeping the
-    best model per shot."""
+    best model per shot; shots with a still camera are then decided by line evidence on their background plate
+    (vball.court_lines)."""
     models = {name: path for name, path in COURT_MODELS.items() if path.exists()}
     if not models:
         return {"status": "unavailable", "message": "The court model has not been trained yet."}
@@ -138,6 +139,11 @@ def court(video: Path, out: Path, prev: dict, tick) -> dict:
     registered = court_registration.pick({
         name: court_registration.register(shots, fps, size, lambda f, kp=kp: kp.get(f, empty), motion=motion)
         for name, kp in keypoints.items()})
+    for k, shot in enumerate(registered):  # still shots: line evidence on the background plate decides
+        if court_registration.still(motion, shot["start_frame"], shot["end_frame"], size):
+            plate = court_lines.background_plate(video, shot["start_frame"], shot["end_frame"])
+            if plate is not None:
+                registered[k] = court_registration.with_line_evidence(shot, plate, fps, size)
     counts = {st: sum(r["status"] == st for r in registered) for st in ("ok", "needs_review", "failed")}
     res = {"status": "done", "models": {name: path.name for name, path in models.items()}, "shots": registered,
            "counts": counts}
@@ -521,7 +527,7 @@ def rallies(video: Path, out: Path, prev: dict, tick) -> dict:
 FUNCS = {"decode": decode, "court": court, "ball": ball_stage, "players": players_stage, "actions": actions_stage,
          "trajectory": trajectory_stage, "events": events, "rallies": rallies}
 # players -4: the general detector where the player-only one misses players
-VERSIONS = {"decode": "2", "court": "3", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-4",
+VERSIONS = {"decode": "2", "court": "4", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-4",
             "actions": "3",  # 3: per-player classifier + ball prior
             "trajectory": "4", "events": "0.3", "rallies": "1"}  # rallies 1: detected from cues
 

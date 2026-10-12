@@ -29,6 +29,11 @@ the four (the floor is a plane) and whose 4 net points come from a camera calibr
 motion to every sampled frame of the shot, so every later stage, 3D included, uses the correction as if the model had
 found it, also when the camera pans.
 
+Still shots (change verify-court-by-lines, `with_line_evidence`): the court fitted to the painted lines of the shot's
+background plate (vball.court_lines) and the keypoint court are scored by line evidence on that plate; the better one
+is used for the whole shot (`source`) and the status follows its line evidence (LINE_CONFIG), not the net check, which
+passed courts squeezed into the near half of end-line views.
+
 Camera motion (vball.camera_motion, change follow-camera-motion): smoothing moves each neighbouring sample to the
 sample's frame before the median, and sampled frames without a court get the nearest detected court (at most
 MAX_FILL_S away) moved to them, marked `filled` (they do not count as valid for the shot status).
@@ -42,6 +47,7 @@ from .court_keypoints import (
     CORNER_IDS,
     K6Y7R_FLOOR,
     complete_floor,
+    corners_from_homography,
     court_is_plausible,
     fit_homography,
     net_points_from_floor,
@@ -190,6 +196,67 @@ def register(shots: Iterable[dict], fps: float, image_size: tuple[int, int],
     for k, s in enumerate(shots):
         out.append(register_shot(s["start_frame"], s["end_frame"], fps, image_size, keypoints_at, config, motion))
         on_shot(k)
+    return out
+
+
+LINE_CONFIG = {
+    "still_px": 0.01,        # a shot is still when the camera motion moves the image centre less than this x width
+    "min_good_lines": 5,     # status ok from line evidence: well supported court lines ...
+    "min_support": 0.70,     # ... and the share of line samples on painted lines
+}
+
+
+def still(motion, start: int, end: int, image_size: tuple[int, int], config: dict = LINE_CONFIG) -> bool:
+    """Whether the camera stays still over [start, end] (needs camera motion)."""
+    if motion is None:
+        return False
+    w, h = image_size
+    centre = np.array([[w / 2, h / 2]])
+    frames = range(start, end + 1, max(1, (end - start) // 50 or 1))
+    return max(float(np.linalg.norm(motion.warp(start, f, centre) - centre)) for f in frames) < config["still_px"] * w
+
+
+def line_status(fit, config: dict = LINE_CONFIG) -> str:
+    """ok / needs_review from line evidence (vball.court_lines.Fit)."""
+    ok = fit.good_lines >= config["min_good_lines"] and fit.support >= config["min_support"]
+    return "ok" if ok else "needs_review"
+
+
+def keypoint_homography(shot: dict) -> np.ndarray | None:
+    """The shot's keypoint court as one homography (median of its samples' corners), or None."""
+    samples = [s for s in shot.get("samples", []) if not s.get("filled")]
+    if not samples:
+        return None
+    corners = np.median([s["corners_px"] for s in samples], axis=0).astype(np.float32)
+    return cv2.getPerspectiveTransform(COURT_CORNERS.astype(np.float32), corners)
+
+
+def with_line_evidence(shot: dict, plate: np.ndarray, fps: float, image_size: tuple[int, int],
+                       config: dict = LINE_CONFIG) -> dict:
+    """A still shot decided by line evidence on its background plate (change verify-court-by-lines): the court fitted
+    to the painted lines (vball.court_lines) and the keypoint court are scored on the same plate, the better one is
+    used for every sampled frame, and the status follows its line evidence, not the net check. Records `source`
+    ("lines" or "keypoints") and the line evidence."""
+    from . import court_lines
+    found = court_lines.fit(plate)
+    H_kp = keypoint_homography(shot)
+    kp = court_lines.score_homography(plate, H_kp, dark=found.dark if found else False) if H_kp is not None else None
+    best = max([f for f in (found, kp) if f is not None], key=lambda f: f.score, default=None)
+    if best is None:
+        return {**shot, "source": "keypoints", "lines": None}
+    evidence = {"score": round(best.score, 1), "support": round(best.support, 3), "good_lines": best.good_lines,
+                "dark": best.dark}
+    out = {**shot, "status": line_status(best, config), "lines": evidence,
+           "source": "lines" if best is found else "keypoints"}
+    if best is found:
+        corners = corners_from_homography(best.H)
+        frames = sample_frames(shot["start_frame"], shot["end_frame"], fps)
+        try:
+            base = corrected_sample(frames[0], corners, image_size)
+        except ValueError:
+            return {**shot, "source": "keypoints", "lines": evidence}
+        out["samples"] = [{**base, "frame": f} for f in frames]
+        out.update(error=0.0, consistency=None, filled=0)
     return out
 
 
