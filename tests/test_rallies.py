@@ -97,3 +97,17 @@ def test_cues_outside_training_are_reported():
     gym = pd.DataFrame({"court_ok": [1] * 4, "players": [3, 2, 4, 3]})
     assert outside_training(broadcast) is None
     assert "court" in outside_training(end_line) and "player" in outside_training(gym)
+
+
+def test_fixed_camera_weak_labels_and_end_matching():
+    import importlib.util
+    from pathlib import Path
+    spec = importlib.util.spec_from_file_location("tfr", Path(__file__).resolve().parents[1] / "scripts" / "train_fixed_rallies.py")
+    tfr = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tfr)
+    t = np.arange(0, 60, 1.0)
+    y = tfr.weak_labels(t, [24.0, 50.0])  # rallies end at 20 s and 46 s
+    assert (y[14:21] == 1).all() and (y[22:39] == 0).all() and y[39] == -1 and (y[40:47] == 1).all()
+    assert (y[:14] == -1).all()  # before the first rally's play window nothing is known
+    m = tfr.match_ends([(10, 20, 0.9), (30, 33, 0.8), (40, 46, 0.7)], [24.0, 50.0])
+    assert m["matched"] == 2 and m["precision"] == round(2 / 3, 3) and m["recall"] == 1.0 and m["median_delay_s"] == 4.0
