@@ -20,7 +20,7 @@
 ## 4. Process and release
 - [x] 4.1 CONTRIBUTING.md (setup, Conventional Commits, checks before a commit, OpenSpec), issue templates
 - [x] 4.2 `scripts/check.sh` running every CI check locally; verify it fails on a planted lint error and passes clean
-- [ ] 4.3 CHANGELOG.md and tag v0.1.0 with a GitHub release; verify the release page
+- [x] 4.3 CHANGELOG.md and tag v0.1.0 with a GitHub release; verify the release page
 
 ## 5. Models and operations
 - [x] 5.1 `models/manifest.json` (vball.manifest), start-up check in the API and the worker, stages use only files matching it, `scripts/fetch_models.py`; tests for a missing and a changed file
