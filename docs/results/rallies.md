@@ -42,3 +42,5 @@ ends mid-rally it also found none (probabilities 0.1-0.6): the model sees rallie
 
 Next: cues that do not depend on the view (ball motion, motion of the people on the floor relative to the video's own
 range, cues normalised per video) and rally labels on gym footage to measure them.
+
+> The 4K moving-camera clips referred to above (Canada vs Italy, Choforo55 gym, Hawaii vs UCI, Long Beach vs UCLA) were removed on 2026-10-12 at the owner's request; testing moved to fixed end-line camera clips (data/videos/fixed).

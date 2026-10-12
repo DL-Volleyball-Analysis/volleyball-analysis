@@ -45,7 +45,7 @@ A walkthrough of the app on all nine analysed videos (2026-10-12, screenshots in
 - First-time users find upload and the court fix without help (5 of 5 in a hallway test with classmates).
 - Every missing result on the match page states why and what fixes it.
 - Lighthouse accessibility stays 100; frontend coverage gate stays 85%; keyboard shortcuts keep working.
-- Timeline stays readable (no overlapping text) on the 2.5-minute 4K clips and a 90-minute match.
+- Timeline stays readable (no overlapping text) on the 3-minute fixed-camera clips and a 90-minute match.
 
 ## Out of scope
 Accounts and sharing; mobile editing (mobile stays view-only); new analysis features.

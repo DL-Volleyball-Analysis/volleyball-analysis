@@ -162,3 +162,5 @@ On the gym clip the stage now keeps a median of 12 people per frame (the cap), w
 points); 97 tracks outside the court are role `other`. Still weak there: 198 tracks for about 14 people (identity
 switches in a crowded, occluded scene) and actions from a classifier trained on broadcast players. The lasting fix is a
 player detector trained on gym data as well (VolliQ: one indoor match, 4 cameras, 1.16 M player boxes, CC BY-NC-SA 4.0).
+
+> The 4K moving-camera clips referred to above (Canada vs Italy, Choforo55 gym, Hawaii vs UCI, Long Beach vs UCLA) were removed on 2026-10-12 at the owner's request; testing moved to fixed end-line camera clips (data/videos/fixed).

@@ -103,7 +103,7 @@ openspec/           specifications and changes
 Not in git (local only):
 ```
 models/             weights the code loads by name (src/vball/paths.py, webapp/backend/pipeline.py)
-data/videos/        test videos; hires/ holds 4K clips (kept local, never redistributed)
+data/videos/        test videos; fixed/ holds fixed end-line camera clips (VolleyballWatchdog, kept local, never redistributed)
 data/datasets/      public datasets as downloaded + the training sets built from them by scripts/build_*.py
 outputs/<topic>/    results of scripts and notebooks, one folder per topic:
                       ball/ court/ players/ actions/ rallies/ videos/ (rendered analyses)

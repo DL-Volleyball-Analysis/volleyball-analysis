@@ -141,3 +141,5 @@ Of nine analysed videos, three have a usable court shot. Overlays of the fitted 
 - Measuring the net points' distance to the projected net line instead of to the points passes the correct back views
   (0.007-0.021) but also the wrong gym fit (0.014): the net alone cannot tell the two apart. Change
   `verify-court-by-lines` proposes line evidence from the image instead.
+
+> The 4K moving-camera clips referred to above (Canada vs Italy, Choforo55 gym, Hawaii vs UCI, Long Beach vs UCLA) were removed on 2026-10-12 at the owner's request; testing moved to fixed end-line camera clips (data/videos/fixed).

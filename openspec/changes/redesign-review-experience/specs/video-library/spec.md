@@ -5,7 +5,7 @@ Each video SHALL have a display name, initially derived from the file name (exte
 spaces), which the user can change; the file name SHALL stay available as a detail.
 
 #### Scenario: Rename
-- **WHEN** the user renames canada_italy_4k60 to "Canada vs Italy, set 1"
+- **WHEN** the user renames fixed_hawaii_pennstate to "Hawaii vs Penn State, set 2"
 - **THEN** the library card and match page show the new name and the file name is unchanged
 
 ### Requirement: Thumbnails
