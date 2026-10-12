@@ -121,19 +121,20 @@ CUES = ["court_conf", "court_ok", "players", "player_motion", "ball_seen", "ball
 WINDOW_S = (1.0, 3.0)  # rolling statistics over these spans (centred)
 
 
-def features(cues: pd.DataFrame, rate: float) -> pd.DataFrame:
+def features(cues: pd.DataFrame, rate: float, columns: list[str] = CUES) -> pd.DataFrame:
     """Each cue plus its centred rolling mean and std over WINDOW_S: a sample is judged with its context."""
-    out = cues[CUES].astype(float).copy()
+    out = cues[columns].astype(float).copy()
     for w in WINDOW_S:
         n = max(1, int(round(w * rate)))
-        roll = cues[CUES].astype(float).rolling(n, center=True, min_periods=1)
+        roll = cues[columns].astype(float).rolling(n, center=True, min_periods=1)
         out = out.join(roll.mean().add_suffix(f"_m{w:g}")).join(roll.std().fillna(0).add_suffix(f"_s{w:g}"))
     return out
 
 
-def save_model(path: Path, classifier, cfg: RallyConfig, rate: float, info: dict) -> None:
+def save_model(path: Path, classifier, cfg: RallyConfig, rate: float, info: dict, columns: list[str] = CUES) -> None:
     import joblib
-    joblib.dump({"classifier": classifier, "config": asdict(cfg), "rate": rate, "info": info}, path)
+    joblib.dump({"classifier": classifier, "config": asdict(cfg), "rate": rate, "info": info, "columns": list(columns)},
+                path)
 
 
 def load_model(path: Path) -> dict:
@@ -160,5 +161,5 @@ def detect(model: dict, cues: pd.DataFrame) -> list[tuple[float, float, float]]:
     """Rallies (start s, end s, confidence) from a video's cues with a saved model."""
     if not len(cues):
         return []
-    p = model["classifier"].predict_proba(features(cues, model["rate"]))[:, 1]
+    p = model["classifier"].predict_proba(features(cues, model["rate"], model.get("columns", CUES)))[:, 1]
     return segment(cues["t"].to_numpy(), p, model["config"])

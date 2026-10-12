@@ -114,3 +114,69 @@ def cues(video: Path, rate: float = 5.0, device=None, tick=lambda frac: None) ->
         i += 1
     cap.release()
     return pd.DataFrame(rows, columns=COLUMNS), fps, i
+
+
+# --- cues from the pipeline's own results (change label-rallies-from-score) -----------------------------------------
+STAGE_COLUMNS = ["t", "ball_seen", "ball_speed", "ball_rise", "on_court", "both_sides", "behind_end", "player_speed",
+                 "player_spread"]
+
+
+def stage_cues(ball: pd.DataFrame, people: pd.DataFrame, fps: float, n_frames: int, image_size: tuple[int, int],
+               H: np.ndarray | None, rate: float = 5.0, margin_m: float = 1.0) -> pd.DataFrame:
+    """Rally cues at `rate` per second from results the pipeline already has, for a still camera whose court is known:
+
+    ball (frame, visible, x, y; every frame): share of frames with a ball since the previous sample, its median speed
+    (image widths / s) and its median upward speed (widths / s; a serve toss and sets go up);
+    people (frame, x1, y1, x2, y2; any sampling): from the latest detected frame at or before each sample, the people
+    standing on the court (H: court metres -> image; feet within `margin_m` of the court), the smaller of the two
+    halves' counts (both teams in formation), people behind an end line (a server), their median speed in m/s against
+    the previous detected frame (nearest neighbour) and the spread of their positions along the court (m).
+    Without H every people cue is 0."""
+    from .court import LENGTH, WIDTH, to_court
+    w = float(image_size[0])
+    step = max(1, int(round(fps / rate)))
+    vis = np.zeros(n_frames, bool)
+    xy = np.full((n_frames, 2), np.nan)
+    if len(ball):
+        b = ball[(ball["frame"] < n_frames) & (ball["visible"] > 0)]
+        vis[b["frame"].to_numpy(int)] = True
+        xy[b["frame"].to_numpy(int)] = b[["x", "y"]].to_numpy(float)
+    groups = {int(f): g for f, g in people.groupby("frame")} if len(people) else {}
+    pframes = np.array(sorted(groups))
+
+    def court_points(f):
+        g = groups[f]
+        feet = np.c_[((g["x1"] + g["x2"]) / 2).to_numpy(float), g["y2"].to_numpy(float)]
+        return to_court(H, feet) if H is not None and len(feet) else np.zeros((0, 2))
+
+    rows, prev, last_speed = [], None, 0.0
+    for i in range(0, n_frames, step):
+        a = max(0, i - step + 1)
+        seen = vis[a:i + 1]
+        d = np.diff(xy[a:i + 1], axis=0) * fps / w
+        ok = ~np.isnan(d).any(axis=1)
+        speed = float(np.median(np.hypot(d[ok, 0], d[ok, 1]))) if ok.any() else 0.0
+        rise = float(np.median(-d[ok, 1])) if ok.any() else 0.0
+        on = behind = both = 0
+        pspeed = spread = 0.0
+        k = np.searchsorted(pframes, i, side="right") - 1
+        if H is not None and k >= 0:
+            f = int(pframes[k])
+            c = court_points(f)
+            inside_w = (c[:, 1] > -margin_m) & (c[:, 1] < WIDTH + margin_m)
+            court = inside_w & (c[:, 0] > -margin_m) & (c[:, 0] < LENGTH + margin_m)
+            behind = int((inside_w & ((c[:, 0] < -margin_m) & (c[:, 0] > -9) | (c[:, 0] > LENGTH + margin_m) & (c[:, 0] < LENGTH + 9))).sum())
+            pts = c[court]
+            on = len(pts)
+            both = int(min((pts[:, 0] < 9).sum(), (pts[:, 0] >= 9).sum())) if on else 0
+            spread = float(np.std(pts[:, 0])) if on > 1 else 0.0
+            if prev is None or prev[0] != f:  # a new detected frame: its speed against the one before
+                last_speed = 0.0
+                if prev is not None and len(prev[1]) and on:
+                    dist = np.linalg.norm(pts[:, None] - prev[1][None], axis=2).min(axis=1)
+                    last_speed = float(np.median(dist) * fps / (f - prev[0]))
+                prev = (f, pts)
+            pspeed = last_speed  # samples between two detected frames keep the latest speed
+        rows.append([round(i / fps, 3), round(float(seen.mean()) if len(seen) else 0.0, 3), round(speed, 4), round(rise, 4),
+                     on, both, behind, round(pspeed, 3), round(spread, 3)])
+    return pd.DataFrame(rows, columns=STAGE_COLUMNS)
