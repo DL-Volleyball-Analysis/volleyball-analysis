@@ -1,18 +1,19 @@
 """Action events, shirt numbers and the tags they suggest (change add-player-actions)."""
 
 import json
+from typing import Literal, cast
 
 from fastapi import APIRouter, HTTPException
 
 from vball import jersey
 
 from ..deps import db, players_table, video_or_404
-from ..schemas import ActionEvent, ActionsOut, NumberSegment, ShirtNumber, Suggestion
+from ..schemas import ActionEvent, ActionsOut, NumberSegment, ShirtNumber, Suggestion, TagKind, Team
 from ..settings import RESULTS
 
 router = APIRouter()
 
-SUGGEST = {"spike": "attack", "serve": "serve"}
+SUGGEST: dict[str, TagKind] = {"spike": "attack", "serve": "serve"}
 ACCEPT_WINDOW_S = 1.0  # a tag of the same kind this close to a suggestion accepts it
 RALLY_MARGIN_S = 1.0  # actions this close to a detected rally still count (a serve toss starts before it)
 
@@ -38,7 +39,7 @@ def actions(vid: str):
             return jersey.number_at(segs[tid], frame, reach)
         return (numbers.get(tid) or {}).get("number")
 
-    team_of: dict[int, str] = {}
+    team_of: dict[int, Team] = {}
     csv = RESULTS / vid / "players.csv.gz"
     if csv.exists():
         df = players_table(str(csv), csv.stat().st_mtime)
@@ -47,7 +48,7 @@ def actions(vid: str):
                 for tid, vals in df.groupby("track_id")[col]:
                     vals = vals[vals.astype(str).isin(["a", "b"])]
                     if len(vals):
-                        team_of[int(tid)] = str(vals.mode().iloc[0])
+                        team_of[int(tid)] = cast(Team, str(vals.mode().iloc[0]))  # filtered to a / b above
     events = [
         ActionEvent(
             action=e["action"],
@@ -73,7 +74,9 @@ def actions(vid: str):
             continue
         sid = f"{kind}-{raw['start_frame']}-{e.track_id if e.track_id is not None else 'x'}"
         accepted = any(t["kind"] == kind and abs(t["time_s"] - e.start_s) <= ACCEPT_WINDOW_S for t in tags)
-        status = "accepted" if accepted else "dismissed" if sid in dismissed else "open"
+        status: Literal["open", "accepted", "dismissed"] = (
+            "accepted" if accepted else "dismissed" if sid in dismissed else "open"
+        )
         suggestions.append(
             Suggestion(
                 id=sid,

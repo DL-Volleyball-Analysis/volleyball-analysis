@@ -58,7 +58,7 @@ class _Unpickler(pickle.Unpickler):
 def load_annotations(path: Path) -> dict:
     """match -> clip -> {'category', 'frames': {frame: {player: (box, label)}}}"""
     raw = _Unpickler(open(path, "rb")).load()
-    out = {}
+    out: dict[int, dict] = {}
     for m, clips in raw.items():
         for c, d in clips.items():
             frames = {
@@ -128,7 +128,7 @@ def predictions(ann, dets, matches, cfg: ActorConfig, key_only: bool, balls=None
 
 
 def f1s(pairs) -> dict:
-    out = {}
+    out: dict = {}  # per class {precision, recall, f1, support}, plus macro_f1 and serve_predictions
     for a in SCORED:
         tp = sum(t == a and p == a for t, p in pairs)
         fp = sum(p == a and t != a for t, p in pairs)

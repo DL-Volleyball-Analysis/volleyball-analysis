@@ -35,7 +35,7 @@ def score_summary(vid: str) -> ScoreSummary | None:
 
 
 def video_out(v: dict) -> Video:
-    return Video(**v, job=db.latest_job(v["id"]), score=score_summary(v["id"]))
+    return Video.model_validate({**v, "job": db.latest_job(v["id"]), "score": score_summary(v["id"])})
 
 
 def register(name: str, path: Path) -> Video:
@@ -68,7 +68,7 @@ def upload_video(file: UploadFile):
     with dest.open("wb") as f:
         shutil.copyfileobj(file.file, f, length=8 << 20)
     try:
-        return register(Path(file.filename).stem, dest)
+        return register(Path(file.filename or dest.name).stem, dest)
     except HTTPException:
         dest.unlink(missing_ok=True)
         raise

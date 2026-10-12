@@ -1,5 +1,6 @@
 """Court: per-shot court registration, line evidence for still shots."""
 
+from collections.abc import Callable
 from pathlib import Path
 
 import cv2
@@ -37,7 +38,8 @@ def run(video: Path, out: Path, prev: dict, tick) -> dict:
     )
     detectors = {name: models.court_detector(path) for name, path in installed.items()}
     # one sequential pass: decode only the sampled frames, every model on each
-    keypoints, cap, i, k = {name: {} for name in installed}, cv2.VideoCapture(str(video)), 0, 0
+    keypoints: dict[str, dict[int, np.ndarray]] = {name: {} for name in installed}
+    cap, i, k = cv2.VideoCapture(str(video)), 0, 0
     while k < len(wanted) and cap.grab():
         if i == wanted[k]:
             ok, frame = cap.retrieve()
@@ -50,11 +52,13 @@ def run(video: Path, out: Path, prev: dict, tick) -> dict:
         i += 1
     cap.release()
     empty = np.zeros((14, 3))
+
+    def lookup(kp: dict[int, np.ndarray]) -> Callable[[int], np.ndarray]:
+        return lambda f: kp.get(f, empty)
+
     registered = court_registration.pick(
         {
-            name: court_registration.register(
-                shots, fps, size, lambda f, kp=kp: kp.get(f, empty), motion=motion, rates=rates
-            )
+            name: court_registration.register(shots, fps, size, lookup(kp), motion=motion, rates=rates)
             for name, kp in keypoints.items()
         }
     )

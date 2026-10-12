@@ -32,10 +32,10 @@ def read_cvat(xml: str | Path) -> list[tuple[int, int]]:
     """Rallies (start frame, end frame) from CVAT tags: each serving-start opens a rally, the next in-game-end
     closes it. A start without an end before the next start is dropped (unfinished annotation)."""
     tags = []
-    root = ET.parse(xml).getroot() if Path(str(xml)).exists() else ET.fromstring(xml)
+    root = ET.parse(xml).getroot() if Path(str(xml)).exists() else ET.fromstring(str(xml))
     for image in root.iter("image"):
         for tag in image.iter("tag"):
-            tags.append((int(image.get("id")), tag.get("label")))
+            tags.append((int(image.attrib["id"]), tag.get("label")))
     out, start = [], None
     for frame, label in sorted(tags):
         if label == "serving-start":

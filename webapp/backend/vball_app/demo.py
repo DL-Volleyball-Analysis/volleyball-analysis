@@ -27,13 +27,15 @@ def demo_rallies(duration_s: float, rng: random.Random) -> list[dict]:
     for i in range(n):
         reason = rng.choice(REASONS)
         winner = rng.choice("ab")
+        x: float | None
+        y: float | None
         if reason == "in":  # landed inside the loser's half
             x = rng.uniform(0.5, 8.5) if winner == "b" else rng.uniform(9.5, 17.5)
             y = rng.uniform(0.3, 8.7)
         elif reason == "out":
             x, y = rng.choice([(rng.uniform(-2, 0), rng.uniform(0, 9)), (rng.uniform(0, 18), rng.uniform(9.2, 11))])
         else:
-            x = y = None
+            x = y = None  # no landing point for a net or a fault
         out.append(
             {
                 "idx": i,

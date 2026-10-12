@@ -55,6 +55,14 @@ def write_mot(df: pd.DataFrame, path: Path) -> None:
     out.to_csv(path, header=False, index=False, float_format="%.2f")
 
 
+def read_image(path: Path) -> np.ndarray:
+    """An image file; a missing or unreadable frame is an error (skipping it would shift the frame numbers)."""
+    img = cv2.imread(str(path))
+    if img is None:
+        raise FileNotFoundError(f"cannot read {path}")
+    return img
+
+
 def run_tracker(seqs: list[str], cfg: TrackerConfig, label: str, max_frames: int | None) -> dict[str, float]:
     """Track every sequence; returns CPU ms per detected frame for each."""
     ms = {}
@@ -62,7 +70,7 @@ def run_tracker(seqs: list[str], cfg: TrackerConfig, label: str, max_frames: int
         fps, n = seq_info(seq)
         files = sorted((GT_ROOT / seq / "img1").glob("*.jpg"))[: max_frames or None]
         step = ultralytics_step(cfg)  # fresh tracker state per sequence
-        times = []
+        times: list[float] = []
 
         def timed(image, step=step, times=times):  # bound per sequence
             t0 = time.perf_counter()
@@ -70,7 +78,7 @@ def run_tracker(seqs: list[str], cfg: TrackerConfig, label: str, max_frames: int
             times.append(time.perf_counter() - t0)
             return rows
 
-        df = track_frames((cv2.imread(str(f)) for f in files), src_fps=fps, cfg=cfg, step=timed)
+        df = track_frames((read_image(f) for f in files), src_fps=fps, cfg=cfg, step=timed)
         write_mot(df, RESULTS / label / "data" / f"{seq}.txt")
         ms[seq] = 1000 * float(np.median(times[1:] or times))  # first call includes model warm-up
         print(f"  {seq}: {len(files)} frames, {len(times)} detected, {ms[seq]:.0f} ms/detected frame", flush=True)

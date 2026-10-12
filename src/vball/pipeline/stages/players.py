@@ -83,7 +83,7 @@ def team_assignments(video: Path, df: pd.DataFrame, per_track: int = 10) -> dict
     seen = df[~df["interpolated"].astype(bool)] if len(df) else df
     if not len(seen):
         return {}
-    picks = {}
+    picks: dict[int, list] = {}
     for tid, g in seen.groupby("track_id"):
         for r in g.iloc[np.linspace(0, len(g) - 1, min(per_track, len(g))).astype(int)].itertuples():
             picks.setdefault(int(r.frame), []).append((int(tid), (r.x1, r.y1, r.x2, r.y2)))
@@ -93,10 +93,11 @@ def team_assignments(video: Path, df: pd.DataFrame, per_track: int = 10) -> dict
         ok, frame = cap.read() if i in picks else (cap.grab(), None)
         if not ok:
             break
-        for tid, box in picks.get(i, []):
-            crop = teams.torso_crop(frame, box)
-            if crop is not None and crop.size:
-                hists.setdefault(tid, []).append(teams.colour_hist(crop))
+        if frame is not None:  # decoded only for picked frames
+            for tid, box in picks[i]:
+                crop = teams.torso_crop(frame, box)
+                if crop is not None and crop.size:
+                    hists.setdefault(tid, []).append(teams.colour_hist(crop))
         i += 1
     cap.release()
     n_frames = df["frame"].nunique()

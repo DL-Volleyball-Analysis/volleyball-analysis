@@ -1,0 +1,3 @@
+# Formatting-only commits, skipped by git blame (git config blame.ignoreRevsFile .git-blame-ignore-revs)
+# ruff format over the Python code (2026-10-13)
+ef6e48991bcfd94be9a99a943e153072aca1ccc2

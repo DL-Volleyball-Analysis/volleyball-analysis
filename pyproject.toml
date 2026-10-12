@@ -34,3 +34,27 @@ testpaths = ["tests", "webapp/backend/tests"]
 
 [tool.coverage.run]
 source = ["vball", "vball_app"]
+
+[tool.mypy]
+files = ["src/vball", "webapp/backend/vball_app"]
+python_version = "3.12"
+ignore_missing_imports = true  # ultralytics, onnxruntime, sklearn, scipy ship no or partial stubs
+warn_unused_ignores = true
+
+# Type debt (2026-10-13): modules with errors when mypy was introduced, mostly OpenCV / ultralytics stub mismatches
+# and dicts of mixed values. Remove a module from this list once it checks clean; nothing may be added to it.
+[[tool.mypy.overrides]]
+module = [
+    "vball.ball_detect",
+    "vball.ball_track",
+    "vball.calibration",
+    "vball.camera_motion",
+    "vball.court_keypoints",
+    "vball.court_lines",
+    "vball.court_registration",
+    "vball.players",
+    "vball.rally_cues",
+    "vball.teams",
+    "vball.trajectory",
+]
+ignore_errors = true

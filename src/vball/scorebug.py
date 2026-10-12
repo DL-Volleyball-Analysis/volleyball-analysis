@@ -147,7 +147,10 @@ def changes(readings: list[tuple[float, Score | None]], missed: list | None = No
     """Point changes from (time, score or None) readings in time order (see module doc). A score read twice that is
     several points ahead (the bug unreadable for a while) re-anchors the sequence without inventing the points in
     between; their count is appended to `missed` as (time, points)."""
-    out, counted, last, since, run = [], None, None, None, 0
+    out: list[Change] = []
+    counted: Score | None = None
+    last: Score | None = None
+    since, run = 0.0, 0  # since: set by the first reading
     for t, s in readings:
         if s is None:
             continue

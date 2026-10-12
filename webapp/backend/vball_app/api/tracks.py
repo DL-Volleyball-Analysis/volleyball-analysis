@@ -1,6 +1,7 @@
 """Ball and player tracks, 3D flights and ball coverage over time windows."""
 
 import json
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -44,6 +45,10 @@ def player_window(vid: str, start: float = Query(0, ge=0), end: float | None = Q
     lo, hi = int(start * fps), (int(end * fps) if end is not None else None)
     w = df[(df["frame"] >= lo) & ((df["frame"] <= hi) if hi is not None else True)]
 
+    def text(value: Any) -> Any:
+        """A non-empty text cell, else None (empty and NaN cells); the schema checks the allowed values."""
+        return value if isinstance(value, str) and value else None
+
     def num(x):
         return None if pd.isna(x) else round(float(x), 2)
 
@@ -58,18 +63,16 @@ def player_window(vid: str, start: float = Query(0, ge=0), end: float | None = Q
             interpolated=bool(r.interpolated),
             court_x=num(r.court_x),
             court_y=num(r.court_y),
-            side=(r.side if isinstance(r.side, str) and r.side else None),
-            team=(
-                getattr(r, "team", "") if isinstance(getattr(r, "team", ""), str) and getattr(r, "team", "") else None
-            ),
-            role=getattr(r, "role", "player") if isinstance(getattr(r, "role", None), str) else "player",
+            side=text(r.side),
+            team=text(getattr(r, "team", None)),
+            role=text(getattr(r, "role", None)) or "player",
         )
         for r in w.itertuples(index=False)
     ]
     return PlayerWindow(fps=fps, placed=bool(df["placed"].any()) if len(df) else False, boxes=boxes)
 
 
-def flight_out(f: dict, fps: float, seen: np.ndarray, source: str) -> Flight:
+def flight_out(f: dict, fps: float, seen: np.ndarray, source: Literal["model", "demo"]) -> Flight:
     frames = np.arange(f["start_frame"], f["end_frame"] + 1)
     t = (frames - f["start_frame"]) / fps
     p0, v0 = np.array(f["p0"]), np.array(f["v0"])

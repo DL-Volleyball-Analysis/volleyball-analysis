@@ -4,8 +4,9 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from vball.pipeline import Stage
+
 Team = Literal["a", "b"]
-Stage = Literal["decode", "court", "ball", "players", "actions", "trajectory", "events", "rallies"]
 
 
 class Job(BaseModel):

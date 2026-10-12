@@ -3,7 +3,9 @@
 Every function here is what a test replaces with a fake: stages call them as `models.NAME`.
 """
 
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -18,7 +20,7 @@ def court_detector(weights: Path):
     Tests replace this function with a fake detector."""
     from ultralytics import YOLO
 
-    model = YOLO(str(weights))
+    model: Any = YOLO(str(weights))
     imgsz = int((getattr(model, "overrides", {}) or {}).get("imgsz", 640))
     return lambda frame: detect_keypoints(model, frame, imgsz)
 
@@ -27,18 +29,18 @@ def person_counts(weights: str, frames: list, imgsz: int) -> list[int]:
     """People per frame found by a detector (tests replace this function with a fake)."""
     from ultralytics import YOLO
 
-    model = YOLO(weights)
+    model: Any = YOLO(weights)
     return [
         len(model(f, imgsz=imgsz, conf=config.PLAYER_CFG.conf, classes=[players.PERSON], verbose=False)[0].boxes)
         for f in frames
     ]
 
 
-def action_detector():
+def action_detector() -> Callable[[np.ndarray], list[tuple]]:
     """frame -> rows of (action, conf, x1, y1, x2, y2). Tests replace this function with a fake."""
     from ultralytics import YOLO
 
-    model = YOLO(str(config.ACTION_MODEL))
+    model: Any = YOLO(str(config.ACTION_MODEL))
 
     def detect(frame):
         r = model(frame, imgsz=640, conf=actions.ActionConfig().min_conf, verbose=False)[0]
@@ -50,11 +52,11 @@ def action_detector():
     return detect
 
 
-def person_classifier():
+def person_classifier() -> tuple[list[str], Callable[[list[np.ndarray]], np.ndarray]]:
     """-> (class names, crops -> (n, classes) probabilities). Tests replace this function with a fake."""
     from ultralytics import YOLO
 
-    model = YOLO(str(config.PERSON_MODEL))
+    model: Any = YOLO(str(config.PERSON_MODEL))
     names = [model.names[i] for i in range(len(model.names))]
 
     def classify(crops):
@@ -65,11 +67,11 @@ def person_classifier():
     return names, classify
 
 
-def digit_detector():
+def digit_detector() -> Callable[[np.ndarray], list[tuple]]:
     """player crop -> rows of (digit, conf, x1, y1, x2, y2). Tests replace this function with a fake."""
     from ultralytics import YOLO
 
-    model = YOLO(str(config.JERSEY_MODEL))
+    model: Any = YOLO(str(config.JERSEY_MODEL))
 
     def detect(crop):
         r = model(crop, imgsz=320, conf=0.25, verbose=False)[0]

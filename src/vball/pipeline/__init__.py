@@ -14,6 +14,7 @@ Layout: `stages/<name>.py` (one `run(video, out, prev, tick)` per stage), `confi
 import json
 from collections.abc import Callable
 from pathlib import Path
+from typing import Literal, get_args
 
 import numpy as np
 
@@ -25,6 +26,7 @@ __all__ = [
     "config",
     "models",
     "results",
+    "Stage",
     "STAGES",
     "WEIGHTS",
     "FUNCS",
@@ -35,7 +37,8 @@ __all__ = [
     "corrected_court",
 ]
 
-STAGES = ("decode", "court", "ball", "players", "actions", "trajectory", "events", "rallies")
+Stage = Literal["decode", "court", "ball", "players", "actions", "trajectory", "events", "rallies"]
+STAGES: tuple[Stage, ...] = get_args(Stage)
 # share of total pipeline time, for the progress bar
 # Stage messages are shown to users as-is: write them for a coach, not a developer.
 WEIGHTS = {
@@ -85,7 +88,7 @@ def run(
         raise ValueError(f"unknown stage {from_stage!r}; stages are {STAGES}")
     results_dir.mkdir(parents=True, exist_ok=True)
     start = STAGES.index(from_stage)
-    done_weight, rerun, out = 0.0, False, {}
+    done_weight, rerun, out = 0.0, False, dict[str, dict | None]()
     for k, stage in enumerate(STAGES):
         cached = load_stage(results_dir, stage)
         rerun = rerun or k >= start or cached is None or cached.get("version") != VERSIONS[stage]

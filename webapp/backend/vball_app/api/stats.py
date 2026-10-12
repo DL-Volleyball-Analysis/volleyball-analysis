@@ -26,7 +26,7 @@ def check_unique(players: list[RosterPlayer]) -> None:
 @router.get("/videos/{vid}/roster", response_model=Roster)
 def get_roster(vid: str):
     video_or_404(vid)
-    return Roster(players=db.get_roster(vid))
+    return Roster.model_validate({"players": db.get_roster(vid)})
 
 
 @router.put("/videos/{vid}/roster", response_model=Roster)
@@ -35,7 +35,7 @@ def put_roster(vid: str, roster: Roster):
     video_or_404(vid)
     check_unique(roster.players)
     db.replace_roster(vid, [pl.model_dump() for pl in roster.players])
-    return Roster(players=db.get_roster(vid))
+    return Roster.model_validate({"players": db.get_roster(vid)})
 
 
 def stat_rallies(vid: str) -> list[vstats.Rally]:
@@ -54,16 +54,18 @@ def stat_tags(vid: str) -> list[vstats.Tag]:
 
 def tags_out(vid: str) -> list[TagOut]:
     return [
-        TagOut(
-            id=r.tag.id,
-            time_s=r.tag.time_s,
-            kind=r.tag.kind,
-            team=r.tag.team,
-            number=r.tag.number,
-            outcome=r.tag.outcome,
-            effective_outcome=r.outcome,
-            inferred=r.inferred,
-            rally_idx=r.rally,
+        TagOut.model_validate(  # vball.stats keeps kinds, teams and outcomes as text; the schema checks them
+            {
+                "id": r.tag.id,
+                "time_s": r.tag.time_s,
+                "kind": r.tag.kind,
+                "team": r.tag.team,
+                "number": r.tag.number,
+                "outcome": r.tag.outcome,
+                "effective_outcome": r.outcome,
+                "inferred": r.inferred,
+                "rally_idx": r.rally,
+            }
         )
         for r in vstats.outcomes(stat_tags(vid), stat_rallies(vid))
     ]

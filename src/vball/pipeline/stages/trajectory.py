@@ -70,7 +70,10 @@ def run(video: Path, out: Path, prev: dict, tick) -> dict:
         if "placed" in p and p["placed"].any():
             p = p[p["placed"].astype(bool) & ((p["role"] == "player") if "role" in p else True)]
             placed = {int(f): g[["court_x", "court_y"]].to_numpy(float) for f, g in p.groupby("frame")}
-    flights, unusable, rejected, uncalibrated, calibrated = [], [], [], 0, 0
+    flights: list[dict] = []
+    unusable: list[str | None] = []
+    rejected: list[tuple] = []
+    uncalibrated = calibrated = 0
     for k, shot in enumerate(shots):
         tick(k / len(shots))
         a, b = shot["start_frame"], shot["end_frame"]

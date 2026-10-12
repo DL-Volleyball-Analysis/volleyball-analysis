@@ -18,6 +18,7 @@ def court_out(vid: str) -> CourtOut:
         return CourtOut(status="pending")
     dec = pipeline.load_stage(RESULTS / vid, "decode")
     court = pipeline.corrected_court(res, dec, db.court_corrections(vid), RESULTS / vid)
+    assert court is not None  # corrections are overlaid on an existing result
     shots = [
         CourtShot(
             shot=k,
@@ -35,7 +36,7 @@ def court_out(vid: str) -> CourtOut:
     )
 
 
-def requeue_fromplayers_table(vid: str) -> bool:
+def requeue_from_players(vid: str) -> bool:
     """Players, trajectory and later stages use the court: rerun them (court and ball results are reused).
     With a job already queued or running nothing is added; the next analysis applies the correction."""
     if db.active_job(vid):
@@ -58,6 +59,7 @@ def correct_court(vid: str, shot: int, req: CourtCorrection):
     shots = (res or {}).get("shots", [])
     if not 0 <= shot < len(shots):
         raise HTTPException(404, "shot not found")
+    assert dec is not None  # the court stage runs after decode
     if not shots[shot]["start_frame"] <= req.frame <= shots[shot]["end_frame"]:
         raise HTTPException(422, "the frame is outside this shot")
     ids = court_registration.CORRECTION_PRESETS[req.preset]
@@ -66,7 +68,7 @@ def correct_court(vid: str, shot: int, req: CourtCorrection):
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
     db.set_court_correction(vid, shot, req.frame, req.points_px, list(ids))
-    return CourtCorrected(court=court_out(vid), queued=requeue_fromplayers_table(vid))
+    return CourtCorrected(court=court_out(vid), queued=requeue_from_players(vid))
 
 
 @router.delete("/videos/{vid}/court/{shot}", response_model=CourtCorrected)
@@ -74,4 +76,4 @@ def clear_court(vid: str, shot: int):
     video_or_404(vid)
     if not db.clear_court_correction(vid, shot):
         raise HTTPException(404, "no correction for this shot")
-    return CourtCorrected(court=court_out(vid), queued=requeue_fromplayers_table(vid))
+    return CourtCorrected(court=court_out(vid), queued=requeue_from_players(vid))

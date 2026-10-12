@@ -15,6 +15,7 @@ from collections import Counter
 from dataclasses import dataclass
 
 import numpy as np
+import numpy.typing as npt
 
 
 @dataclass(frozen=True)
@@ -31,7 +32,7 @@ class Vote:
     readings: int
 
 
-def reading(digits: np.ndarray, cfg: JerseyConfig = JerseyConfig()) -> str | None:
+def reading(digits: npt.ArrayLike, cfg: JerseyConfig = JerseyConfig()) -> str | None:
     """digits: rows of (digit, conf, x1, y1, x2, y2) in one crop. The number read, as a string ('7', '10'),
     or None when no digit is confident enough."""
     d = np.asarray(digits, float).reshape(-1, 6)

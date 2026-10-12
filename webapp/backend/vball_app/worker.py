@@ -6,6 +6,7 @@ Usage: python -m vball_app.worker   (next to the API: uvicorn vball_app.main:app
 import time
 import traceback
 from pathlib import Path
+from typing import Any
 
 from vball import pipeline
 
@@ -20,7 +21,7 @@ def process(db: Database, job: dict) -> None:
     if video is None:  # deleted while queued
         db.update_job(job["id"], status="failed", error="video deleted")
         return
-    last = {"stage": None, "p": 0.0}
+    last: dict[str, Any] = {"stage": None, "p": 0.0}
 
     def on_progress(stage: str, p: float):
         # Throttle progress writes, but always record a stage change: a stage can start at the

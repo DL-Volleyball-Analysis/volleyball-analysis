@@ -1,11 +1,13 @@
 """Shared by the routers: the database, the video lookup and cached result tables."""
 
 from functools import lru_cache
+from typing import cast
 
 import pandas as pd
 from fastapi import HTTPException
 
 from .db import Database
+from .schemas import Team
 from .settings import DB_PATH
 
 db = Database(DB_PATH)
@@ -18,9 +20,9 @@ def video_or_404(vid: str) -> dict:
     return v
 
 
-def effective_winners(rows: list[dict]) -> list[str | None]:
+def effective_winners(rows: list[dict]) -> list[Team | None]:
     """The user's correction wins over the model's winner."""
-    return [r["winner_override"] or r["winner"] for r in rows]
+    return [cast(Team | None, r["winner_override"] or r["winner"]) for r in rows]  # the database holds a, b or null
 
 
 @lru_cache(maxsize=8)

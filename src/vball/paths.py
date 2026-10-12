@@ -36,6 +36,7 @@ def import_external(repo: str, package: str):
     if not init.exists():
         raise SystemExit(f"clone {repo} into {EXTERNAL / repo} first")
     spec = importlib.util.spec_from_file_location(package, init, submodule_search_locations=[str(init.parent)])
+    assert spec is not None and spec.loader is not None  # a file location always gives a loader
     module = importlib.util.module_from_spec(spec)
     sys.modules[package] = module  # before running it, so the package's own absolute imports find it
     spec.loader.exec_module(module)

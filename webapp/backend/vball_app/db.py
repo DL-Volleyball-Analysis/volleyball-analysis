@@ -117,7 +117,9 @@ class Database:
                 "INSERT INTO videos VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (vid, name, path, meta.get("fps"), meta.get("frames"), meta.get("width"), meta.get("height"), now()),
             )
-        return self.get_video(vid)
+        v = self.get_video(vid)
+        assert v is not None  # just inserted
+        return v
 
     def get_video(self, vid: str) -> dict | None:
         with self.connect() as c:
@@ -143,7 +145,9 @@ class Database:
                 "VALUES (?, ?, 'queued', ?, ?, ?)",
                 (jid, video_id, from_stage, t, t),
             )
-        return self.get_job(jid)
+        job = self.get_job(jid)
+        assert job is not None  # just inserted
+        return job
 
     def get_job(self, jid: str) -> dict | None:
         with self.connect() as c:

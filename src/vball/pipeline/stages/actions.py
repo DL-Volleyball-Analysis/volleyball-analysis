@@ -37,7 +37,7 @@ def run(video: Path, out: Path, prev: dict, tick) -> dict:
     person = models.person_classifier() if config.PERSON_MODEL.exists() else None
     # with the classifier the detector only gives serves, which last over a second: it runs at config.SERVE_FPS
     d_step = players.sample_every(fps, config.SERVE_FPS) if person is not None else a_step
-    serves = []
+    serves: list[tuple] = []
     read = models.digit_detector() if config.JERSEY_MODEL.exists() else None
     if "role" in tracks:
         tracks = tracks[tracks["role"] == "player"]  # officials and staff are not given actions or numbers
@@ -45,14 +45,15 @@ def run(video: Path, out: Path, prev: dict, tick) -> dict:
     by_frame = {f: g for f, g in seen.groupby("frame")} if read and len(seen) else {}
     boxes_at = {f: g for f, g in tracks.groupby("frame")} if person and len(tracks) else {}
     balls = results.ball_points(out) if person else {}
-    rows, readings = [], {}
+    rows: list[tuple] = []
+    readings: dict[int, list] = {}
     cap, i = cv2.VideoCapture(str(video)), 0
     while True:
         wanted = i % a_step == 0 or i % d_step == 0 or (read is not None and i % j_step == 0 and i in by_frame)
         ok, frame = cap.read() if wanted else (cap.grab(), None)  # decode only the frames that are used
         if not ok:
             break
-        if wanted:
+        if wanted and frame is not None:  # frame is decoded exactly when wanted
             if detect is not None and i % d_step == 0:
                 if person is None:
                     rows.extend((i, *d) for d in detect(frame))
@@ -63,10 +64,11 @@ def run(video: Path, out: Path, prev: dict, tick) -> dict:
                     g = boxes_at[i]
                     boxes = g[["x1", "y1", "x2", "y2"]].to_numpy(float)
                     crops = [actors.person_crop(frame, b) for b in boxes]
-                    keep = [k for k, c in enumerate(crops) if c is not None]
+                    kept = [(k, c) for k, c in enumerate(crops) if c is not None]
+                    keep = [k for k, _ in kept]
                     if keep:
                         names, classify = person
-                        probs = classify([crops[k] for k in keep])
+                        probs = classify([c for _, c in kept])
                         rows.extend(
                             actors.classifier_rows(
                                 i,

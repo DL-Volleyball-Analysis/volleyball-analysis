@@ -206,7 +206,7 @@ def csv_rows(lines: list[Line], names: dict[tuple[str, int], str] | None = None)
     def ratio(x):
         return "" if x is None else f"{x:.3f}"
 
-    rows = [CSV_HEADER]
+    rows: list[list[str | int]] = [list(CSV_HEADER)]
     for ln in lines:
         rows.append(
             [

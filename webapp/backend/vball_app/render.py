@@ -13,6 +13,7 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Any
 
 import cv2
 import numpy as np
@@ -34,7 +35,7 @@ COURT_STATUS = {"ok": "court found", "needs_review": "court doubtful, not drawn"
 
 def load(vid: str) -> dict:
     res = RESULTS / vid
-    out = {name: pipeline.load_stage(res, name) for name in pipeline.STAGES}
+    out: dict[str, Any] = {name: pipeline.load_stage(res, name) for name in pipeline.STAGES}
     out["ball_df"] = pd.read_csv(res / "ball.csv") if (res / "ball.csv").exists() else None
     out["players_df"] = pd.read_csv(res / "players.csv.gz") if (res / "players.csv.gz").exists() else None
     out["flights"] = json.loads((res / "flights.json").read_text()) if (res / "flights.json").exists() else []
@@ -73,7 +74,7 @@ class CourtMap:
         return int((x + 2) * self.s), int((11 - y) * self.s)  # far sideline (y = 9) at the top
 
     def draw(self, people, ball, ball_quality) -> np.ndarray:
-        img = np.full((self.h, self.w, 3), (238, 238, 238), np.uint8)
+        img: np.ndarray = np.full((self.h, self.w, 3), (238, 238, 238), np.uint8)
         cv2.rectangle(img, self.px(0, 9), self.px(18, 0), (205, 216, 236), -1)
         for (x1, y1), (x2, y2) in vcourt.LINES.values():
             cv2.line(img, self.px(x1, y1), self.px(x2, y2), (90, 90, 90), 1, cv2.LINE_AA)
@@ -123,7 +124,7 @@ class Court3D:
         return self.cam.project(np.atleast_2d(np.asarray(pts, float))).astype(np.int32)
 
     def draw(self, people, flight: dict | None, frame: int, fps: float, note: str) -> np.ndarray:
-        img = np.full((self.h, self.w, 3), (238, 238, 238), np.uint8)
+        img: np.ndarray = np.full((self.h, self.w, 3), (238, 238, 238), np.uint8)
         floor = self.px([[-2, -2, 0], [20, -2, 0], [20, 11, 0], [-2, 11, 0]])
         cv2.fillPoly(img, [floor], (225, 225, 225))
         cv2.fillPoly(img, [self.px([[0, 0, 0], [18, 0, 0], [18, 9, 0], [0, 9, 0]])], (205, 216, 236))
@@ -214,7 +215,7 @@ def render(vid: str, path: Path, out: Path) -> Path:
 
     out.parent.mkdir(parents=True, exist_ok=True)  # VideoWriter fails silently into a missing folder
     tmp = out.with_suffix(".raw.mp4")
-    writer = cv2.VideoWriter(str(tmp), cv2.VideoWriter_fourcc(*"mp4v"), fps, size)
+    writer = cv2.VideoWriter(str(tmp), cv2.VideoWriter.fourcc(*"mp4v"), fps, size)
     if not writer.isOpened():
         raise OSError(f"cannot write {tmp}")
     cap = cv2.VideoCapture(str(path))
@@ -230,7 +231,7 @@ def render(vid: str, path: Path, out: Path) -> Path:
 
         people = []
         others = []
-        for row in by_frame.get(i).itertuples() if i in by_frame else []:
+        for row in by_frame[i].itertuples() if i in by_frame else []:
             p1, p2 = (int(row.x1), int(row.y1)), (int(row.x2), int(row.y2))
             if getattr(row, "role", "player") == "other":  # officials, staff, spectators: faint, unlabelled
                 others.append((p1, p2))
@@ -272,7 +273,7 @@ def render(vid: str, path: Path, out: Path) -> Path:
 
         bar = np.zeros((int(44 * scale), w, 3), np.uint8)
         img[: bar.shape[0]] = (img[: bar.shape[0]] * 0.35).astype(np.uint8)
-        court_txt = COURT_STATUS.get(status, "no court model") if court else "court: not available"
+        court_txt = COURT_STATUS.get(status or "", "no court model") if court else "court: not available"
         placed = "positions on the map" if people else "no court positions (court not usable)"
         text(
             img,

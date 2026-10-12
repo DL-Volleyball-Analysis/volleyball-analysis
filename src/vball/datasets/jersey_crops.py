@@ -53,7 +53,7 @@ def match_of(filename: str) -> str:
     """The match a Roboflow frame name comes from: 'chile_usa_cutted_f0_id2_jpg.rf.<hash>.jpg' -> 'chile_usa'.
     Parts of one match ('graz_1-2') belong to it ('graz_1')."""
     stem = re.sub(r"_(jpg|jpeg|png)\.rf\..*$", "", filename, flags=re.I)
-    words = []
+    words: list[str] = []
     for w in stem.split("_"):
         if w in ("cutted", "raw", "out") or (words and re.fullmatch(r"f\d+|id\d+|\d{2,}", w)):
             break
@@ -77,8 +77,8 @@ def relabel(text: str, mapping: dict[int, int | None]) -> str:
 
 def build(out: Path) -> dict[str, Counter]:
     shutil.rmtree(out, ignore_errors=True)
-    boxes = {s: Counter() for s in ("train", "valid", "test")}
-    images = Counter()
+    boxes: dict[str, Counter[int]] = {s: Counter() for s in ("train", "valid", "test")}
+    images: Counter[str] = Counter()
     for src in SOURCES:
         names = yaml.safe_load((src / "data.yaml").read_text())["names"]
         mapping = {i: digit_of(n) for i, n in enumerate(names)}

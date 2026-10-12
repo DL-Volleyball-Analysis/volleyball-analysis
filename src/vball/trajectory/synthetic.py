@@ -70,7 +70,7 @@ def corrupt(
     lost[np.flatnonzero(lost)[target:]] = False  # trim the last burst to the exact share
     out[lost] = np.nan
     seen = np.flatnonzero(~np.isnan(out).any(axis=1))
-    bad = rng.choice(seen, size=int(round(false * len(seen))), replace=False) if len(seen) else []
+    bad = rng.choice(seen, size=int(round(false * len(seen))), replace=False) if len(seen) else np.zeros(0, int)
     out[bad] = rng.uniform([0, 0], image_size, (len(bad), 2))
     return out
 
@@ -79,7 +79,7 @@ def touch_players(touch_points, jitter_m: float = 0.3, last_is_floor: bool = Tru
     """Court position (x, y) of the player at each touch, or None for the final floor contact: the touch's
     ground point plus a small offset (feet are not exactly under the ball)."""
     rng = np.random.default_rng(seed)
-    out = [np.asarray(p, float)[:2] + rng.normal(0, jitter_m, 2) for p in touch_points]
+    out: list[np.ndarray | None] = [np.asarray(p, float)[:2] + rng.normal(0, jitter_m, 2) for p in touch_points]
     if last_is_floor:
         out[-1] = None
     return out

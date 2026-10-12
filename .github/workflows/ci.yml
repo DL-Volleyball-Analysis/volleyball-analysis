@@ -15,8 +15,11 @@ jobs:
           python-version: '3.12'
           cache: pip
       # the vball package plus the web app backend package; model weights are not needed by the tests
-      - run: pip install -e . -e webapp/backend -r webapp/requirements.txt pytest-cov ruff
+      - run: pip install -e . -e webapp/backend -r webapp/requirements.txt pytest-cov ruff mypy types-PyYAML
       - run: ruff check src scripts tests webapp/backend
+      - run: ruff format --check src scripts tests webapp/backend
+      # vball and vball_app; modules still carrying type debt are listed in pyproject.toml
+      - run: mypy
       # one run over both suites (the pipeline's stage tests drive it through the API); coverage gate over vball and
       # vball_app together: a change that drops below it fails the build (2026-10-13: 92%)
       - run: pytest -q --cov --cov-report=term --cov-fail-under=90
