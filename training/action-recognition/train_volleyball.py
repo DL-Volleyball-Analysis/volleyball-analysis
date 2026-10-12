@@ -13,7 +13,7 @@ import torch
 def main():
     # 設定資料集路徑
     data_yaml_path = "Volleyball_Action_Dataset/data.yaml"
-    
+
     # 自動偵測裝置
     if torch.cuda.is_available():
         device = 'cuda'
@@ -50,16 +50,16 @@ def main():
     else:
         print("使用 CPU")
     print("================")
-    
+
     # 檢查資料集配置檔案是否存在
     if not os.path.exists(data_yaml_path):
         print(f"錯誤：找不到資料集配置檔案 {data_yaml_path}")
         return
-    
+
     # 讀取並顯示資料集資訊
     with open(data_yaml_path, 'r', encoding='utf-8') as f:
         data_config = yaml.safe_load(f)
-    
+
     print("=== 資料集資訊 ===")
     print(f"類別數量: {data_config['nc']}")
     print(f"類別名稱: {data_config['names']}")
@@ -67,7 +67,7 @@ def main():
     print(f"驗證集路徑: {data_config['val']}")
     print(f"測試集路徑: {data_config['test']}")
     print("==================")
-    
+
     # 檢查是否有現有的檢查點
     checkpoint_path = "runs/volleyball_200epoch/weights/last.pt"
     if os.path.exists(checkpoint_path):
@@ -77,7 +77,7 @@ def main():
     else:
         print("未找到檢查點，從預訓練模型開始...")
         model = YOLO('yolo11m.pt')
-    
+
     # 若為 CUDA，明確指定只使用第 0 張 GPU
     device_for_ultralytics = '0' if device == 'cuda' else device
 
@@ -112,17 +112,17 @@ def main():
         'half': use_half,
         'dnn': False,
     }
-    
+
     print("開始訓練...")
     print(f"訓練參數: {training_args}")
-    
+
     # 開始訓練
     try:
         results = model.train(**training_args)
         print("訓練完成！")
         print(f"最佳模型儲存在: runs/volleyball_200epoch/weights/best.pt")
         print(f"最後模型儲存在: runs/volleyball_200epoch/weights/last.pt")
-        
+
         # 顯示訓練結果摘要
         print("\n=== 訓練結果摘要 ===")
         rd = getattr(results, 'results_dict', {}) or {}
@@ -137,26 +137,26 @@ def main():
         print(f"  Precision: {fmt(rd.get('metrics/precision(B)'))}")
         print(f"  Recall: {fmt(rd.get('metrics/recall(B)'))}")
         print(f"  F1 Score: {fmt(rd.get('metrics/f1'))}")
-        
+
         print("\n📊 損失函數:")
         print(f"  Box Loss: {fmt(rd.get('train/box_loss'))}")
         print(f"  Class Loss: {fmt(rd.get('train/cls_loss'))}")
         print(f"  DFL Loss: {fmt(rd.get('train/dfl_loss'))}")
-        
+
         print("\n🔧 訓練配置:")
         print(f"  總Epochs: {training_args['epochs']}")
         print(f"  批次大小: {training_args['batch']}")
         print(f"  設備: {training_args['device']}")
         print(f"  圖像尺寸: {training_args['imgsz']}")
-        
+
         print("\n💾 模型保存位置:")
         print(f"  最佳模型: runs/volleyball_200epoch/weights/best.pt")
         print(f"  最新模型: runs/volleyball_200epoch/weights/last.pt")
-        
+
     except Exception as e:
         print(f"訓練過程中發生錯誤: {e}")
         return
-    
+
     # 在測試集上評估模型
     print("\n在測試集上評估模型...")
     try:

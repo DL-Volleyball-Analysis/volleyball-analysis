@@ -6,7 +6,7 @@
 15 eval_sequence(v_cC2mHWqMcjk_c009, player_yolo26s_sportsmot_960_botsort_10fps) 0.1203 sec
 All sequences for player_yolo26s_sportsmot_960_botsort_10fps finished in 1.58 seconds
                      HOTA   IDF1   MOTA  recall  precision  IDSW  ms_per_detected_frame
-seq                                                                                    
+seq
 v_0kUtTtmLaJA_c004  0.576  0.574  0.930   0.959      0.979    54                 94.320
 v_0kUtTtmLaJA_c005  0.611  0.656  0.907   0.945      0.970    34                 93.818
 v_0kUtTtmLaJA_c006  0.475  0.493  0.881   0.920      0.977    64                 94.214

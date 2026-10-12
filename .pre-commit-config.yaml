@@ -1,0 +1,33 @@
+# Fast checks on the staged files before each commit (pre-commit install). The full CI set: scripts/check.sh.
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: .venv/bin/python -m ruff check --force-exclude
+        language: system
+        types: [python]
+        files: ^(src|scripts|tests|webapp/backend)/  # the code CI lints; training/ is the capstone's
+      - id: ruff-format
+        name: ruff format
+        entry: .venv/bin/python -m ruff format --check --force-exclude
+        language: system
+        types: [python]
+        files: ^(src|scripts|tests|webapp/backend)/
+      - id: mypy
+        name: mypy
+        entry: .venv/bin/python -m mypy
+        language: system
+        types: [python]
+        pass_filenames: false  # the packages as configured in pyproject.toml, not single files
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+        args: [--maxkb=2048]  # weights and videos belong in models/ and data/, not in git
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: end-of-file-fixer
+        exclude: ^(webapp/frontend/src/api/schema\.d\.ts|docs/assets/)
+      - id: trailing-whitespace
+        exclude: ^docs/assets/

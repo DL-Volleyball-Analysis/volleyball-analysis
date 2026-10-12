@@ -49,7 +49,7 @@ does not keep its own copy. Model weights go in the root `models/` folder.
 ## Run
 From the repository root:
 ```bash
-python -m venv .venv && .venv/bin/python -m pip install -e . -e webapp/backend -r webapp/requirements.txt
+python3.14 -m venv .venv && .venv/bin/python -m pip install -r requirements/lock.txt && .venv/bin/python -m pip install -e ".[ml]" -e webapp/backend
 cd webapp
 
 ../.venv/bin/uvicorn vball_app.main:app --reload              # API on :8000, docs at /docs

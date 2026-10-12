@@ -47,7 +47,7 @@ def download_dataset(rf, dataset_info):
     print(f"\n正在下載資料集: {dataset_info['name']}")
     print(f"  Workspace: {dataset_info['workspace']}")
     print(f"  Project: {dataset_info['project']}")
-    
+
     try:
         project = rf.workspace(dataset_info['workspace']).project(dataset_info['project'])
         dataset = project.version(dataset_info['version']).download(
@@ -66,11 +66,11 @@ def main():
     print("=" * 60)
     print("球衣號碼檢測資料集下載工具")
     print("=" * 60)
-    
+
     # 創建目錄
     RAW_DATASETS_DIR.mkdir(parents=True, exist_ok=True)
     PROCESSED_DATASETS_DIR.mkdir(parents=True, exist_ok=True)
-    
+
     # 檢查是否設置了 Roboflow API Key
     api_key = os.getenv("ROBOFLOW_API_KEY")
     if not api_key:
@@ -80,7 +80,7 @@ def main():
         print("\n或在使用此腳本前運行:")
         print("  export ROBOFLOW_API_KEY=$(roboflow login)")
         return
-    
+
     # 初始化 Roboflow
     try:
         rf = Roboflow(api_key=api_key)
@@ -88,13 +88,13 @@ def main():
     except Exception as e:
         print(f"\n✗ Roboflow API 連接失敗: {str(e)}")
         return
-    
+
     # 下載所有資料集
     success_count = 0
     for dataset_info in DATASETS:
         if download_dataset(rf, dataset_info):
             success_count += 1
-    
+
     print("\n" + "=" * 60)
     print(f"下載完成: {success_count}/{len(DATASETS)} 個資料集成功下載")
     print("=" * 60)
@@ -105,4 +105,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

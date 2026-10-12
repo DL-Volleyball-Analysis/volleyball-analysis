@@ -383,10 +383,10 @@ Logs saved in `runs/jersey_detection/` | 訓練日誌保存於 `runs/jersey_dete
 5. **GPU Memory**: Training script auto-optimizes parameters
 6. **Dataset Quality**: Correct annotations directly impact model performance
 
-**環境選擇**: 推薦使用 Conda（可更好管理 CUDA 依賴）  
-**備份**: 訓練前確保有 20GB+ 磁碟空間  
-**中斷恢復**: 可從檢查點恢復訓練  
-**模型選擇**: 較大模型更準確但訓練更慢  
+**環境選擇**: 推薦使用 Conda（可更好管理 CUDA 依賴）
+**備份**: 訓練前確保有 20GB+ 磁碟空間
+**中斷恢復**: 可從檢查點恢復訓練
+**模型選擇**: 較大模型更準確但訓練更慢
 **資料集品質**: 正確的標註直接影響模型性能
 
 ---

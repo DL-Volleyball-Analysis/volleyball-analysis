@@ -79,6 +79,7 @@ fixed cameras (a fixed-camera model is in progress). Footage: NCAA men's volleyb
 <sub>2D / 3D tactics board (demo flights) and the player statistics table built from coach tags.</sub>
 
 ## How the work is planned
+- [docs/architecture.md](docs/architecture.md): components, the staged pipeline and its contract, with the decisions behind them in [docs/adr/](docs/adr/README.md).
 - [docs/prd/](docs/prd/README.md): product requirements — why, for whom, what counts as success.
 - [openspec/specs/](openspec/specs): how the system behaves today (behaviour contracts).
 - [openspec/changes/](openspec/changes): each change's proposal, spec deltas, design and task list.
@@ -132,8 +133,10 @@ A new result goes to `outputs/<topic>/<experiment>/`; a number worth keeping is 
 
 ## Setup
 ```
-python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt -e . -e webapp/backend
+python3.14 -m venv .venv
+.venv/bin/python -m pip install -r requirements/lock.txt && .venv/bin/python -m pip install -e ".[ml]" -e webapp/backend
 ```
+Development workflow, checks and conventions: [CONTRIBUTING.md](CONTRIBUTING.md).
 Ball tracking needs [fast-volleyball-tracking-inference](https://github.com/asigatchov/fast-volleyball-tracking-inference)
 (MIT) cloned into `external/`; player-tracking evaluation needs
 [TrackEval](https://github.com/JonathonLuiten/TrackEval) (MIT) there too.
