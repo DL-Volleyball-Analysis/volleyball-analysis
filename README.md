@@ -15,8 +15,8 @@ the court in metres, the players, rallies and the score.
   <br><sub>Output of <code>webapp/backend/render.py</code> on a fixed end-line camera (the most common amateur set-up):
   the court fitted to the painted lines of an empty-court background plate (both keypoint models fail on this view),
   players tracked with YOLO26s + BoT-SORT and coloured by side, the ball trail (VballNet), a top-down map with the
-  players' court positions, and a 3D view with the current 3D flight. Footage: NCAA men's volleyball
-  (VolleyballWatchdog), used for research only.</sub>
+  players' court positions, and a 3D view with the current 3D flight (USC vs Pepperdine). Footage: NCAA men's
+  volleyball (VolleyballWatchdog), used for research only.</sub>
 </p>
 
 ## Pipeline
