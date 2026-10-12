@@ -143,3 +143,31 @@ Of nine analysed videos, three have a usable court shot. Overlays of the fitted 
   `verify-court-by-lines` proposes line evidence from the image instead.
 
 > The 4K moving-camera clips referred to above (Canada vs Italy, Choforo55 gym, Hawaii vs UCI, Long Beach vs UCLA) were removed on 2026-10-12 at the owner's request; testing moved to fixed end-line camera clips (data/videos/fixed).
+
+## Fixed end-line cameras: court from painted lines (2026-10-12)
+Six 3-minute clips from fixed cameras high behind an end line (VolleyballWatchdog, NCAA men's volleyball, five
+arenas; data/videos/fixed, kept local). Both keypoint models fail on all six: the broadcast model finds no court, the
+gym model squeezes the court into the near half (the far end line on the net), and the net check passes some of these
+(0.007 on Hawaii vs Penn State).
+
+`vball.court_lines` (change verify-court-by-lines) fits the court model to the painted lines of each clip's background
+plate (median of 60 frames: players gone). Line evidence of the chosen fit, checked by eye on overlays:
+
+| Clip | Floor | Lines | Good court lines (of 7) | Line samples supported | Search |
+|---|---|---|---|---|---|
+| gcu_ucla | multi-sport, volleyball lines black, basketball lines white | dark | 7 | 0.79 | 2 s |
+| hawaii_irvine | volleyball only | white | 7 | 0.94 | 0.3 s |
+| hawaii_pennstate | volleyball only | white | 7 | 0.97 | 4 s |
+| quincy_ballstate | multi-sport, thin white lines, busy stands | white | 5 | 0.74 | 33 s |
+| ucla_concordia | multi-sport, basketball lines | white | 6 | 0.76 | 9 s |
+| usc_pepperdine | volleyball only, large logo | white | 6 | 0.85 | 9 s |
+
+All six correct by eye (court lines on the painted lines; no labelled frames yet, so no error in metres: a fixed
+camera needs one labelled frame per clip, task 3.1). What it took, each step found on these clips:
+- Line pixels by the brighter-than-both-sides test (Farin et al.) instead of a white top-hat: the top-hat kept wood
+  grain and crowd texture, and the search then preferred courts squashed onto a stripe.
+- A per-line support term in the score, and rejecting fans and slivers (interior angle under 25 deg).
+- Dark lines (GCU paints volleyball lines black).
+- A floor test: perspective (some court direction vanishes within 20 image widths), a near-horizontal horizon with the
+  court below it. Without it a scoreboard panel on the Quincy wall won. A focal-length test does not work: a symmetric
+  end-line view leaves the focal length undetermined.
