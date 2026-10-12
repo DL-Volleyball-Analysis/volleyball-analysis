@@ -80,7 +80,10 @@ def main():
     ap.add_argument("--no-track", action="store_true", help="only the detectors alone")
     ap.add_argument("--max-clips", type=int, default=None, help="evenly spaced subset of the test clips")
     ap.add_argument("--out", default=str(OUTPUTS / "ball" / "eval_volleyball"))
+    ap.add_argument("--wasb-model", type=Path, default=None, help="another WASB ONNX (e.g. a fine-tuned run) for 'wasb'")
     args = ap.parse_args()
+    if args.wasb_model is not None:
+        ball_detect.BALL_MODELS["wasb"] = args.wasb_model
 
     dets = {d: ball_detect.load(d) for d in args.detectors}
     methods = [m for d in args.detectors for m in ([d] if args.no_track else [d, f"{d}+track"])]

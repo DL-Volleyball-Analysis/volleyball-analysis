@@ -37,6 +37,7 @@ PERSON_MODEL = MODELS / "person_action_yolo26s_cls.pt"  # block / receive / set 
 BALL_PRIOR = actors.ActorConfig(k=2.0, floor=0.6)  # chosen on the Volleyball dataset's validation matches
 JERSEY_MODEL = MODELS / "jersey_digits_yolo26s.pt"
 ACTION_FPS, JERSEY_FPS = 10.0, 2.0
+SERVE_FPS = 3.0  # the action detector, which only gives serves next to the classifier (speed-up-analysis)
 # YOLO26s fine-tuned on SportsMOT volleyball training sequences (players only): IDF1 0.690, precision 0.970 on
 # SportsMOT volleyball val, against 0.484 / 0.614 for the COCO weights (docs/results/player-tracking.md)
 GENERAL_PLAYER_MODEL = MODELS / "yolo26s.pt"  # COCO persons: fallback where the player-only detector misses players
@@ -300,6 +301,9 @@ def actions_stage(video: Path, out: Path, prev: dict, tick) -> dict:
     a_step, j_step = players.sample_every(fps, ACTION_FPS), players.sample_every(fps, JERSEY_FPS)
     detect = action_detector() if ACTION_MODEL.exists() else None
     person = person_classifier() if PERSON_MODEL.exists() else None
+    # with the classifier the detector only gives serves, which last over a second: it runs at SERVE_FPS
+    d_step = players.sample_every(fps, SERVE_FPS) if person is not None else a_step
+    serves = []
     read = digit_detector() if JERSEY_MODEL.exists() else None
     if "role" in tracks:
         tracks = tracks[tracks["role"] == "player"]  # officials and staff are not given actions or numbers
@@ -310,15 +314,17 @@ def actions_stage(video: Path, out: Path, prev: dict, tick) -> dict:
     rows, readings = [], {}
     cap, i = cv2.VideoCapture(str(video)), 0
     while True:
-        wanted = i % a_step == 0 or (read is not None and i % j_step == 0 and i in by_frame)
+        wanted = i % a_step == 0 or i % d_step == 0 or (read is not None and i % j_step == 0 and i in by_frame)
         ok, frame = cap.read() if wanted else (cap.grab(), None)  # decode only the frames that are used
         if not ok:
             break
         if wanted:
+            if detect is not None and i % d_step == 0:
+                if person is None:
+                    rows.extend((i, *d) for d in detect(frame))
+                else:  # with the classifier, the detector only contributes serves
+                    serves.extend((i, *d) for d in detect(frame) if d[0] == "serve")
             if i % a_step == 0:
-                if detect is not None:
-                    # with the classifier, the detector only contributes serves
-                    rows.extend((i, *d) for d in detect(frame) if person is None or d[0] == "serve")
                 if person is not None and i in boxes_at:
                     g = boxes_at[i]
                     boxes = g[["x1", "y1", "x2", "y2"]].to_numpy(float)
@@ -339,6 +345,9 @@ def actions_stage(video: Path, out: Path, prev: dict, tick) -> dict:
             tick(i / n)
     cap.release()
     evs = actions.events(pd.DataFrame(rows, columns=actions.DETECTION_COLUMNS), tracks, a_step)
+    if serves:  # merged on their own sampling step, so the sparser samples are not split into separate events
+        evs = sorted(evs + actions.events(pd.DataFrame(serves, columns=actions.DETECTION_COLUMNS), tracks, d_step),
+                     key=lambda e: e.start_frame)
     numbers = {tid: jersey.vote([x for _, x in r]) for tid, r in readings.items()}
     # time-local numbers: a label follows a tracker identity switch instead of keeping the old number
     window = int(round(fps))  # +-1 s of readings
@@ -543,7 +552,7 @@ FUNCS = {"decode": decode, "court": court, "ball": ball_stage, "players": player
          "trajectory": trajectory_stage, "events": events, "rallies": rallies}
 # players -4: the general detector where the player-only one misses players
 VERSIONS = {"decode": "2", "court": "6", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-4",
-            "actions": "3",  # 3: per-player classifier + ball prior
+            "actions": "4",  # 3: per-player classifier + ball prior; 4: serves at SERVE_FPS
             "trajectory": "5", "events": "0.3", "rallies": "2"}  # rallies 1: detected from cues; 2: quick check first
 
 
