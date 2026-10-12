@@ -31,6 +31,12 @@ Single-camera 3D is possible because a free-flying ball must follow a parabola: 
 - Real footage: net-crossing heights are above the net top for balls that crossed (sanity); landing points within 0.5 m of labelled landings (labels from M5).
 - Fit error shown for every flight in the UI.
 
+Measured (2026-10-13, docs/results/trajectory.md): synthetic serves meet the 0.10 m target (median 0.047 m) but sets
+(0.17 m) and attacks (0.95 m) do not without player anchoring (attack 0.31 m with it); calibration from labelled
+keypoints has a median reprojection error of 1.03 px on 30 of 49 test images; on real clips every kept flight is low
+quality and one of two net crossings is impossible, so landing calls wait for a better 2D ball track. Landing error
+against labels is not measured (no labelled landings yet).
+
 ## Out of scope
 - Spin, multi-camera fusion, real-time.
 

@@ -16,9 +16,9 @@ import cv2
 
 from vball import court, court_registration
 from vball.court_keypoints import detect
+from vball.manifest import usable
 from vball.paths import MODELS, OUTPUTS, VIDEOS
-
-COURT_MODELS = {"gym": MODELS / "court_kpt.pt", "broadcast": MODELS / "court_kpt_broadcast.pt"}
+from vball.pipeline import config
 
 
 def frame_at(video: Path, at: float):
@@ -46,7 +46,7 @@ def main():
     args = ap.parse_args()
     from ultralytics import YOLO
 
-    models = {name: YOLO(str(p)) for name, p in COURT_MODELS.items() if p.exists()}
+    models = {name: YOLO(str(p)) for name, p in config.COURT_MODELS.items() if usable(p)}
     if not models:
         raise SystemExit(f"no court model in {MODELS}")
     out = OUTPUTS / "court" / "detection"

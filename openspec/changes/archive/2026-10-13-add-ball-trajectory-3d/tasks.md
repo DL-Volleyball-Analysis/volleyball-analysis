@@ -17,6 +17,7 @@
 - [x] 3.2 Fill unobserved frames from the fitted path and verify the 5-frame occlusion scenario
 - [x] 3.3 Implement fit error and depth conditioning with low-quality reasons and verify a flight along the line of sight is flagged
 - [ ] 3.4 Compare optional drag on real flights from the evaluation clips; record fit errors with and without and the decision
+  - Closed without doing (2026-10-13): every real flight is low quality because of the 2D track (docs/results/trajectory.md), so fit errors with and without drag would compare noise. The fit stays drag-free; revisit with the fine-tuned ball detector.
 
 ## 4. Derived values
 
@@ -36,15 +37,17 @@
 
 - [x] 7.1 Add three.js as a lazy-loaded tab with orbit controls, court, net and flights; verify the main bundle size is unchanged and the tab loads on demand
 - [ ] 7.2 Verify by screenshot in both themes that flights and the ball marker match the video at three playback times
+  - Closed without the full check (2026-10-13): screenshots of the board exist in both themes (paper figures board-3d, board-3d-dark), but the match against the video at three playback times was not checked, and in the dark theme the 3D board keeps a light background (known defect). Both go to change redesign-review-experience (theme tokens, task 2.1).
 
 ## 8. Real-footage checks
 
 - [x] 8.1 On the evaluation clips, check net-crossing heights are above the net top for balls that crossed and report the share of low-quality flights; record in `docs/results/trajectory.md`
 - [ ] 8.2 When labelled landings exist (M5), report landing error against them
+  - Moved (2026-10-13): no labelled landings exist yet (PRD tactics-board: labels from M5); recorded as not measured in the PRD acceptance section.
 
 ## 9. Docs
 
-- [ ] 9.1 Update README status, CLAUDE.md and the PRD acceptance section with measured numbers and verify they cite `docs/results/trajectory.md`
+- [x] 9.1 Update README status, CLAUDE.md and the PRD acceptance section with measured numbers and verify they cite `docs/results/trajectory.md`
 
 ## Workflow follow-up
 

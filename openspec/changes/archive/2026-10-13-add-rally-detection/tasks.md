@@ -8,8 +8,9 @@
 - [x] 2.1 `scripts/extract_rally_cues.py` (court, ball, players at 5 per second) and a Kaggle notebook for the 8 matches
 - [x] 2.2 Ball-rule baseline and the classifier; results in `docs/results/rallies.md`
 - [ ] 2.3 VideoMAE checkpoint as a reference if its training split allows a fair test
+  - Closed without doing (2026-10-13): the checkpoint was fine-tuned on the same game-state dataset and its train / test split was never checked, so it could not be shown to be a fair reference; the comparison stays open in docs/results/rallies.md.
 
 ## 3. Pipeline
 - [x] 3.1 Rallies stage from the detector (stage version bump), demo data only when no result; API and UI unchanged
   (vball.rally_cues shared by the script and the stage; models/rally_cues_hgb.joblib; the worker writes detected rallies and moves winner corrections to the overlapping rally; actions outside detected rallies are left out of the API)
-- [ ] 3.2 README, papers, `openspec validate add-rally-detection --strict`
+- [x] 3.2 README, papers, `openspec validate add-rally-detection --strict`

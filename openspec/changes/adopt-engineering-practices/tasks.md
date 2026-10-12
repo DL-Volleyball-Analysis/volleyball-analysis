@@ -30,4 +30,7 @@
 ## 6. Documentation and planning debt
 - [x] 6.1 docs/architecture.md (components, data flow, stage contract, diagram); README links it
 - [x] 6.2 ADRs in docs/adr/, one file per decision named by slug (no number prefixes; date and status in the file): staged cached pipeline, court from painted lines, focal length from the net, leave-one-match-out evaluation, single-user local deployment
-- [ ] 6.3 Each open OpenSpec change finished and archived or closed with its reason; verify `openspec list`
+- [x] 6.3 Each open OpenSpec change finished and archived or closed with its reason; verify `openspec list`
+  (archived with reasons for the closed tasks: add-court-registration, add-rally-detection, measure-ball-and-actors,
+  add-ball-trajectory-3d, whose stage-order delta was rebuilt on the current spec; still open because work continues:
+  label-rallies-from-score, train-ball-detector (Kaggle quota), verify-court-by-lines, redesign-review-experience (waiting for the owner's OK))

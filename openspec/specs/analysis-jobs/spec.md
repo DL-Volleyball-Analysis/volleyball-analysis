@@ -25,6 +25,10 @@ The system SHALL analyse a video in the fixed stage order decode, court, ball, p
 - **WHEN** a video is analysed from the decode stage
 - **THEN** the players stage runs after ball and before events, so events can use player positions
 
+#### Scenario: Trajectory before events
+- **WHEN** a video is analysed from the decode stage
+- **THEN** the trajectory stage runs after players and before events, so events can use 3D landing points
+
 ### Requirement: Stage result reuse
 The system SHALL recompute a requested start stage and every stage after it, and SHALL reuse an earlier stage's stored result when it exists and its version matches the current code.
 
@@ -70,3 +74,10 @@ and report out-of-training footage without a full pass over the video.
 #### Scenario: Moving broadcast camera
 - **WHEN** the camera pans during a shot
 - **THEN** its court samples stay at 5 per second and each flight gets the camera of its own frame
+
+### Requirement: Recompute after court correction
+When the user sets or clears a court correction, the system SHALL queue an analysis of that video starting at the first stage that uses court results (players), unless a job for the video is already queued or running, in which case no second job is created and that job SHALL apply the correction if it has not yet passed the court stage.
+
+#### Scenario: Correction on an analysed video
+- **WHEN** the user corrects a shot of a fully analysed video
+- **THEN** a job starting at the players stage is queued, and the decode, court and ball results are reused

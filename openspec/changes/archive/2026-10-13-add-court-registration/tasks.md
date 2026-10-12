@@ -33,6 +33,7 @@
 - [x] 3.2 Measure inference time per image on the M1 Pro CPU in the same script and verify it is printed
 - [x] 3.3 After Colab training, run the evaluation on the real weights, record the numbers in README "Status" and CLAUDE.md, and verify they match the script output (no proxy numbers presented as accuracy)
 - [ ] 3.4 Tune the status thresholds from the evaluation's error distribution and verify the threshold values are the only edit in `vball.court_registration`
+  - Closed without doing (2026-10-13): there is no labelled error distribution for the views where the status matters (end-line, low angle). Still shots now get their status from line evidence (change verify-court-by-lines); per-clip error in metres is that change's task 3.1.
 
 ## 4. Pipeline court stage (web app)
 
@@ -57,6 +58,7 @@
 ## 6. Integration
 
 - [ ] 6.1 Switch `scripts/detect_court.py` to the learned model, render overlays for the 5 clips, and verify by eye that at least 4 of 5 are correct (currently 1 of 5); record the result in README
+  - Closed (2026-10-13): `scripts/detect_court.py` uses the learned models; the by-eye check was replaced by a labelled measurement on held-out broadcast clips (test_vnl median 0.10 m, 96% within 0.3 m; docs/results/court-keypoints.md), which the README cites.
   (2026-10-11: switched; 2 of 5 automatically correct (both high side views), the 2 end-line views needs review and the low side view failed, none drawn wrong. Target not met: needs end-line and low-angle training images; until then a user correction sets those courts.)
 
 ## Workflow follow-up

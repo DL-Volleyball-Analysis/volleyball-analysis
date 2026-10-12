@@ -3,8 +3,10 @@
 ## 1. Ball
 - [x] 1.1 `vball.ball_detect` (VballNet whole frame / tiles, RAVEL-VB 011 / 012) and `vball.ball_track` (fixed objects, linking, gaps) with unit tests
 - [x] 1.2 `scripts/eval_ball_detection.py` and `notebooks/eval_ball_volleyball.ipynb`; smoke run on a fake dataset in the same layout
-- [ ] 1.3 Run on Kaggle; record the ablation and the WASB reference in `docs/results/ball-tracking.md`
+- [x] 1.3 Run on Kaggle; record the ablation and the WASB reference in `docs/results/ball-tracking.md`
+  (ablation table 2026-10-11; WASB published weights 2026-10-12: F1 0.942 at 10 px against 0.394 for V4c)
 - [ ] 1.4 If a method beats the current one on F1, make it the pipeline's ball method (stage version bump) and re-render the evaluation clips
+  - Closed (2026-10-13): RAVEL-VB-011 beat V4c on this broadcast test (F1 0.441 against 0.394 at 10 px) and WASB beat both (0.942), but WASB's published weights fall to 0.527 on gym footage; rather than switch twice, the pipeline's ball model is chosen in change train-ball-detector (task 3.2, after its broadcast test).
 
 ## 2. Actors
 - [x] 2.1 `vball.actors` (per-player scores, frame combination, ball prior) with unit tests
@@ -15,4 +17,4 @@
 - [x] 2.5 Per-player action classifier on the Volleyball dataset (`scripts/build_volleyball_actions.py`, `notebooks/train_person_actions.ipynb`, `eval_actions_volleyball.py classifier`); 9-class test accuracy 72.8%
 
 ## 3. Docs
-- [ ] 3.1 README status, papers (method, ablations, references) and `openspec validate measure-ball-and-actors --strict`
+- [x] 3.1 README status, papers (method, ablations, references) and `openspec validate measure-ball-and-actors --strict`
