@@ -1,0 +1,21 @@
+"""Volleyball analysis API.
+
+Run: uvicorn vball_app.main:app --reload   (plus `python -m vball_app.worker` for analysis)
+Heavy work never runs in this process: endpoints only queue jobs and read stage results.
+"""
+import os
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from .api import actions, court, jobs, rallies, stats, tracks, videos
+
+app = FastAPI(title="Volleyball Analysis API", version="2.0.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=os.environ.get("VBALL_CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").split(","),
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+for module in (videos, jobs, court, tracks, rallies, actions, stats):
+    app.include_router(module.router)

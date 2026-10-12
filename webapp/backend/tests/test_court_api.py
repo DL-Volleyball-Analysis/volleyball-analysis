@@ -142,14 +142,14 @@ def test_near_half_correction(client, clip, fake_ball, installed, monkeypatch):
 
 
 def test_no_second_job_while_one_is_active(client, clip, fake_ball, installed, monkeypatch):
-    import main
+    from vball_app import deps
     failing_court(installed, monkeypatch)
     v = upload(client, clip)
     run_worker_once()
     client.post(f"/videos/{v['id']}/jobs", json={"from_stage": "ball"})   # queued, not yet run
     r = client.put(f"/videos/{v['id']}/court/0", json={"frame": 10, "points_px": CORNERS})
     assert r.json()["queued"] is False
-    with main.db.connect() as c:
+    with deps.db.connect() as c:
         assert c.execute("SELECT COUNT(*) FROM jobs WHERE video_id = ? AND status = 'queued'", (v["id"],)).fetchone()[0] == 1
     run_worker_once()  # the queued job reads the correction when it reaches the court stage
     players = client.get(f"/videos/{v['id']}/players?start=0&end=0.9").json()

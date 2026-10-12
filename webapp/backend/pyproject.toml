@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vball-app"
+version = "0.1.0"
+description = "Volleyball analysis web app backend: API, analysis worker and video render on top of vball"
+requires-python = ">=3.11"
+dependencies = ["vball", "fastapi>=0.115", "uvicorn[standard]>=0.30", "python-multipart>=0.0.9", "numpy", "pandas",
+                "opencv-python-headless"]
+
+[project.scripts]
+vball-worker = "vball_app.worker:main"
+vball-render = "vball_app.render:main"
+
+[tool.setuptools.packages.find]
+include = ["vball_app*"]

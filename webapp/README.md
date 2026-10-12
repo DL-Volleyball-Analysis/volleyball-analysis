@@ -21,13 +21,16 @@ and review/correct them in the browser. Continuation of the NTOU capstone (DL-Vo
 
 ## Layout
 ```
-backend/
-  main.py       HTTP API (FastAPI); only queues jobs and reads results
-  worker.py     runs queued jobs, one at a time
-  pipeline.py   analysis stages, cached per stage under data/results/<video_id>/
-  database.py   SQLite: videos, jobs, rallies (+ user corrections)
-  settings.py   data paths (VBALL_WEBAPP_DATA)
-  demo.py       import the evaluation clips with placeholder rallies
+backend/        package vball_app (pyproject.toml); the analysis stages are vball.pipeline
+  vball_app/main.py      FastAPI app: middleware and routers only
+  vball_app/api/         one router per resource: videos, jobs, court, tracks, rallies, actions, stats
+  vball_app/schemas.py   request / response models (the frontend's generated types come from them)
+  vball_app/deps.py      database handle, video lookup, cached result tables
+  vball_app/worker.py    runs queued jobs, one at a time (vball.pipeline.run)
+  vball_app/db.py        SQLite: videos, jobs, rallies (+ user corrections)
+  vball_app/settings.py  data paths (VBALL_WEBAPP_DATA)
+  vball_app/render.py    analysis video with every result drawn on it
+  vball_app/demo.py      import the evaluation clips with placeholder rallies
   tests/
 frontend/       React + Vite + TypeScript
   src/api/        fetch client, generated OpenAPI types, query hooks, live job stream (SSE)
@@ -46,12 +49,12 @@ does not keep its own copy. Model weights go in the root `models/` folder.
 ## Run
 From the repository root:
 ```bash
-python -m venv .venv && .venv/bin/python -m pip install -e . -r webapp/requirements.txt
+python -m venv .venv && .venv/bin/python -m pip install -e . -e webapp/backend -r webapp/requirements.txt
 cd webapp
 
-../.venv/bin/uvicorn --app-dir backend main:app --reload        # API on :8000, docs at /docs
-../.venv/bin/python backend/worker.py                            # analysis worker
-../.venv/bin/python backend/demo.py                              # optional: import sample clips
+../.venv/bin/uvicorn vball_app.main:app --reload              # API on :8000, docs at /docs
+../.venv/bin/python -m vball_app.worker                       # analysis worker
+../.venv/bin/python -m vball_app.demo                         # optional: import sample clips
 
 cd frontend && npm install && npm run dev                     # UI on http://localhost:5173 (proxies /api to :8000)
 ```
@@ -60,7 +63,7 @@ After changing backend models, regenerate the frontend types with the API runnin
 
 ## Test
 ```bash
-../.venv/bin/python -m pytest backend/tests
+../.venv/bin/python -m pytest                                 # from the repository root: vball and backend suites
 cd frontend && npm test && npm run build
 ```
 Frontend tests include WCAG contrast checks of the theme tokens (`src/theme.test.ts`).
@@ -70,7 +73,7 @@ J / K previous / next rally · Space play / pause · 1 / 2 winner A / B · 0 cle
 T / S tag an attack / serve at the playhead (then the player number, A / B to switch team, Enter)
 
 ## Analysis video
-`../.venv/bin/python backend/render.py <video name or id> [--out file.mp4]` draws every result on the video for
+`../.venv/bin/python -m vball_app.render <video name or id> [--out file.mp4]` draws every result on the video for
 sharing outside the app: ball trail, player boxes and ids, court lines (only for shots whose court status is
 ok), a court map with the players' positions (and the ball from 3D flights), and a status bar that says what is
 missing and why. Default output: `data/results/<id>/<name>_analysis.mp4` (H.264 when ffmpeg is installed).

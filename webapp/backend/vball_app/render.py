@@ -5,7 +5,7 @@ lines of shots whose court status is ok, a top-down court map with the players' 
 flights when there are any), a 3D view of the court with the current 3D flight, and a status bar that says what each
 overlay is and why something is missing. Doubtful courts are named, never drawn.
 
-  python backend/render.py broadcast_side_high_men [--out path.mp4]
+  python -m vball_app.render broadcast_side_high_men [--out path.mp4]
 """
 import argparse
 import json
@@ -16,12 +16,13 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pandas as pd
-from database import Database
-from settings import DB_PATH, RESULTS
 
 from vball import court as vcourt
 from vball import court_registration, pipeline
 from vball.paths import OUTPUTS
+
+from .db import Database
+from .settings import DB_PATH, RESULTS
 
 BALL, EDGE, WHITE = (63, 210, 255), (0, 0, 0), (255, 255, 255)  # BGR
 TEAM = {"a": (163, 118, 15), "b": (57, 18, 159), "": (230, 230, 230)}  # side of the net, as in the app

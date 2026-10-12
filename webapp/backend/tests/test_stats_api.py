@@ -8,9 +8,9 @@ from test_api import upload
 @pytest.fixture
 def match(client, clip):
     """Two rallies in set 1: A wins 0-10 s, B wins 12-20 s."""
-    import main
+    from vball_app import deps
     v = upload(client, clip)
-    main.db.replace_rallies(v["id"], [
+    deps.db.replace_rallies(v["id"], [
         {"idx": 0, "start_s": 0, "end_s": 10, "winner": "a", "source": "model"},
         {"idx": 1, "start_s": 12, "end_s": 20, "winner": "b", "source": "model"},
     ])
@@ -67,10 +67,10 @@ def test_invalid_tag_is_rejected(client, match):
 
 
 def test_tags_survive_reanalysis_that_moves_rally_boundaries(client, match):
-    import main
+    from vball_app import deps
     tag(client, match, time_s=11, kind="attack", team="b", number=4)
     assert client.get(f"/videos/{match}/tags").json()[0]["rally_idx"] == 0  # 1 s after rally 0
-    main.db.replace_rallies(match, [  # re-analysis: rally 1 now starts at 10.8 s
+    deps.db.replace_rallies(match, [  # re-analysis: rally 1 now starts at 10.8 s
         {"idx": 0, "start_s": 0, "end_s": 10.5, "winner": "a", "source": "model"},
         {"idx": 1, "start_s": 10.8, "end_s": 20, "winner": "b", "source": "model"},
     ])

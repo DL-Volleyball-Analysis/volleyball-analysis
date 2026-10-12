@@ -25,3 +25,9 @@ ignore = ["B008", "B905"]  # B905: zips of equal-length sequences by constructio
 
 [tool.ruff.lint.isort]
 known-first-party = ["vball"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "webapp/backend/tests"]
+
+[tool.coverage.run]
+source = ["vball", "vball_app"]

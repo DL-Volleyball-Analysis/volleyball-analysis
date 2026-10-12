@@ -1,4 +1,4 @@
-# runtime data: uploads, analysis results and the job database (see backend/settings.py)
+# runtime data: uploads, analysis results and the job database (see backend/vball_app/settings.py)
 data/
 frontend/node_modules/
 frontend/dist/

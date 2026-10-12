@@ -2,7 +2,7 @@
 import os
 from pathlib import Path
 
-DATA = Path(os.environ.get("VBALL_WEBAPP_DATA", Path(__file__).resolve().parents[1] / "data"))
+DATA = Path(os.environ.get("VBALL_WEBAPP_DATA", Path(__file__).resolve().parents[2] / "data"))
 UPLOADS = DATA / "uploads"
 RESULTS = DATA / "results"
 DB_PATH = DATA / "webapp.db"

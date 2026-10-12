@@ -3,7 +3,7 @@ from test_api import run_worker_once, upload
 
 
 def test_render_draws_every_frame_into_a_new_folder(client, clip, fake_ball, tmp_path):
-    import render
+    from vball_app import render
     v = upload(client, clip)
     assert run_worker_once()["status"] == "done"
     out = tmp_path / "not" / "yet" / "there.mp4"  # the folder does not exist

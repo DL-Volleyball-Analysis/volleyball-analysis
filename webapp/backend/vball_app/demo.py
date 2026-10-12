@@ -4,16 +4,17 @@ Ball tracking on these clips is real (the worker runs the pipeline). Rally segme
 scoring do not exist yet, so the rallies here are synthetic, stored with source='demo', and the
 UI labels them as demo data.
 
-Usage: python backend/demo.py
+Usage: python -m vball_app.demo
 """
 import random
 
 import numpy as np
-from database import Database
-from settings import DB_PATH
 
 from vball.paths import VIDEOS
 from vball.trajectory import BALL_RADIUS, FlightFit, G
+
+from .db import Database
+from .settings import DB_PATH
 
 REASONS = ("in", "in", "in", "out", "net", "fault")
 

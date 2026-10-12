@@ -1,15 +1,15 @@
 """Analysis worker: takes queued jobs from SQLite and runs the pipeline, one at a time.
 
-Usage: python backend/worker.py   (next to the API: uvicorn --app-dir backend main:app)
+Usage: python -m vball_app.worker   (next to the API: uvicorn vball_app.main:app)
 """
 import time
 import traceback
 from pathlib import Path
 
-from database import Database
-from settings import DB_PATH, RESULTS
-
 from vball import pipeline
+
+from .db import Database
+from .settings import DB_PATH, RESULTS
 
 POLL_S = 1.0
 

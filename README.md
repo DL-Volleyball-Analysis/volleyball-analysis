@@ -12,7 +12,7 @@ the court in metres, the players, rallies and the score.
 
 <p align="center">
   <img src="docs/assets/analysis.gif" width="720" alt="Analysed fixed end-line clip (GCU vs UCLA): black volleyball lines found on a multi-sport floor, tracked players, ball trail, a top-down court map and a 3D view">
-  <br><sub>Output of <code>webapp/backend/render.py</code> on a fixed end-line camera (GCU vs UCLA): the court fitted
+  <br><sub>Output of <code>vball_app.render</code> on a fixed end-line camera (GCU vs UCLA): the court fitted
   to the painted lines of an empty-court background plate (here the volleyball lines are black and the basketball
   lines white; both keypoint models fail on this view), players tracked with YOLO26s + BoT-SORT and coloured by side,
   the ball trail (VballNet), a top-down map and a 3D view with the current 3D flight. On this clip 115 flights are
@@ -109,18 +109,19 @@ src/vball/          analysis package
   court_lines.py      court fitted to painted lines (background plate), focal length from the net tape
   camera_motion.py    frame-to-frame camera motion (keyframe registration)
   scorebug.py         point changes read from the on-screen score (rally and point-winner labels)
+  pipeline/           the staged analysis: one module per stage, model adapters, results folder
 scripts/            entry points (dataset build, evaluation, comparisons)
-webapp/             web app: FastAPI API + worker (backend/), React UI (frontend/); see webapp/README.md
+webapp/             web app: package vball_app (backend/: API, worker, render), React UI (frontend/); see webapp/README.md
 training/           training code: ball detector (WASB), action recognition, jersey numbers
 notebooks/          Kaggle / Colab notebooks (GPU work runs there, never locally)
-tests/              pytest
+tests/              pytest for vball (the web app's tests are in webapp/backend/tests)
 docs/               PRD (prd/), measured results (results/), design notes
 openspec/           specifications and changes
 ```
 
 Not in git (local only):
 ```
-models/             weights the code loads by name (src/vball/paths.py, webapp/backend/pipeline.py)
+models/             weights the code loads by name (src/vball/paths.py, src/vball/pipeline/config.py)
 data/videos/        test videos; fixed/ holds fixed end-line camera clips (VolleyballWatchdog, kept local, never redistributed)
 data/datasets/      public datasets as downloaded + the training sets built from them by scripts/build_*.py
 outputs/<topic>/    results of scripts and notebooks, one folder per topic:
@@ -131,7 +132,7 @@ A new result goes to `outputs/<topic>/<experiment>/`; a number worth keeping is 
 
 ## Setup
 ```
-python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt -e .
+python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt -e . -e webapp/backend
 ```
 Ball tracking needs [fast-volleyball-tracking-inference](https://github.com/asigatchov/fast-volleyball-tracking-inference)
 (MIT) cloned into `external/`; player-tracking evaluation needs
@@ -145,7 +146,7 @@ Ball tracking needs [fast-volleyball-tracking-inference](https://github.com/asig
 .venv/bin/python scripts/build_court_dataset.py --no-drive          # dataset zip for Colab
 .venv/bin/python scripts/eval_player_tracking.py --gt-as-tracker    # tracking evaluation sanity check
 .venv/bin/python scripts/eval_trajectory_synthetic.py              # 3D fit on synthetic rallies
-.venv/bin/python -m pytest tests                                    # web app: see webapp/README.md
+.venv/bin/python -m pytest                                          # vball and web app suites, with coverage: --cov
 ```
 
 ## Data and licences

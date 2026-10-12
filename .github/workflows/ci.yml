@@ -14,12 +14,12 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
-      # the vball package plus the web app backend; model weights are not needed by the tests
-      - run: pip install -e . -r webapp/requirements.txt pytest-cov ruff
+      # the vball package plus the web app backend package; model weights are not needed by the tests
+      - run: pip install -e . -e webapp/backend -r webapp/requirements.txt pytest-cov ruff
       - run: ruff check src scripts tests webapp/backend
-      # coverage gates: a change that drops below them fails the build (2026-10-11: vball 94%, backend 94%)
-      - run: pytest -q tests --cov=vball --cov-report=term --cov-fail-under=90
-      - run: pytest -q webapp/backend/tests --cov=webapp/backend --cov-report=term --cov-fail-under=85
+      # one run over both suites (the pipeline's stage tests drive it through the API); coverage gate over vball and
+      # vball_app together: a change that drops below it fails the build (2026-10-13: 92%)
+      - run: pytest -q --cov --cov-report=term --cov-fail-under=90
 
   frontend:
     runs-on: ubuntu-latest

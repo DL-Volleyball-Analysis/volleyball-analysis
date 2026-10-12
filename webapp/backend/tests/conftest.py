@@ -1,14 +1,10 @@
 import os
-import sys
 from pathlib import Path
 
 import cv2
 import numpy as np
 import pandas as pd
 import pytest
-
-BACKEND = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(BACKEND))
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -21,8 +17,8 @@ def data_dir(tmp_path_factory):
 
 @pytest.fixture(autouse=True)
 def empty_db(data_dir):
-    import main
-    with main.db.connect() as c:
+    from vball_app import deps
+    with deps.db.connect() as c:
         tables = ("court_corrections", "dismissed_suggestions", "tags", "rosters", "rallies", "jobs", "videos")
         c.executescript("".join(f"DELETE FROM {t};" for t in tables))
 
@@ -57,8 +53,8 @@ def fake_ball(monkeypatch):
 
 @pytest.fixture
 def client():
-    import main
     from fastapi.testclient import TestClient
+    from vball_app import main
     return TestClient(main.app)
 
 

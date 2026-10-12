@@ -35,7 +35,7 @@ def test_actions_outside_detected_rallies_are_left_out(client, clip, fake_ball, 
     fake_rally_model(monkeypatch, tmp_path, [(1.5, 1.9, 0.7)])  # the only rally: with its 1 s margin from 0.5 s
     v = upload(client, clip)
     assert run_worker_once()["status"] == "done"
-    from settings import RESULTS
+    from vball_app.settings import RESULTS
     assert len(json.loads((RESULTS / v["id"] / "action_events.json").read_text())["events"]) == 1  # stored as found
     a = client.get(f"/videos/{v['id']}/actions").json()
     assert a["events"] == [] and a["suggestions"] == []  # ... but not shown outside play

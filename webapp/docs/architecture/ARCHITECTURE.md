@@ -1,9 +1,9 @@
 # Architecture
 
 ```
- browser ──HTTP/SSE──► API (backend/main.py) ──SQLite──► worker (backend/worker.py)
+ browser ──HTTP/SSE──► API (vball_app.main) ──SQLite──► worker (vball_app.worker)
                           │      ▲                              │
-                          │      └── data/results/<video>/ ◄────┘ pipeline.py ─► vball
+                          │      └── data/results/<video>/ ◄────┘ vball.pipeline ─► vball
                           └── data/uploads/
 ```
 
@@ -20,7 +20,7 @@ results whose version matches, e.g. a new court model does not redo ball trackin
 
 | Stage | Output | Code |
 |---|---|---|
-| decode | fps, size, camera shots (HSV histogram cuts) | `pipeline.decode` |
+| decode | fps, size, camera shots (HSV histogram cuts), camera motion | `vball.pipeline.stages.decode` |
 | court | per-shot court keypoints and corners; two models, the better per shot | `vball.court_registration` |
 | ball | `ball.csv` frame, visible, x, y | `vball.ball` (VballNet V4c) |
 | players | `players.csv.gz` boxes, track ids, court positions, team and role | `vball.players`, `vball.teams` |
@@ -30,7 +30,7 @@ results whose version matches, e.g. a new court model does not redo ball trackin
 | rallies | rallies table: start/end, winner, reason, confidence | todo (M3) |
 
 **Court corrections** live in their own table and are never written into `court.json`; the pipeline, the API
-and the renderer overlay them when they read the court (`pipeline.corrected_court` →
+and the renderer overlay them when they read the court (`vball.pipeline.corrected_court` →
 `vball.court_registration.apply_corrections`), so a rerun keeps them. Saving or clearing one queues a
 re-analysis from `players`, the first stage that uses the court (court and ball results are reused).
 

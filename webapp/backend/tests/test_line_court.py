@@ -43,8 +43,8 @@ def test_lines_replace_a_squeezed_keypoint_court(client, end_line_clip, fake_bal
                         lambda w: (lambda frame: np.column_stack([CAM.project(squeezed), np.full(14, 0.9)])))
     v = upload(client, end_line_clip)
     assert run_worker_once()["status"] == "done"
-    import main
-    court = pipeline.load_stage(main.RESULTS / v["id"], "court")
+    from vball_app import settings
+    court = pipeline.load_stage(settings.RESULTS / v["id"], "court")
     shot = court["shots"][0]
     assert shot["source"] == "lines" and shot["status"] == "ok" and shot["lines"]["good_lines"] >= 5
     true = CAM.project(k6y7r_points_3d()[CORNER_IDS])

@@ -40,7 +40,7 @@ def test_actions_stage_reports_events_and_numbers(client, clip, fake_ball, monke
     a = stage(client, v["id"], "actions")
     assert a["status"] == "done" and a["summary"]["events"] == 1 and a["summary"]["by_action"]["spike"] == 1
     assert a["summary"]["numbered_tracks"] == 1 and a["message"] is None
-    from settings import RESULTS
+    from vball_app.settings import RESULTS
     data = json.loads((RESULTS / v["id"] / "action_events.json").read_text())
     (ev,) = data["events"]
     assert ev["action"] == "spike" and ev["track_id"] == 1 and ev["samples"] == 4
@@ -132,6 +132,6 @@ def test_person_classifier_with_the_ball_and_serves_from_the_detector(client, cl
     by = a["summary"]["by_action"]
     # set by track 1 (near the ball); track 2's spike falls below the event peak (far from the ball); no detector spike
     assert by["set"] >= 1 and by["spike"] == 0 and by["serve"] >= 1
-    from settings import RESULTS
+    from vball_app.settings import RESULTS
     data = json.loads((RESULTS / v["id"] / "action_events.json").read_text())
     assert {e["track_id"] for e in data["events"] if e["action"] == "set"} == {1}

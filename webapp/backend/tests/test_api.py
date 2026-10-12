@@ -11,12 +11,11 @@ def upload(client, clip):
 
 
 def run_worker_once():
-    import main
-    import worker
-    job = main.db.claim_next_job()
+    from vball_app import deps, worker
+    job = deps.db.claim_next_job()
     assert job is not None
-    worker.process(main.db, job)
-    return main.db.get_job(job["id"])
+    worker.process(deps.db, job)
+    return deps.db.get_job(job["id"])
 
 
 def test_upload_queues_analysis(client, clip):
@@ -79,9 +78,9 @@ def test_video_file_supports_seeking(client, clip):
 
 @pytest.fixture
 def rallies(client, clip):
-    import main
+    from vball_app import deps
     v = upload(client, clip)
-    main.db.replace_rallies(v["id"], [
+    deps.db.replace_rallies(v["id"], [
         {"idx": i, "start_s": i, "end_s": i + 0.5, "winner": w, "source": "demo"}
         for i, w in enumerate(["a", "b", None])
     ])
@@ -104,9 +103,9 @@ def test_rally_scores_and_correction(client, rallies):
 def test_delete_removes_upload(client, clip):
     from pathlib import Path
 
-    import main
+    from vball_app import deps
     v = upload(client, clip)
-    path = Path(main.db.get_video(v["id"])["path"])
+    path = Path(deps.db.get_video(v["id"])["path"])
     assert client.delete(f"/videos/{v['id']}").status_code == 204
     assert not path.exists()
     assert client.get(f"/videos/{v['id']}").status_code == 404
@@ -118,10 +117,10 @@ def test_score_summary_absent_without_rallies(client, clip):
 
 
 def test_score_summary_after_last_rally(client, clip):
-    import main
+    from vball_app import deps
     v = upload(client, clip)
     winners = ["a"] * 25 + ["b"] * 10 + ["a"] * 12  # set 1 to A 25-0, set 2 at 12-10
-    main.db.replace_rallies(v["id"], [
+    deps.db.replace_rallies(v["id"], [
         {"idx": i, "start_s": i, "end_s": i + 0.5, "winner": w, "source": "model"} for i, w in enumerate(winners)
     ])
     client.patch(f"/videos/{v['id']}/rallies/0", json={"winner": "a"})
@@ -137,14 +136,14 @@ def test_score_summary_flags_demo(client, rallies):
 
 def test_stage_is_visible_while_it_runs(client, clip, monkeypatch):
     """A client polling the job during ball tracking must see the ball stage, not the previous one."""
-    import main
+    from vball_app import deps
 
     from vball import pipeline
     v = upload(client, clip)
     seen = {}
 
     def ball_stage(video, out, prev, tick):
-        seen["stage"] = main.db.latest_job(v["id"])["stage"]
+        seen["stage"] = deps.db.latest_job(v["id"])["stage"]
         return {"status": "done", "frames": 0, "detected": 0}
 
     monkeypatch.setitem(pipeline.FUNCS, "ball", ball_stage)

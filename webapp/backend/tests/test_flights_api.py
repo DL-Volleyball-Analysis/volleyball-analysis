@@ -83,9 +83,9 @@ def test_an_unusable_calibration_is_reported(client, clip, fake_ball, monkeypatc
 
 
 def test_demo_rallies_get_demo_flights_landing_at_the_rally_landing(client, clip):
-    import main
+    from vball_app import deps
     v = upload(client, clip)
-    main.db.replace_rallies(v["id"], [{"idx": 0, "start_s": 0.0, "end_s": 6.0, "winner": "a", "reason": "in",
+    deps.db.replace_rallies(v["id"], [{"idx": 0, "start_s": 0.0, "end_s": 6.0, "winner": "a", "reason": "in",
                                        "landing_x": 14.0, "landing_y": 3.0, "source": "demo"}])
     fl = client.get(f"/videos/{v['id']}/flights").json()
     assert len(fl) == 4 and {f["source"] for f in fl} == {"demo"}
@@ -97,9 +97,9 @@ def test_demo_rallies_get_demo_flights_landing_at_the_rally_landing(client, clip
 
 
 def test_a_short_demo_rally_keeps_only_the_last_flights(client, clip):
-    import main
+    from vball_app import deps
     v = upload(client, clip)
-    main.db.replace_rallies(v["id"], [{"idx": 0, "start_s": 0.0, "end_s": 1.2, "winner": "b", "reason": "in",
+    deps.db.replace_rallies(v["id"], [{"idx": 0, "start_s": 0.0, "end_s": 1.2, "winner": "b", "reason": "in",
                                        "landing_x": 4.0, "landing_y": 4.0, "source": "demo"}])
     fl = client.get(f"/videos/{v['id']}/flights").json()
     assert len(fl) == 1 and fl[0]["end_s"] - fl[0]["start_s"] == pytest.approx(0.5, abs=0.05)
@@ -113,7 +113,7 @@ def test_flights_404_before_the_stage_ran(client, clip):
 def test_every_demo_flight_that_crosses_the_net_clears_it():
     import random
 
-    import demo
+    from vball_app import demo
     rallies = demo.demo_rallies(600.0, random.Random(1))  # 300 rallies with random landings
     flights = demo.demo_flights([{**r, "end_s": r["start_s"] + 5.0} for r in rallies], 25.0)
     crossings = [f["derived"]["net_crossing"]["height_m"] for f in flights if f["derived"]["net_crossing"]]
