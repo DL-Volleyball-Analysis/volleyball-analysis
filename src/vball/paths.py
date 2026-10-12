@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-MODELS = ROOT / "models"
+MODELS = Path(os.environ.get("VBALL_MODELS", ROOT / "models"))  # weights; listed in models/manifest.json
 VIDEOS = ROOT / "data" / "videos"
 DATASETS = ROOT / "data" / "datasets"
 OUTPUTS = ROOT / "outputs"

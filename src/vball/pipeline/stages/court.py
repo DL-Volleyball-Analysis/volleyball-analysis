@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 
 from vball import court_lines, court_registration
+from vball.manifest import usable
 
 from .. import config, models, results
 
@@ -15,9 +16,12 @@ def run(video: Path, out: Path, prev: dict, tick) -> dict:
     """Per-shot court registration (vball.court_registration) with every installed court model, keeping the
     best model per shot; shots with a still camera are then decided by line evidence on their background plate
     (vball.court_lines)."""
-    installed = {name: path for name, path in config.COURT_MODELS.items() if path.exists()}
+    installed = {name: path for name, path in config.COURT_MODELS.items() if usable(path)}
     if not installed:
-        return {"status": "unavailable", "message": "The court model has not been trained yet."}
+        return {
+            "status": "unavailable",
+            "message": "The court model is missing or is not the expected version (models/manifest.json).",
+        }
     meta = prev["decode"]
     fps, size = meta.get("fps") or 30.0, (meta.get("width"), meta.get("height"))
     shots = meta.get("shots") or [{"start_frame": 0, "end_frame": max(0, (meta.get("frames") or 1) - 1)}]

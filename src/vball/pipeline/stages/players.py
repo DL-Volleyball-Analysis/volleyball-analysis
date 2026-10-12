@@ -8,13 +8,14 @@ import numpy as np
 import pandas as pd
 
 from vball import players, teams
+from vball.manifest import usable
 
 from .. import config, models, results
 
 
 def choose_player_detector(video: Path, n_frames: int, samples: int = 8) -> tuple[players.TrackerConfig, dict]:
     """The player-only detector unless it misses most people on this footage (vball.players.prefer_generalist)."""
-    if not Path(config.GENERAL_PLAYER_MODEL).exists() or not Path(config.PLAYER_CFG.model).exists() or n_frames < 1:
+    if not usable(Path(config.GENERAL_PLAYER_MODEL)) or not usable(Path(config.PLAYER_CFG.model)) or n_frames < 1:
         return config.PLAYER_CFG, {"model": Path(config.PLAYER_CFG.model).stem, "reason": "default"}
     cap, picks = cv2.VideoCapture(str(video)), []
     for f in np.linspace(0, n_frames - 1, samples).astype(int):

@@ -50,7 +50,7 @@ def test_no_rally_model_keeps_the_stage_unavailable(client, clip, fake_ball):
     v = upload(client, clip)
     run_worker_once()
     s = {x["name"]: x for x in client.get(f"/videos/{v['id']}/stages").json()}["rallies"]
-    assert s["status"] == "unavailable" and "not installed" in s["message"]
+    assert s["status"] == "unavailable" and "rally model is missing" in s["message"]
 
 
 def test_footage_outside_the_rally_model_is_reported_not_guessed(client, clip, fake_ball, monkeypatch, tmp_path):

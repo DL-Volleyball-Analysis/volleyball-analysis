@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from vball import actions, actors, jersey, players
+from vball.manifest import usable
 
 from .. import config, models, results
 
@@ -27,18 +28,21 @@ def run(video: Path, out: Path, prev: dict, tick) -> dict:
     """Action events per player track (vball.actions) and shirt numbers per track (vball.jersey). Block, receive, set
     and spike come from the per-player classifier weighted by the ball's position (vball.actors) when it is installed,
     serves from the action detector; without the classifier every action comes from the detector."""
-    if not config.ACTION_MODEL.exists() and not config.PERSON_MODEL.exists():
-        return {"status": "unavailable", "message": "The action model is not installed."}
+    if not usable(config.ACTION_MODEL) and not usable(config.PERSON_MODEL):
+        return {
+            "status": "unavailable",
+            "message": "The action model is missing or is not the expected version (models/manifest.json).",
+        }
     tracks_csv = out / "players.csv.gz"
     tracks = pd.read_csv(tracks_csv) if tracks_csv.exists() else pd.DataFrame(columns=players.COLUMNS)
     n, fps = prev["decode"].get("frames") or 0, prev["decode"].get("fps") or 30.0
     a_step, j_step = players.sample_every(fps, config.ACTION_FPS), players.sample_every(fps, config.JERSEY_FPS)
-    detect = models.action_detector() if config.ACTION_MODEL.exists() else None
-    person = models.person_classifier() if config.PERSON_MODEL.exists() else None
+    detect = models.action_detector() if usable(config.ACTION_MODEL) else None
+    person = models.person_classifier() if usable(config.PERSON_MODEL) else None
     # with the classifier the detector only gives serves, which last over a second: it runs at config.SERVE_FPS
     d_step = players.sample_every(fps, config.SERVE_FPS) if person is not None else a_step
     serves: list[tuple] = []
-    read = models.digit_detector() if config.JERSEY_MODEL.exists() else None
+    read = models.digit_detector() if usable(config.JERSEY_MODEL) else None
     if "role" in tracks:
         tracks = tracks[tracks["role"] == "player"]  # officials and staff are not given actions or numbers
     seen = tracks[~tracks["interpolated"].astype(bool)] if len(tracks) else tracks

@@ -4,17 +4,28 @@ Run: uvicorn vball_app.main:app --reload   (plus `python -m vball_app.worker` fo
 Heavy work never runs in this process: endpoints only queue jobs and read stage results.
 """
 
-import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api import actions, court, jobs, rallies, stats, tracks, videos
+from .settings import SETTINGS, configure_logging
+from .startup import check_models
 
-app = FastAPI(title="Volleyball Analysis API", version="2.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    configure_logging()
+    check_models()
+    yield
+
+
+app = FastAPI(title="Volleyball Analysis API", version="2.0.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.environ.get("VBALL_CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").split(","),
+    allow_origins=list(SETTINGS.cors_origins),
     allow_methods=["*"],
     allow_headers=["*"],
 )

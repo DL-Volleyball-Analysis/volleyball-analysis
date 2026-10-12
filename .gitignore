@@ -1,7 +1,9 @@
 .venv/
 __pycache__/
 .DS_Store
-models/
+# weights are not in git; their checksums and sources are (models/manifest.json)
+models/*
+!models/manifest.json
 data/
 outputs/
 external/

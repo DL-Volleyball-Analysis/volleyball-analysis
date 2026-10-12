@@ -1,0 +1,96 @@
+{
+  "action_yolo11m.pt": {
+    "bytes": 80798797,
+    "measured_in": "docs/results/actions.md",
+    "sha256": "05e55372458a191b9849df9d81295c918eb5bae8e0cbe4f5daf5a8984e62b85f",
+    "source": "Capstone action detector (YOLO11m), team repo capstone-action-recognition; used for serves"
+  },
+  "court_kpt.pt": {
+    "bytes": 7417070,
+    "measured_in": "docs/results/court-keypoints.md",
+    "sha256": "3857995b33c77fad8217f13a1d9f71168c1eca4cab258b0281913ef0b82e9cb2",
+    "source": "Court keypoint model v2 (YOLO26 pose, 14 points), trained on Colab on the k6y7r Roboflow set (CC BY 4.0)"
+  },
+  "court_kpt_broadcast.pt": {
+    "bytes": 23536878,
+    "measured_in": "docs/results/court-keypoints.md",
+    "sha256": "d11aa45f899bdc34f0651c452b3100fd622594e13a91788717d1e30e15db5143",
+    "source": "Court keypoint model v3b (YOLO26s pose), trained on Colab on k6y7r plus completed VNL broadcast frames"
+  },
+  "jersey_digits_yolo26s.pt": {
+    "bytes": 20284613,
+    "measured_in": "docs/results/actions.md",
+    "sha256": "9f040d64a6971dfcd4137b483f0a42dbfcd08c8619864bc5ad2ac79131d00256",
+    "source": "Shirt digit detector (YOLO26s), trained on three Roboflow jersey sets (CC BY 4.0), notebooks/train_jersey_digits.ipynb"
+  },
+  "person_action_yolo26s_cls.pt": {
+    "bytes": 11043394,
+    "measured_in": "docs/results/actions.md",
+    "sha256": "d59d9845d518f221dd962a8452b9443bfc3b9928ac5f4eda2296ade3b85bb82e",
+    "source": "Per-player action classifier (YOLO26s cls), trained on Kaggle on the Volleyball dataset (Ibrahim et al.), notebooks/train_person_actions.ipynb"
+  },
+  "player_yolo26s_sportsmot.pt": {
+    "bytes": 20328325,
+    "measured_in": "docs/results/player-tracking.md",
+    "sha256": "b0ad40021be9d07d670762c84d22b8446768d739805c413b55be9861e71463f0",
+    "source": "Player detector (YOLO26s), fine-tuned on Kaggle on SportsMOT volleyball training sequences (CC BY-NC 4.0, research use)"
+  },
+  "rally_cues_hgb.joblib": {
+    "bytes": 1138739,
+    "measured_in": "docs/results/rallies.md",
+    "sha256": "1fbca872ed3f269211caf0c5d64eb44ec6a0dc7c40105500b74a3114d4eacb5f",
+    "source": "Broadcast rally classifier (scikit-learn HGB) on rally cues, scripts/eval_rallies.py --save"
+  },
+  "rally_fixed_hgb.joblib": {
+    "bytes": 1151116,
+    "measured_in": "docs/results/rallies.md",
+    "sha256": "1b3ffbd8f1439dd9dc2859e2409ecb37f8b4150b1c1871de5b40b0e61cee6194",
+    "source": "Fixed-camera rally classifier (scikit-learn HGB) on stage cues and score-bug labels, scripts/train_fixed_rallies.py --save"
+  },
+  "vballnet_fast_v1.onnx": {
+    "bytes": 50199,
+    "external": "fast-volleyball-tracking-inference/models/VballNetFastV1_seq9_grayscale_233_h288_w512.onnx",
+    "measured_in": "docs/results/ball-tracking.md",
+    "sha256": "a37d2f082c1821c31da10b4d3356788ed8ec0e1ba1c7d4fcbaf69f76925b0ff8",
+    "source": "VballNet FastV1, asigatchov/fast-volleyball-tracking-inference (MIT)"
+  },
+  "vballnet_v4c.onnx": {
+    "bytes": 987155,
+    "external": "fast-volleyball-tracking-inference/models/VballNetV4c_seq9_grayscale_20260908_213829.onnx",
+    "measured_in": "docs/results/ball-tracking.md",
+    "sha256": "8eea11cc5c881fa008ec55b0f5732ab79f2e0e1833d7f586e680f3aaa98e4b8c",
+    "source": "VballNet V4c, asigatchov/fast-volleyball-tracking-inference (MIT)"
+  },
+  "wasb_gym.onnx": {
+    "bytes": 5183743,
+    "measured_in": "docs/results/ball-tracking.md",
+    "sha256": "442fa4eeea91d80a9803b84e5260979bfe0235453d563c267b22189552673da2",
+    "source": "WASB (Tarashima et al., MIT) fine-tuned on Kaggle on gym footage, notebooks/train_ball_detector.ipynb"
+  },
+  "wasb_mixed.onnx": {
+    "bytes": 5183743,
+    "measured_in": "docs/results/ball-tracking.md",
+    "sha256": "98b9b35cd38ee307b7461f471e6cfed11aa4557b57a76fa93d06f6b8e7a673cf",
+    "source": "WASB (Tarashima et al., MIT) fine-tuned on Kaggle on gym and broadcast footage, notebooks/train_ball_detector.ipynb"
+  },
+  "wasb_volleyball.onnx": {
+    "bytes": 5183743,
+    "measured_in": "docs/results/ball-tracking.md",
+    "sha256": "f512c121c5fe22f3fbf0c71e81eeff3e691a6427600ffcf0aecad6741f9cf526",
+    "source": "WASB published Volleyball-dataset weights (Tarashima et al., MIT) exported to ONNX, notebooks/eval_wasb_volleyball.ipynb"
+  },
+  "yolo26n.pt": {
+    "bytes": 5544453,
+    "measured_in": null,
+    "sha256": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef",
+    "source": "Ultralytics YOLO26n COCO weights (AGPL-3.0)",
+    "ultralytics": true
+  },
+  "yolo26s.pt": {
+    "bytes": 20422725,
+    "measured_in": "docs/results/player-tracking.md",
+    "sha256": "646f8bc3fe0a656803d95c294f7852321748cb29d13466a1af8862e2db384a1b",
+    "source": "Ultralytics YOLO26s COCO weights (AGPL-3.0); general person detector fallback",
+    "ultralytics": true
+  }
+}

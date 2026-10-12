@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from vball import rallies as vrallies
+from vball.manifest import usable
 
 from .. import config, models
 
@@ -10,8 +11,11 @@ from .. import config, models
 def run(video: Path, out: Path, prev: dict, tick) -> dict:
     """Rallies (start, end, confidence) from the system's cues with the trained rally model (docs/results/rallies.md).
     Winners stay a user decision until landing calls exist; the worker writes the rallies to the database."""
-    if not config.RALLY_MODEL.exists():
-        return {"status": "unavailable", "message": "The rally model is not installed."}
+    if not usable(config.RALLY_MODEL):
+        return {
+            "status": "unavailable",
+            "message": "The rally model is missing or is not the expected version (models/manifest.json).",
+        }
     quick = models.rally_quick_check(video)  # out-of-training footage is told from a few frames (speed-up-analysis)
     why = vrallies.outside_training(quick) if quick is not None and len(quick) else None
     cues = None

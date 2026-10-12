@@ -66,7 +66,7 @@ def test_without_a_model_the_court_stage_is_unavailable(client, clip, fake_ball,
     v = upload(client, clip)
     run_worker_once()
     c = stage(client, v["id"], "court")
-    assert c["status"] == "unavailable" and "not been trained" in c["message"]
+    assert c["status"] == "unavailable" and "court model is missing" in c["message"]
 
 
 def test_each_shot_uses_the_model_that_found_its_court(client, clip, fake_ball, monkeypatch, tmp_path):
