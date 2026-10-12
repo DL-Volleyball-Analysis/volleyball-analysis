@@ -1,8 +1,9 @@
 """Render an analysed video with every result drawn on it, for sharing outside the app.
 
-Draws the ball trail (VballNet), player boxes and track ids, the court lines of shots whose court status is
-ok, a top-down court map with the players' positions (and the ball from 3D flights when there are any), and a
-status bar that says what each overlay is and why something is missing. Doubtful courts are named, never drawn.
+Draws the ball trail (VballNet), player boxes with shirt numbers or track ids and their current action, the court
+lines of shots whose court status is ok, a top-down court map with the players' positions (and the ball from 3D
+flights when there are any), a 3D view of the court with the current 3D flight, and a status bar that says what each
+overlay is and why something is missing. Doubtful courts are named, never drawn.
 
   python backend/render.py broadcast_side_high_men [--out path.mp4]
 """
@@ -84,6 +85,73 @@ class CourtMap:
         return img
 
 
+def flight_at(flights: list[dict], frame: int) -> dict | None:
+    return next((f for f in flights if f["start_frame"] <= frame <= f["end_frame"]), None)
+
+
+def flight_points(f: dict, fps: float, until: int | None = None) -> np.ndarray:
+    """(n, 3) positions of a flight, every frame from its start to `until` (default its end)."""
+    end = f["end_frame"] if until is None else until
+    t = np.arange(0, end - f["start_frame"] + 1) / fps
+    return np.array(f["p0"]) + np.outer(t, f["v0"]) + 0.5 * np.outer(t * t, [0, 0, -9.81])
+
+
+class Court3D:
+    """A 3D view of the court from a fixed virtual camera behind a corner: floor, lines, net, players (as posts of
+    1.8 m) and the current 3D flight (whole path faint, the part flown so far solid, the ball, its shadow and height)."""
+
+    NET_TOP, NET_BAND = 2.43, 1.0
+
+    def __init__(self, width: int):
+        from vball.calibration import look_at
+        self.w, self.h = width, int(width * 0.62)
+        self.cam = look_at([-7.0, -9.0, 9.0], [9.0, 4.5, 0.5], 0.95 * width, (self.w, self.h))
+
+    def px(self, pts) -> np.ndarray:
+        return self.cam.project(np.atleast_2d(np.asarray(pts, float))).astype(np.int32)
+
+    def draw(self, people, flight: dict | None, frame: int, fps: float, note: str) -> np.ndarray:
+        img = np.full((self.h, self.w, 3), (238, 238, 238), np.uint8)
+        floor = self.px([[-2, -2, 0], [20, -2, 0], [20, 11, 0], [-2, 11, 0]])
+        cv2.fillPoly(img, [floor], (225, 225, 225))
+        cv2.fillPoly(img, [self.px([[0, 0, 0], [18, 0, 0], [18, 9, 0], [0, 9, 0]])], (205, 216, 236))
+        for (x1, y1), (x2, y2) in vcourt.LINES.values():
+            a, b = self.px([[x1, y1, 0], [x2, y2, 0]])
+            cv2.line(img, tuple(a), tuple(b), (90, 90, 90), 1, cv2.LINE_AA)
+        for x, y, side in people:
+            a, b = self.px([[x, y, 0], [x, y, 1.8]])
+            cv2.line(img, tuple(a), tuple(b), TEAM.get(side, WHITE), max(2, self.w // 120), cv2.LINE_AA)
+        if flight is not None:  # behind the net from this view when x > 9: drawn before the net
+            path = flight_points(flight, fps)
+            q = self.px(path)
+            cv2.polylines(img, [q], False, (150, 170, 190), 1, cv2.LINE_AA)
+            done = self.px(flight_points(flight, fps, frame))
+            cv2.polylines(img, [done], False, BALL, 2, cv2.LINE_AA)
+            p = flight_points(flight, fps, frame)[-1]
+            shadow = self.px([[p[0], p[1], 0]])[0]
+            cv2.ellipse(img, tuple(shadow), (5, 2), 0, 0, 360, (120, 120, 120), -1, cv2.LINE_AA)
+            cv2.line(img, tuple(shadow), tuple(self.px([p])[0]), (160, 160, 160), 1, cv2.LINE_AA)
+            cv2.circle(img, tuple(self.px([p])[0]), max(4, self.w // 70), BALL, -1, cv2.LINE_AA)
+            cv2.circle(img, tuple(self.px([p])[0]), max(4, self.w // 70), EDGE, 1, cv2.LINE_AA)
+            low = " (low quality)" if flight.get("quality") == "low" else ""
+            cv2.putText(img, f"ball {p[2]:.1f} m high{low}", (8, self.h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.45,
+                        (30, 30, 30), 1, cv2.LINE_AA)
+        net = self.px([[9, -0.5, self.NET_TOP - self.NET_BAND], [9, 9.5, self.NET_TOP - self.NET_BAND],
+                       [9, 9.5, self.NET_TOP], [9, -0.5, self.NET_TOP]])
+        band = img.copy()
+        cv2.fillPoly(band, [net], (60, 60, 60))
+        img = cv2.addWeighted(band, 0.25, img, 0.75, 0)
+        cv2.line(img, tuple(net[3]), tuple(net[2]), (40, 40, 40), 2, cv2.LINE_AA)
+        for y in (-0.5, 9.5):
+            a, b = self.px([[9, y, 0], [9, y, self.NET_TOP]])
+            cv2.line(img, tuple(a), tuple(b), (40, 40, 40), 2, cv2.LINE_AA)
+        cv2.putText(img, "3D", (8, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (30, 30, 30), 1, cv2.LINE_AA)
+        if flight is None:
+            cv2.putText(img, note, (8, self.h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (90, 90, 90), 1, cv2.LINE_AA)
+        cv2.rectangle(img, (0, 0), (self.w - 1, self.h - 1), (120, 120, 120), 1)
+        return img
+
+
 def text(img, s, org, scale, color=WHITE, thick=1):
     cv2.putText(img, s, org, cv2.FONT_HERSHEY_SIMPLEX, scale, EDGE, thick + 2, cv2.LINE_AA)
     cv2.putText(img, s, org, cv2.FONT_HERSHEY_SIMPLEX, scale, color, thick, cv2.LINE_AA)
@@ -99,6 +167,10 @@ def render(vid: str, path: Path, out: Path) -> Path:
     by_frame = {f: g for f, g in pdf.groupby("frame")} if pdf is not None else {}
     court = r["court"] if r["court"] and r["court"].get("status") == "done" else None
     cmap = CourtMap(int(w * 0.24))
+    c3d = Court3D(int(w * 0.26))
+    traj = r.get("trajectory") or {}
+    no_3d = ("no 3D flight at this moment" if r["flights"] else
+             "no 3D: " + (traj.get("message") or "no flights").split(",")[0][:60])
     from vball import jersey
     segs = {int(t): [tuple(x) for x in sg] for t, sg in (r["actions"].get("segments") or {}).items()}
     reach = int(r["actions"].get("reach", 0))
@@ -164,6 +236,9 @@ def render(vid: str, path: Path, out: Path) -> Path:
         mini = cmap.draw(people, ground, quality)
         x0, y0 = w - cmap.w - int(16 * scale), h - cmap.h - int(16 * scale)
         img[y0:y0 + cmap.h, x0:x0 + cmap.w] = mini
+        view = c3d.draw(people, flight_at(r["flights"], i), i, fps, no_3d)
+        x1, y1 = int(16 * scale), h - c3d.h - int(16 * scale)
+        img[y1:y1 + c3d.h, x1:x1 + c3d.w] = view
 
         bar = np.zeros((int(44 * scale), w, 3), np.uint8)
         img[:bar.shape[0]] = (img[:bar.shape[0]] * 0.35).astype(np.uint8)
