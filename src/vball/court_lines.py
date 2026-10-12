@@ -231,3 +231,77 @@ def score_homography(img: np.ndarray, H: np.ndarray, dark: bool = False) -> Fit:
     dist = cv2.distanceTransform(1 - line_pixels(small, dark=dark), cv2.DIST_L2, 3)
     score, sup, tot, good = line_score(Hs, dist)
     return Fit(np.asarray(H, float), float(score), sup, tot, good, dark)
+
+
+NET_TOPS = (2.43, 2.24)  # men's, women's net height (m)
+
+
+def pose_from_homography(H: np.ndarray, focal: float, size: tuple[int, int]) -> tuple[np.ndarray, np.ndarray]:
+    """(R, t) of a camera with this focal length (square pixels, centred principal point) that maps the floor by H
+    (court metres -> image): K^-1 H = s [r1 r2 t], one scale s for both columns so floor points still map exactly by
+    H (r1, r2 are orthonormal only at the right focal length), with the sign that puts the camera above the floor."""
+    w, h = size
+    K = np.array([[focal, 0, w / 2], [0, focal, h / 2], [0, 0, 1.0]])
+    M = np.linalg.inv(K) @ np.asarray(H, float)
+    lam = 2.0 / (np.linalg.norm(M[:, 0]) + np.linalg.norm(M[:, 1]))
+    for sign in (1.0, -1.0):
+        r1, r2, t = sign * lam * M[:, 0], sign * lam * M[:, 1], sign * lam * M[:, 2]
+        r3 = np.cross(r1, r2)
+        r3 /= np.linalg.norm(r3)
+        R = np.column_stack([r1, r2, r3])
+        if (-np.linalg.inv(R) @ t)[2] > 0:  # camera centre above the floor (court frame z up)
+            return R, t
+    return R, t
+
+
+def project(H: np.ndarray, focal: float, size: tuple[int, int], points: np.ndarray) -> np.ndarray:
+    """Image positions of 3D court points (n x 3) for the camera that `pose_from_homography` gives."""
+    w, h = size
+    R, t = pose_from_homography(H, focal, size)
+    K = np.array([[focal, 0, w / 2], [0, focal, h / 2], [0, 0, 1.0]])
+    p = (K @ (R @ np.asarray(points, float).T + t[:, None])).T
+    return p[:, :2] / p[:, 2:3]
+
+
+def focal_from_net(img: np.ndarray, H: np.ndarray, heights=NET_TOPS, min_band_px: float = 8.0) -> tuple[float, float, float] | None:
+    """(focal px, net height m, support) from the net tape: the white band along the top of the net, above the centre
+    line. Its image position depends on the focal length, which the floor alone leaves undetermined in a symmetric
+    end-line view. Searches focal lengths (0.3-5 image widths) and both net heights for the most samples of the net's
+    top tape (weight 0.7) and bottom band, 1 m lower (0.3), on line pixels. The painted floor lines are removed from
+    the line pixels first and the net's 1 m band must stand at least min_band_px tall, so the tape cannot be matched
+    to a floor line. None when under half are supported."""
+    small, s = _scale(img)
+    Hs = np.diag([s, s, 1.0]) @ np.asarray(H, float)
+    h, w = small.shape[:2]
+    mask = line_pixels(small)
+    for a, b in LINES.values():  # the floor lines are not the net
+        q = cv2.perspectiveTransform(np.linspace(a, b, 300, dtype=np.float64).reshape(-1, 1, 2), Hs).reshape(-1, 2)
+        cv2.polylines(mask, [q.astype(np.int32)], False, 0, 9)
+    dist = cv2.distanceTransform(1 - mask, cv2.DIST_L2, 3)
+    ys = np.linspace(0.0, 9.0, 60)
+    found = []
+    for f in np.geomspace(0.3 * w, 5.0 * w, 240):
+        for top in heights:
+            q = project(Hs, f, (w, h), np.c_[np.full_like(ys, 9.0), ys, np.full_like(ys, top)])
+            low = project(Hs, f, (w, h), np.array([[9.0, 4.5, top - 1.0], [9.0, 4.5, top]]))
+            if np.linalg.norm(low[1] - low[0]) < min_band_px:
+                continue
+            qb = project(Hs, f, (w, h), np.c_[np.full_like(ys, 9.0), ys, np.full_like(ys, top - 1.0)])
+            sups = []
+            for line in (q, qb):  # the top tape and the bottom band of the net
+                inside = (line[:, 0] >= 0) & (line[:, 0] < w) & (line[:, 1] >= 0) & (line[:, 1] < h)
+                if inside.sum() < 20:
+                    break
+                p = line[inside].astype(int)
+                sups.append(float((dist[p[:, 1], p[:, 0]] <= SUPPORT_PX).mean()))
+            if len(sups) < 2:
+                continue
+            found.append((f / s, top, 0.7 * sups[0] + 0.3 * sups[1]))
+    if not found:
+        return None
+    best = max(found, key=lambda x: x[2])
+    if best[2] < 0.5:
+        return None
+    # a tape a few pixels wide supports a range of focal lengths about equally: take the middle of that range
+    near = [x[0] for x in found if x[1] == best[1] and x[2] >= best[2] - 0.02]
+    return float(np.median(near)), best[1], best[2]

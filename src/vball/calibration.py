@@ -165,11 +165,14 @@ def calibrate(image_points: np.ndarray, image_size: tuple[int, int], net_top: fl
         best = None
         for height in heights:
             obj = k6y7r_points_3d(height)[ids]
-            # floor homography start when the floor points allow it; otherwise (e.g. only one sideline
-            # visible, so the floor points are collinear) poses for a range of focal lengths
-            starts = [floor_init] if floor_init is not None else _focal_sweep_starts(obj, pts[ids], image_size)
+            # the floor homography start when the floor points allow it, then poses for a range of focal lengths:
+            # needed when the floor points are collinear (one sideline visible), and when the planar start is the
+            # mirror pose below the floor (symmetric end-line views leave the floor's focal length undetermined)
+            starts = ([floor_init] if floor_init is not None else []) + _focal_sweep_starts(obj, pts[ids], image_size)
             for start in starts:
                 cam, err, focal_sd = _refine(*start, obj, pts[ids], image_size)
+                if cam.focal <= 0 or cam.position[2] <= 0:
+                    continue
                 if best is None or err < best[1]:
                     best = (cam, err, height, focal_sd)
         if best is None:

@@ -235,8 +235,9 @@ def with_line_evidence(shot: dict, plate: np.ndarray, fps: float, image_size: tu
                        config: dict = LINE_CONFIG) -> dict:
     """A still shot decided by line evidence on its background plate (change verify-court-by-lines): the court fitted
     to the painted lines (vball.court_lines) and the keypoint court are scored on the same plate, the better one is
-    used for every sampled frame, and the status follows its line evidence, not the net check. Records `source`
-    ("lines" or "keypoints") and the line evidence."""
+    used for every sampled frame, and the status follows its line evidence, not the net check. For a line fit the net
+    points come from the net tape (`court_lines.focal_from_net`), so the camera can be calibrated for 3D in end-line
+    views. Records `source` ("lines" or "keypoints") and the line evidence."""
     from . import court_lines
     found = court_lines.fit(plate)
     H_kp = keypoint_homography(shot)
@@ -251,8 +252,14 @@ def with_line_evidence(shot: dict, plate: np.ndarray, fps: float, image_size: tu
     if best is found:
         corners = corners_from_homography(best.H)
         frames = sample_frames(shot["start_frame"], shot["end_frame"], fps)
+        net_px = None
+        net = court_lines.focal_from_net(plate, best.H)  # the floor alone leaves a symmetric view's focal length open
+        if net is not None:
+            from .court_keypoints import K6Y7R_NET_IDS, k6y7r_points_3d
+            net_px = court_lines.project(best.H, net[0], image_size, k6y7r_points_3d(net[1])[K6Y7R_NET_IDS])
+            evidence.update(focal_px=round(net[0], 1), net_top_m=net[1], net_support=round(net[2], 3))
         try:
-            base = corrected_sample(frames[0], corners, image_size)
+            base = corrected_sample(frames[0], corners, image_size, net_px=net_px)
         except ValueError:
             return {**shot, "source": "keypoints", "lines": evidence}
         out["samples"] = [{**base, "frame": f} for f in frames]
@@ -339,10 +346,10 @@ CORRECTION_PRESETS = {
 }
 
 
-def corrected_sample(frame: int, points_px, image_size: tuple[int, int], ids=CORNER_IDS) -> dict:
+def corrected_sample(frame: int, points_px, image_size: tuple[int, int], ids=CORNER_IDS, net_px=None) -> dict:
     """A court sample from four user points on the floor (K6Y7R floor ids `ids`, default the corners): all 10
     floor points follow (the floor is a plane), the 4 net points come from a camera calibrated on them
-    (confidence 0 when the view gives no focal length)."""
+    (confidence 0 when the view gives no focal length), or are `net_px` (4 x 2, ids 10-13) when given."""
     pts = np.asarray(points_px, float).reshape(4, 2)
     ids = [int(i) for i in ids]
     if len(set(ids)) != 4 or not all(0 <= i < 10 for i in ids):
@@ -354,7 +361,7 @@ def corrected_sample(frame: int, points_px, image_size: tuple[int, int], ids=COR
     corners = floor[CORNER_IDS]
     if not court_is_plausible(corners, image_size):
         raise ValueError("these points do not give a plausible court: check their order")
-    net = net_points_from_floor(floor, image_size)
+    net = net_points_from_floor(floor, image_size) if net_px is None else np.asarray(net_px, float).reshape(4, 2)
     kp = np.zeros((14, 3))
     kp[:10, :2], kp[:10, 2] = floor, 1.0
     if net is not None:

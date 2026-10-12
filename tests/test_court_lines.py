@@ -98,3 +98,26 @@ def test_a_rectangle_seen_head_on_is_not_a_floor():
     assert not court_lines.seen_from_a_camera(np.array([[0, 40.0, 300], [40.0, 0, 100], [0.002, 0, 1]]), SIZE)
     _, H = court_image(VIEWS["side"])
     assert court_lines.seen_from_a_camera(H, SIZE)
+
+
+def test_focal_length_from_the_net_tape_in_a_symmetric_end_line_view():
+    cam = VIEWS["end_line"]
+    img, H = court_image(cam)
+    for top in (2.43, 1.43):  # the top tape and the bottom band of a men's net
+        q = cam.project(np.array([[9.0, -0.5, top], [9.0, 9.5, top]])).astype(int)
+        cv2.line(img, tuple(q[0]), tuple(q[1]), (255, 255, 255), 3, cv2.LINE_AA)
+    from vball.court_keypoints import focal_from_homography
+    assert focal_from_homography(H, SIZE) is None  # the floor alone cannot tell the focal length here
+    f, top, support = court_lines.focal_from_net(img, H)
+    assert top in (2.43, 2.24) and support > 0.8 and abs(f / cam.focal - 1) < 0.25
+    # men's height at the right focal length and women's at a longer one put the tape in nearly the same place (the
+    # calibration then tries both heights): what must hold is that the net lands where it is in the image
+    net = court_lines.project(H, f, SIZE, np.array([[9.0, 0.0, top], [9.0, 9.0, top], [9.0, 4.5, top - 1.0]]))
+    assert np.abs(net - cam.project(np.array([[9.0, 0.0, 2.43], [9.0, 9.0, 2.43], [9.0, 4.5, 1.43]]))).max() < 6.0  # tape width + support tolerance
+    floor = court_lines.project(H, f, SIZE, np.array([[0.0, 0.0, 0.0], [18.0, 9.0, 0.0]]))
+    assert np.abs(floor - cv2.perspectiveTransform(np.array([[[0.0, 0.0]], [[18.0, 9.0]]]), H).reshape(-1, 2)).max() < 1e-6
+
+
+def test_no_net_tape_gives_no_focal_length():
+    img, H = court_image(VIEWS["end_line"])
+    assert court_lines.focal_from_net(img, H) is None

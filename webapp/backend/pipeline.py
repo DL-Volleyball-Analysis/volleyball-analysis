@@ -527,7 +527,7 @@ def rallies(video: Path, out: Path, prev: dict, tick) -> dict:
 FUNCS = {"decode": decode, "court": court, "ball": ball_stage, "players": players_stage, "actions": actions_stage,
          "trajectory": trajectory_stage, "events": events, "rallies": rallies}
 # players -4: the general detector where the player-only one misses players
-VERSIONS = {"decode": "2", "court": "4", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-4",
+VERSIONS = {"decode": "2", "court": "5", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-4",
             "actions": "3",  # 3: per-player classifier + ball prior
             "trajectory": "4", "events": "0.3", "rallies": "1"}  # rallies 1: detected from cues
 
