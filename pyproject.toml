@@ -6,8 +6,14 @@ build-backend = "setuptools.build_meta"
 name = "vball"
 version = "0.1.0"
 description = "Volleyball video analysis: ball tracking, court registration, landing and scoring"
-requires-python = ">=3.11"
-dependencies = ["numpy", "pandas", "scipy", "opencv-python-headless", "onnxruntime"]
+requires-python = ">=3.12"
+dependencies = ["numpy", "pandas", "scipy", "opencv-python-headless", "onnxruntime", "pyyaml", "scikit-learn", "joblib"]
+
+[project.optional-dependencies]
+# trained models (ultralytics YOLO: court keypoints, players, actions, shirt numbers)
+ml = ["ultralytics", "tqdm"]
+# tests, lint, types, dependency audit, hooks; CI installs these from requirements/lock.txt
+dev = ["pytest>=8", "pytest-cov", "httpx>=0.27", "ruff", "mypy", "types-PyYAML", "pip-audit", "pre-commit"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -1,9 +1,4 @@
-numpy
-pandas
-scipy
-opencv-python-headless
-onnxruntime
-tqdm
-ultralytics      # court keypoint model (YOLO pose)
-roboflow         # dataset download only
-scikit-learn
+# Superseded by pyproject.toml (dependencies and the ml / dev extras) and requirements/lock.txt.
+# Development setup: see CONTRIBUTING.md.
+-e .[ml,dev]
+-e webapp/backend

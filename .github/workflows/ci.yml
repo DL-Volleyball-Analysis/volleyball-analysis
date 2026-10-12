@@ -8,14 +8,20 @@ on:
 jobs:
   python:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.14: the development version (.python-version); 3.12: the oldest supported (requires-python)
+        python: ['3.14', '3.12']
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python }}
           cache: pip
-      # the vball package plus the web app backend package; model weights are not needed by the tests
-      - run: pip install -e . -e webapp/backend -r webapp/requirements.txt pytest-cov ruff mypy types-PyYAML
+          cache-dependency-path: requirements/lock.txt
+      # pinned versions (requirements/lock.txt), then the two packages themselves; no model weights are needed
+      - run: pip install -r requirements/lock.txt && pip install --no-deps -e . -e webapp/backend
       - run: ruff check src scripts tests webapp/backend
       - run: ruff format --check src scripts tests webapp/backend
       # vball and vball_app; modules still carrying type debt are listed in pyproject.toml
@@ -23,6 +29,8 @@ jobs:
       # one run over both suites (the pipeline's stage tests drive it through the API); coverage gate over vball and
       # vball_app together: a change that drops below it fails the build (2026-10-13: 92%)
       - run: pytest -q --cov --cov-report=term --cov-fail-under=90
+      - run: pip-audit -r requirements/lock.txt  # known vulnerabilities in the pinned dependencies
+        if: matrix.python == '3.14'
 
   frontend:
     runs-on: ubuntu-latest
@@ -37,6 +45,7 @@ jobs:
           cache: npm
           cache-dependency-path: webapp/frontend/package-lock.json
       - run: npm ci
+      - run: npm audit --audit-level=high  # known vulnerabilities in the locked packages
       - run: npm run lint
       - run: npm run test:coverage
       - run: npm run build

@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "vball-app"
 version = "0.1.0"
 description = "Volleyball analysis web app backend: API, analysis worker and video render on top of vball"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = ["vball", "fastapi>=0.115", "uvicorn[standard]>=0.30", "python-multipart>=0.0.9", "numpy", "pandas",
                 "opencv-python-headless"]
 

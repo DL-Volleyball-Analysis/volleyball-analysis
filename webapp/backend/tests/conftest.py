@@ -84,7 +84,8 @@ def fake_players(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def no_action_models(monkeypatch, tmp_path):
-    """The real action and digit weights may be in models/; tests run without them unless they install fakes."""
+    """The real weights may be in models/; tests run without any of them unless they install fakes, so they behave the
+    same on a developer machine and on CI (where models/ does not exist)."""
     from vball import pipeline
 
     monkeypatch.setattr(pipeline.config, "ACTION_MODEL", tmp_path / "missing_action.pt")
@@ -92,6 +93,7 @@ def no_action_models(monkeypatch, tmp_path):
     monkeypatch.setattr(pipeline.config, "PERSON_MODEL", tmp_path / "missing_person.pt")
     monkeypatch.setattr(pipeline.config, "GENERAL_PLAYER_MODEL", tmp_path / "missing_general.pt")
     monkeypatch.setattr(pipeline.config, "RALLY_MODEL", tmp_path / "missing_rally.joblib")
+    monkeypatch.setattr(pipeline.config, "COURT_MODELS", {"gym": tmp_path / "missing_court.pt"})
 
 
 @pytest.fixture(autouse=True)
