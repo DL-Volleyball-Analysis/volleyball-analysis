@@ -27,8 +27,11 @@ def test_quick_check_reads_a_few_frames_spread_over_the_video(tmp_path, monkeypa
     for _ in range(100):
         w.write(np.full((90, 160, 3), 90, np.uint8))
     w.release()
-    import ultralytics
-    monkeypatch.setattr(ultralytics, "YOLO", FakeYOLO)
+    import sys
+    import types
+    fake = types.ModuleType("ultralytics")  # CI does not install ultralytics; the test needs only its YOLO name
+    fake.YOLO = FakeYOLO
+    monkeypatch.setitem(sys.modules, "ultralytics", fake)
     monkeypatch.setattr(rally_cues, "detect_court", lambda model, frame, sz: np.zeros((14, 3)))
     df = rally_cues.quick_check(path, n=10)
     assert list(df.columns) == rally_cues.COLUMNS and len(df) == 10
