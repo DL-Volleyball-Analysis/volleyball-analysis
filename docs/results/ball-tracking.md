@@ -72,3 +72,25 @@ and on the same test clips as the table above:
 - The tracker does not help a detector this precise: it removes some true detections with the false ones.
 - On gym footage VballNet is strong (F1 0.859 at 10 px on the held-out orel matches) while WASB was trained on broadcast
   only: the mixed fine-tuning (`notebooks/train_ball_detector.ipynb`) tests one model for both.
+
+### Fine-tuned WASB for broadcast and gym footage (2026-10-12)
+Change train-ball-detector, `notebooks/train_ball_detector.ipynb` (Kaggle T4, 8 epochs of 24,000 samples each): WASB's
+HRNet from its Volleyball-dataset weights, fine-tuned on gym clips only (`gym`) and on half Volleyball dataset, half
+gym clips (`mixed`). Best validation F1: gym 0.823, mixed 0.877. The notebook's evaluation did not finish: training
+took 11.3 h of Kaggle's 12 h, and its onnxruntime-gpu (built for CUDA 13) ran on the CPU; the evaluation is now its own
+notebook (`notebooks/eval_ball_detector.ipynb`, onnxruntime-gpu 1.22 for CUDA 12), waiting for the weekly GPU quota.
+
+Held-out gym matches (volleyball-orel.ru, a backline and a side view; 5,116 frames), run locally with
+`scripts/eval_ball_detection.py --dataset orel --wasb-model ...` (detector alone):
+
+| Model | P / R / F1 at 4 px | P / R / F1 at 10 px |
+|---|---|---|
+| WASB, published weights (broadcast only) | 0.407 / 0.158 / 0.228 | 0.941 / 0.366 / 0.527 |
+| VballNet V4c (pipeline today; earlier run) | | 0.859 F1 |
+| WASB fine-tuned, gym | 0.672 / 0.632 / 0.652 | 0.976 / 0.917 / **0.946** |
+| WASB fine-tuned, mixed | 0.668 / 0.616 / 0.641 | 0.982 / 0.906 / **0.942** |
+
+- Gym training data is what makes WASB work in gyms: F1 at 10 px 0.527 -> 0.94, ahead of VballNet (0.859).
+- Mixing broadcast data costs almost nothing on gym footage (0.942 vs 0.946). Whether `mixed` keeps WASB's broadcast
+  accuracy (0.942 at 10 px published) is the open question: the broadcast frames of the Volleyball dataset are on
+  Kaggle only. The pipeline switches from VballNet only if `mixed` wins on both.
