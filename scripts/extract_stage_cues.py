@@ -1,6 +1,6 @@
 """Rally cues for fixed-camera matches from the pipeline's own stages (change label-rallies-from-score, task 2.1).
 
-For every full match in a folder: the web app pipeline's decode (shots, camera motion), court (line evidence for
+For every full match in a folder: the pipeline's decode (shots, camera motion), court (line evidence for
 still shots) and ball (VballNet) stages run into results/<video stem>/, people are detected twice a second with the
 pipeline's general person detector (the player-only one sees too few people in end-line views), and
 `vball.rally_cues.stage_cues` turns them into cues for every camera shot whose court is ok. Using the stages
@@ -10,19 +10,15 @@ themselves keeps the training cues identical to what the rallies stage computes.
 """
 import argparse
 import json
-import sys
 from pathlib import Path
 
 import cv2
 import numpy as np
 import pandas as pd
 
-from vball import court_registration
+from vball import court_registration, pipeline
 from vball.paths import DATASETS
 from vball.rally_cues import stage_cues
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "webapp" / "backend"))
-import pipeline  # noqa: E402
 
 PEOPLE_FPS = 2.0
 
@@ -30,7 +26,7 @@ PEOPLE_FPS = 2.0
 def detect_people(video: Path, fps: float, n: int, every: int) -> pd.DataFrame:
     """Person boxes on every `every`-th frame with the pipeline's general detector and settings."""
     from ultralytics import YOLO
-    model = YOLO(str(pipeline.GENERAL_PLAYER_MODEL))
+    model = YOLO(str(pipeline.config.GENERAL_PLAYER_MODEL))
     cap, rows, i = cv2.VideoCapture(str(video)), [], 0
     while i < n:
         if i % every:
@@ -41,7 +37,7 @@ def detect_people(video: Path, fps: float, n: int, every: int) -> pd.DataFrame:
         ok, frame = cap.read()
         if not ok:
             break
-        r = model(frame, imgsz=pipeline.PLAYER_CFG.imgsz, conf=pipeline.PLAYER_CFG.conf, classes=[0], verbose=False)[0]
+        r = model(frame, imgsz=pipeline.config.PLAYER_CFG.imgsz, conf=pipeline.config.PLAYER_CFG.conf, classes=[0], verbose=False)[0]
         for b in r.boxes.xyxy.cpu().numpy():
             rows.append((i, *b))
         i += 1
@@ -52,7 +48,7 @@ def detect_people(video: Path, fps: float, n: int, every: int) -> pd.DataFrame:
 def match_cues(video: Path, out: Path) -> pd.DataFrame:
     out.mkdir(parents=True, exist_ok=True)
     prev = {}
-    for name, fn in (("decode", pipeline.decode), ("court", pipeline.court), ("ball", pipeline.ball_stage)):
+    for name, fn in (("decode", pipeline.decode.run), ("court", pipeline.court.run), ("ball", pipeline.ball.run)):
         res = pipeline.load_stage(out, name)
         if res is None or res.get("version") != pipeline.VERSIONS[name]:
             res = {"version": pipeline.VERSIONS[name], **fn(video, out, prev, lambda f: None)}

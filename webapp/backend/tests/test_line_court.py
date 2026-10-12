@@ -33,13 +33,13 @@ def end_line_clip(tmp_path_factory):
 
 
 def test_lines_replace_a_squeezed_keypoint_court(client, end_line_clip, fake_ball, monkeypatch, tmp_path):
-    import pipeline
+    from vball import pipeline
     weights = tmp_path / "court_kpt.pt"
     weights.write_bytes(b"")
-    monkeypatch.setattr(pipeline, "COURT_MODELS", {"gym": weights})
+    monkeypatch.setattr(pipeline.config, "COURT_MODELS", {"gym": weights})
     squeezed = k6y7r_points_3d()
     squeezed[:, 0] *= 0.5  # the whole court in the near half, as the keypoint models do on end-line views
-    monkeypatch.setattr(pipeline, "court_detector",
+    monkeypatch.setattr(pipeline.models, "court_detector",
                         lambda w: (lambda frame: np.column_stack([CAM.project(squeezed), np.full(14, 0.9)])))
     v = upload(client, end_line_clip)
     assert run_worker_once()["status"] == "done"

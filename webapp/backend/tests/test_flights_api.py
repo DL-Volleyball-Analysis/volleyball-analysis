@@ -21,16 +21,16 @@ def court_keypoints(camera=CAM):
 @pytest.fixture
 def calibrated(monkeypatch, tmp_path):
     """The real court stage with a fake detector seeing the synthetic camera; ball stage with the arc."""
-    import pipeline
+    from vball import pipeline
     weights = tmp_path / "court_kpt.pt"
     weights.write_bytes(b"")
-    monkeypatch.setattr(pipeline, "COURT_MODELS", {"gym": weights})
-    monkeypatch.setattr(pipeline, "court_detector", lambda weights: (lambda frame: court_keypoints()))
+    monkeypatch.setattr(pipeline.config, "COURT_MODELS", {"gym": weights})
+    monkeypatch.setattr(pipeline.models, "court_detector", lambda weights: (lambda frame: court_keypoints()))
 
     def track(video, model, out_dir=None, force=False):
         uv = ARC.uv
         return pd.DataFrame({"frame": np.arange(len(uv)), "visible": 1, "x": uv[:, 0], "y": uv[:, 1], "radius": 3})
-    monkeypatch.setattr(pipeline.ball, "track", track)
+    monkeypatch.setattr("vball.ball.track", track)
 
 
 def stage(client, vid, name):
@@ -68,7 +68,7 @@ def test_court_stage_to_3d_flights_end_to_end(client, clip, calibrated):
 
 
 def test_an_unusable_calibration_is_reported(client, clip, fake_ball, monkeypatch):
-    import pipeline
+    from vball import pipeline
     # a shot the court stage accepted, but whose keypoints fit no camera
     kp = np.column_stack([np.random.default_rng(0).uniform(0, 300, (14, 2)), np.full(14, 0.9)]).tolist()
     corners = [[40, 60], [280, 60], [310, 170], [10, 170]]
@@ -121,7 +121,7 @@ def test_every_demo_flight_that_crosses_the_net_clears_it():
 
 
 def test_samples_without_keypoints_do_not_break_the_stage(client, clip, fake_ball, monkeypatch):
-    import pipeline
+    from vball import pipeline
     corners = [[40, 60], [280, 60], [310, 170], [10, 170]]
     monkeypatch.setitem(pipeline.FUNCS, "court", lambda *a: {"status": "done", "shots": [
         {"start_frame": 0, "end_frame": 49, "status": "ok", "error": 0.001,

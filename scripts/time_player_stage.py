@@ -1,21 +1,17 @@
 """Time the web app's players stage (detection + tracking + interpolation) on the evaluation clips.
 
-Uses the stage's own configuration (webapp/backend/pipeline.py PLAYER_CFG) and scales the measured
+Uses the stage's own configuration (vball.pipeline.config.PLAYER_CFG) and scales the measured
 time to a 2-hour match at the same frame rate.
 
   .venv/bin/python scripts/time_player_stage.py
 """
-import sys
 import time
 from pathlib import Path
 
 import cv2
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "webapp" / "backend"))
-import pipeline  # noqa: E402
-
-from vball import players  # noqa: E402
-from vball.paths import VIDEOS  # noqa: E402
+from vball import pipeline, players
+from vball.paths import VIDEOS
 
 
 def frames(path: Path):
@@ -29,7 +25,7 @@ def frames(path: Path):
 
 
 def main():
-    cfg = pipeline.PLAYER_CFG
+    cfg = pipeline.config.PLAYER_CFG
     print(f"config {cfg.label()}")
     total_s = total_video_s = 0.0
     for clip in sorted(VIDEOS.glob("*.mp4")):

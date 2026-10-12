@@ -43,16 +43,16 @@ def clip(tmp_path_factory) -> Path:
 @pytest.fixture
 def fake_ball(monkeypatch):
     """Replace VballNet inference: ball seen on even frames only."""
-    import pipeline
+    from vball import pipeline
 
     def track(video, model, out_dir=None, force=False):
-        n = pipeline.video_meta(Path(video))["frames"]
+        n = pipeline.decode.video_meta(Path(video))["frames"]
         f = np.arange(n)
         vis = (f % 2 == 0).astype(int)
         return pd.DataFrame({"frame": f, "visible": vis, "x": np.where(vis, 10.0 + f, np.nan),
                              "y": np.where(vis, 90.0, np.nan), "radius": 5})
 
-    monkeypatch.setattr(pipeline.ball, "track", track)
+    monkeypatch.setattr("vball.ball.track", track)
 
 
 @pytest.fixture
@@ -66,7 +66,6 @@ def client():
 def fake_players(monkeypatch):
     """Replace YOLO + BoT-SORT: two tracks in every frame, one standing on court and one far outside it
     (bottom-centres at image (150, 100) and (300, 20)). Consumes the frame generator like the real one."""
-    import pipeline
 
     def track_frames(frames, src_fps, cfg=None, step=None):
         rows = []
@@ -75,18 +74,18 @@ def fake_players(monkeypatch):
             rows.append((i, 2, 280.0, 0.0, 320.0, 20.0, 0.8, False))
         return pd.DataFrame(rows, columns=["frame", "track_id", "x1", "y1", "x2", "y2", "conf", "interpolated"])
 
-    monkeypatch.setattr(pipeline.players, "track_frames", track_frames)
+    monkeypatch.setattr("vball.players.track_frames", track_frames)
 
 
 @pytest.fixture(autouse=True)
 def no_action_models(monkeypatch, tmp_path):
     """The real action and digit weights may be in models/; tests run without them unless they install fakes."""
-    import pipeline
-    monkeypatch.setattr(pipeline, "ACTION_MODEL", tmp_path / "missing_action.pt")
-    monkeypatch.setattr(pipeline, "JERSEY_MODEL", tmp_path / "missing_digits.pt")
-    monkeypatch.setattr(pipeline, "PERSON_MODEL", tmp_path / "missing_person.pt")
-    monkeypatch.setattr(pipeline, "GENERAL_PLAYER_MODEL", tmp_path / "missing_general.pt")
-    monkeypatch.setattr(pipeline, "RALLY_MODEL", tmp_path / "missing_rally.joblib")
+    from vball import pipeline
+    monkeypatch.setattr(pipeline.config, "ACTION_MODEL", tmp_path / "missing_action.pt")
+    monkeypatch.setattr(pipeline.config, "JERSEY_MODEL", tmp_path / "missing_digits.pt")
+    monkeypatch.setattr(pipeline.config, "PERSON_MODEL", tmp_path / "missing_person.pt")
+    monkeypatch.setattr(pipeline.config, "GENERAL_PLAYER_MODEL", tmp_path / "missing_general.pt")
+    monkeypatch.setattr(pipeline.config, "RALLY_MODEL", tmp_path / "missing_rally.joblib")
 
 
 @pytest.fixture(autouse=True)
@@ -96,8 +95,7 @@ def no_line_evidence(monkeypatch, request):
     keep it."""
     if "line_evidence" in request.keywords:
         return
-    import pipeline
-    monkeypatch.setattr(pipeline.court_registration, "still", lambda *a, **k: False)
+    monkeypatch.setattr("vball.court_registration.still", lambda *a, **k: False)
 
 
 def pytest_configure(config):

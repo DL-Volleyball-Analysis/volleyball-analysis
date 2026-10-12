@@ -10,12 +10,12 @@ def stage(client, vid, name):
 def install(monkeypatch, tmp_path, digits=True):
     """Fake action and digit models: track 1 (box 130,60-170,100 in the fake players) spikes in frames 6-15,
     and its crop reads 1 then 0 side by side."""
-    import pipeline
+    from vball import pipeline
     for name, path in (("ACTION_MODEL", "action.pt"), ("JERSEY_MODEL", "digits.pt")):
         if name == "JERSEY_MODEL" and not digits:
             continue
         (tmp_path / path).write_bytes(b"")
-        monkeypatch.setattr(pipeline, name, tmp_path / path)
+        monkeypatch.setattr(pipeline.config, name, tmp_path / path)
     calls = {"frames": 0}
 
     def action_detector():
@@ -28,8 +28,8 @@ def install(monkeypatch, tmp_path, digits=True):
     def digit_detector():
         return lambda crop: [(1, 0.9, 5.0, 2.0, 15.0, 20.0), (0, 0.8, 18.0, 2.0, 28.0, 20.0)]
 
-    monkeypatch.setattr(pipeline, "action_detector", action_detector)
-    monkeypatch.setattr(pipeline, "digit_detector", digit_detector)
+    monkeypatch.setattr(pipeline.models, "action_detector", action_detector)
+    monkeypatch.setattr(pipeline.models, "digit_detector", digit_detector)
     return calls
 
 
@@ -103,10 +103,11 @@ def test_person_classifier_with_the_ball_and_serves_from_the_detector(client, cl
     """Track 1 (130,60-170,100) is classified as setting, track 2 (280,0-320,20) as spiking; the fake ball flies at
     y = 90 on the left, nearer track 1. The detector reports a spike (ignored: the classifier decides) and a serve."""
     import numpy as np
-    import pipeline
+
+    from vball import pipeline
     calls = install(monkeypatch, tmp_path, digits=False)
     (tmp_path / "person.pt").write_bytes(b"")
-    monkeypatch.setattr(pipeline, "PERSON_MODEL", tmp_path / "person.pt")
+    monkeypatch.setattr(pipeline.config, "PERSON_MODEL", tmp_path / "person.pt")
     names = ["blocking", "digging", "falling", "jumping", "moving", "setting", "spiking", "standing", "waiting"]
 
     def person_classifier():
@@ -122,8 +123,8 @@ def test_person_classifier_with_the_ball_and_serves_from_the_detector(client, cl
             calls["frames"] += 1
             return [("spike", 0.9, 132.0, 58.0, 172.0, 100.0), ("serve", 0.9, 280.0, 0.0, 320.0, 20.0)]
         return detect
-    monkeypatch.setattr(pipeline, "person_classifier", person_classifier)
-    monkeypatch.setattr(pipeline, "action_detector", action_detector)
+    monkeypatch.setattr(pipeline.models, "person_classifier", person_classifier)
+    monkeypatch.setattr(pipeline.models, "action_detector", action_detector)
     v = upload(client, clip)
     assert run_worker_once()["status"] == "done"
     a = stage(client, v["id"], "actions")

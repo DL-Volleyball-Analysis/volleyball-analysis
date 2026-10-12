@@ -14,11 +14,11 @@ def stage(client, vid, name):
 
 @pytest.fixture
 def installed(monkeypatch, tmp_path):
-    import pipeline
+    from vball import pipeline
     weights = tmp_path / "court_kpt.pt"
     weights.write_bytes(b"")
-    monkeypatch.setattr(pipeline, "COURT_MODELS", {"gym": weights})
-    return pipeline
+    monkeypatch.setattr(pipeline.config, "COURT_MODELS", {"gym": weights})
+    return pipeline.models
 
 
 def test_court_found_in_every_shot(client, clip, fake_ball, installed, monkeypatch):
@@ -56,8 +56,8 @@ def test_a_shot_without_a_court_fails_and_is_reported(client, clip, fake_ball, i
 
 
 def test_without_a_model_the_court_stage_is_unavailable(client, clip, fake_ball, monkeypatch, tmp_path):
-    import pipeline
-    monkeypatch.setattr(pipeline, "COURT_MODELS", {"gym": tmp_path / "missing.pt"})
+    from vball import pipeline
+    monkeypatch.setattr(pipeline.config, "COURT_MODELS", {"gym": tmp_path / "missing.pt"})
     v = upload(client, clip)
     run_worker_once()
     c = stage(client, v["id"], "court")
@@ -65,16 +65,16 @@ def test_without_a_model_the_court_stage_is_unavailable(client, clip, fake_ball,
 
 
 def test_each_shot_uses_the_model_that_found_its_court(client, clip, fake_ball, monkeypatch, tmp_path):
-    import pipeline
+    from vball import pipeline
     for name in ("gym", "broadcast"):
         (tmp_path / f"{name}.pt").write_bytes(b"")
-    monkeypatch.setattr(pipeline, "COURT_MODELS", {n: tmp_path / f"{n}.pt" for n in ("gym", "broadcast")})
+    monkeypatch.setattr(pipeline.config, "COURT_MODELS", {n: tmp_path / f"{n}.pt" for n in ("gym", "broadcast")})
     kp = np.column_stack([CAM.project(k6y7r_points_3d()), np.full(14, 0.9)])
 
     def detector(weights):
         first_shot = weights.stem == "gym"  # the gym model finds the court in shot 1 (green), broadcast in shot 2 (red)
         return lambda frame: kp if (frame[90, 160, 1] > 100) == first_shot else np.zeros((14, 3))
-    monkeypatch.setattr(pipeline, "court_detector", detector)
+    monkeypatch.setattr(pipeline.models, "court_detector", detector)
     v = upload(client, clip)
     run_worker_once()
     c = stage(client, v["id"], "court")

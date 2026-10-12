@@ -6,9 +6,10 @@ import time
 import traceback
 from pathlib import Path
 
-import pipeline
 from database import Database
 from settings import DB_PATH, RESULTS
+
+from vball import pipeline
 
 POLL_S = 1.0
 

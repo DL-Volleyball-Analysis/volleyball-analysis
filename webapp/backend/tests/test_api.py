@@ -33,8 +33,8 @@ def test_rejects_non_video(client):
 
 
 def test_pipeline_stages_and_ball_window(client, clip, fake_ball, monkeypatch, tmp_path):
-    import pipeline
-    monkeypatch.setattr(pipeline, "COURT_MODELS", {"gym": tmp_path / "missing.pt"})  # independent of models/
+    from vball import pipeline
+    monkeypatch.setattr(pipeline.config, "COURT_MODELS", {"gym": tmp_path / "missing.pt"})  # independent of models/
     v = upload(client, clip)
     job = run_worker_once()
     assert job["status"] == "done", job["error"]
@@ -53,7 +53,7 @@ def test_pipeline_stages_and_ball_window(client, clip, fake_ball, monkeypatch, t
 
 
 def test_rerun_reuses_earlier_stages(client, clip, fake_ball, monkeypatch):
-    import pipeline
+    from vball import pipeline
     v = upload(client, clip)
     run_worker_once()
     calls = []
@@ -138,7 +138,8 @@ def test_score_summary_flags_demo(client, rallies):
 def test_stage_is_visible_while_it_runs(client, clip, monkeypatch):
     """A client polling the job during ball tracking must see the ball stage, not the previous one."""
     import main
-    import pipeline
+
+    from vball import pipeline
     v = upload(client, clip)
     seen = {}
 
@@ -165,10 +166,10 @@ def test_ball_coverage(client, clip, fake_ball):
 def test_ball_coverage_first_half_only(client, clip, monkeypatch):
     import numpy as np
     import pandas as pd
-    import pipeline
+
     n = 50
     f = np.arange(n)
-    monkeypatch.setattr(pipeline.ball, "track", lambda *a, **k: pd.DataFrame(
+    monkeypatch.setattr("vball.ball.track", lambda *a, **k: pd.DataFrame(
         {"frame": f, "visible": (f < n // 2).astype(int), "x": 1.0, "y": 1.0, "radius": 5}))
     v = upload(client, clip)
     run_worker_once()

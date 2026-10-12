@@ -16,12 +16,11 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pandas as pd
-import pipeline
 from database import Database
 from settings import DB_PATH, RESULTS
 
 from vball import court as vcourt
-from vball import court_registration
+from vball import court_registration, pipeline
 from vball.paths import OUTPUTS
 
 BALL, EDGE, WHITE = (63, 210, 255), (0, 0, 0), (255, 255, 255)  # BGR

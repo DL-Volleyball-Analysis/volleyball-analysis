@@ -14,7 +14,6 @@ from typing import Literal
 
 import numpy as np
 import pandas as pd
-import pipeline
 from database import FINISHED, Database
 from fastapi import FastAPI, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,7 +21,7 @@ from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
 from pydantic import BaseModel
 from settings import DB_PATH, RESULTS, UPLOADS, VIDEO_SUFFIXES
 
-from vball import court_registration, jersey
+from vball import court_registration, jersey, pipeline
 from vball import stats as vstats
 from vball.scoring import running_score
 
@@ -247,7 +246,7 @@ def video_out(v: dict) -> Video:
 
 def register(name: str, path: Path) -> Video:
     try:
-        meta = pipeline.video_meta(path)
+        meta = pipeline.decode.video_meta(path)
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
     v = db.add_video(name, str(path), meta)

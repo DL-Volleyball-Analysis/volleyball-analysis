@@ -5,14 +5,14 @@ from test_api import run_worker_once, upload
 
 
 def fake_rally_model(monkeypatch, tmp_path, found):
-    import pipeline
+    from vball import pipeline
     model = tmp_path / "rally.joblib"
     model.write_bytes(b"")
-    monkeypatch.setattr(pipeline, "RALLY_MODEL", model)
-    monkeypatch.setattr(pipeline.vrallies, "load_model", lambda path: {"fake": True})
-    monkeypatch.setattr(pipeline, "rally_cues", lambda video, tick: None)
-    monkeypatch.setattr(pipeline, "rally_quick_check", lambda video: None)
-    monkeypatch.setattr(pipeline.vrallies, "detect", lambda model, cues: found)
+    monkeypatch.setattr(pipeline.config, "RALLY_MODEL", model)
+    monkeypatch.setattr("vball.rallies.load_model", lambda path: {"fake": True})
+    monkeypatch.setattr(pipeline.models, "rally_cues", lambda video, tick: None)
+    monkeypatch.setattr(pipeline.models, "rally_quick_check", lambda video: None)
+    monkeypatch.setattr("vball.rallies.detect", lambda model, cues: found)
 
 
 def test_detected_rallies_replace_demo_and_keep_corrections(client, clip, fake_ball, monkeypatch, tmp_path):
@@ -50,10 +50,11 @@ def test_no_rally_model_keeps_the_stage_unavailable(client, clip, fake_ball):
 
 def test_footage_outside_the_rally_model_is_reported_not_guessed(client, clip, fake_ball, monkeypatch, tmp_path):
     import pandas as pd
-    import pipeline
+
+    from vball import pipeline
     fake_rally_model(monkeypatch, tmp_path, [(0.1, 0.9, 0.8)])
     gym = pd.DataFrame({"t": [0.0, 0.2, 0.4], "court_ok": [1, 1, 1], "players": [3, 2, 3]})  # few players seen
-    monkeypatch.setattr(pipeline, "rally_cues", lambda video, tick: gym)
+    monkeypatch.setattr(pipeline.models, "rally_cues", lambda video, tick: gym)
     v = upload(client, clip)
     run_worker_once()
     s = {x["name"]: x for x in client.get(f"/videos/{v['id']}/stages").json()}["rallies"]
@@ -63,12 +64,13 @@ def test_footage_outside_the_rally_model_is_reported_not_guessed(client, clip, f
 
 def test_out_of_training_footage_is_told_from_a_quick_check(client, clip, fake_ball, monkeypatch, tmp_path):
     import pandas as pd
-    import pipeline
+
+    from vball import pipeline
     fake_rally_model(monkeypatch, tmp_path, [(0.1, 0.9, 0.8)])
     few = pd.DataFrame({"t": [0.0, 1.0], "court_ok": [0, 0], "players": [3, 4]})
-    monkeypatch.setattr(pipeline, "rally_quick_check", lambda video: few)
+    monkeypatch.setattr(pipeline.models, "rally_quick_check", lambda video: few)
     full = []
-    monkeypatch.setattr(pipeline, "rally_cues", lambda video, tick: full.append(1))
+    monkeypatch.setattr(pipeline.models, "rally_cues", lambda video, tick: full.append(1))
     v = upload(client, clip)
     run_worker_once()
     s = {x["name"]: x for x in client.get(f"/videos/{v['id']}/stages").json()}["rallies"]
