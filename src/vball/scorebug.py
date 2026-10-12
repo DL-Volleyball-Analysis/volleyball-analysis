@@ -3,13 +3,14 @@
 Matches filmed by a fixed camera and published with a score bug (VolleyballWatchdog: "Z4 (1) 06-04 (0) Z5" at the top
 of the frame: rotation, sets won, points, points, sets won, rotation) say when every point ended and who won it:
 
-1. `read`: the bug's crop (SCOREBUGS, fractions of the frame) scaled to TEXT_PX high, made dark-on-light two ways
+1. `read`: the bug's crops (SCOREBUGS, fractions of the frame, tried in turn) scaled to TEXT_PX high, made dark-on-light two ways
    in turn (Otsu, or the light unsaturated text pixels when the bug has no box behind it), Tesseract (`--psm 7`,
    digits and "()-" only), and the pattern "(s) pp-pp (s)" -> Score.
 2. `changes`: readings once per second, cleaned. A score counts when read the same twice in a row, and must move the
    match forward from the last counted one: one team +1 point, or a new set (one team's sets +1, points back to 0-0).
-   Anything else is a misread and dropped, except a score read twice that is several points ahead (the bug was
-   unreadable for a while): the sequence re-anchors there and those points are counted as missed, not invented.
+   Anything else is a misread and dropped, except a score read REANCHOR_READS times in a row that is several points
+   ahead (the bug was unreadable for a while): the sequence re-anchors there and those points are counted as missed,
+   not invented. Each reading is the majority over the crops and binarisations.
    Each step forward is a point change with its time and scoring team.
 
 Tesseract is a local binary (brew install tesseract); `available()` says whether it is there.
@@ -23,8 +24,10 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-SCOREBUGS = {"watchdog": (0.0, 0.056, 0.28, 0.72)}  # y0, y1, x0, x1 as fractions of the frame
+SCOREBUGS = {"watchdog": [(0.0, 0.040, 0.28, 0.72), (0.0, 0.056, 0.28, 0.72)]}  # y0, y1, x0, x1 (fractions
+# of the frame), tried in turn: the tighter crop leaves out the serve marker under one score, which confuses Tesseract
 TEXT_PX = 120  # the crop is scaled to this height before reading
+REANCHOR_READS = 5  # readings in a row before a jump of several points is accepted
 PATTERN = re.compile(r"\((\d)\)\s*(\d{1,2})\s*-\s*(\d{1,2})\s*\((\d)\)|\((\d)\)\s*(\d{2})\s*(\d{2})\s*\((\d)\)")
 
 
@@ -56,8 +59,8 @@ def parse(text: str) -> Score | None:
     return Score(*(int(x) for x in g))
 
 
-def crop(frame: np.ndarray, bug: str = "watchdog") -> np.ndarray:
-    y0, y1, x0, x1 = SCOREBUGS[bug]
+def crop(frame: np.ndarray, bug: str = "watchdog", k: int = 0) -> np.ndarray:
+    y0, y1, x0, x1 = SCOREBUGS[bug][k]
     h, w = frame.shape[:2]
     return frame[int(y0 * h):max(int(y1 * h), int(y0 * h) + 1), int(x0 * w):int(x1 * w)]
 
@@ -97,14 +100,15 @@ def _tesseract(img: np.ndarray) -> str:
 
 def read(frame: np.ndarray, bug: str = "watchdog") -> Score | None:
     """The score shown in a frame, or None when it cannot be read (replays, graphics, no bug)."""
-    c = crop(frame, bug)
-    f = TEXT_PX / max(c.shape[0], 1)
-    c = cv2.resize(c, None, fx=f, fy=f, interpolation=cv2.INTER_CUBIC)
-    for img in _binarised(c):
-        score = parse(_tesseract(img))
-        if score is not None:
-            return score
-    return None
+    votes = []
+    for k in range(len(SCOREBUGS[bug])):
+        c = crop(frame, bug, k)
+        f = TEXT_PX / max(c.shape[0], 1)
+        c = cv2.resize(c, None, fx=f, fy=f, interpolation=cv2.INTER_CUBIC)
+        votes += [x for x in (parse(_tesseract(img)) for img in _binarised(c)) if x is not None]
+    if not votes:
+        return None
+    return max(votes, key=votes.count)  # the majority over crops and binarisations; ties go to the first read
 
 
 def step(prev: Score, new: Score) -> tuple[str, bool] | None:
@@ -138,13 +142,14 @@ def changes(readings: list[tuple[float, Score | None]], missed: list | None = No
     """Point changes from (time, score or None) readings in time order (see module doc). A score read twice that is
     several points ahead (the bug unreadable for a while) re-anchors the sequence without inventing the points in
     between; their count is appended to `missed` as (time, points)."""
-    out, counted, last, since = [], None, None, None
+    out, counted, last, since, run = [], None, None, None, 0
     for t, s in readings:
         if s is None:
             continue
         if s != last:
-            last, since = s, t  # when this score was first read
+            last, since, run = s, t, 1  # when this score was first read
             continue
+        run += 1
         if counted is None:
             counted = s
             continue
@@ -154,7 +159,7 @@ def changes(readings: list[tuple[float, Score | None]], missed: list | None = No
         if st is not None:
             out.append(Change(since, st[0], s, st[1]))
             counted = s
-        elif ahead(counted, s) > 1:
+        elif ahead(counted, s) > 1 and run >= REANCHOR_READS:  # a jump must hold, or one misread could take over
             if missed is not None:
                 missed.append((since, ahead(counted, s)))
             counted = s

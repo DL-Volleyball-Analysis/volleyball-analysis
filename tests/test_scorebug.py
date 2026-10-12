@@ -46,7 +46,8 @@ def test_reading_a_drawn_score_bug():
 
 def test_unreadable_stretches_re_anchor_without_inventing_points():
     S = Score
-    readings = [(0, S(1, 5, 0, 0)), (1, S(1, 5, 0, 0)), (70, S(1, 9, 6, 0)), (75, S(1, 9, 6, 0)),
+    readings = [(0, S(1, 5, 0, 0)), (1, S(1, 5, 0, 0)), (30, S(1, 7, 9, 0)), (31, S(1, 7, 9, 0)),  # a short misread
+                *[(70 + k, S(1, 9, 6, 0)) for k in range(5)],
                 (80, S(1, 10, 6, 0)), (85, S(1, 10, 6, 0)), (90, S(0, 3, 3, 1)), (91, S(0, 3, 3, 1))]
     missed = []
     out = changes(readings, missed)
