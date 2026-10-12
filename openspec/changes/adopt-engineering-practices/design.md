@@ -42,7 +42,7 @@ in a separate worktree on a local branch so that run is not disturbed, and fast-
 - Formatter: `ruff format` (line length stays 150); the one-time reformat commit goes in `.git-blame-ignore-revs`.
 - Types: mypy, `strict` for `vball.pipeline` and new modules, default elsewhere, with per-module ignores recorded in
   `pyproject.toml` and removed over time.
-- Lock: pip-tools (`requirements/lock.txt` from `pyproject.toml` groups `dev`, `ml`, `app`); `uv` is not installed.
+- Lock: `requirements/lock.txt` is the `pip freeze` of a clean environment with `vball[dev]` and the backend (`scripts/lock.sh`); pip-tools would look up the backend's `vball` dependency on PyPI, and `uv` is not installed. Development Python is 3.14 (`.python-version`), CI also runs 3.12.
 - Hooks: pre-commit with ruff, ruff-format, mypy, end-of-file and large-file checks.
 
 ### D5. Process
