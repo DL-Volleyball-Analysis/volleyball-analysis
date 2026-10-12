@@ -44,3 +44,39 @@ Next: cues that do not depend on the view (ball motion, motion of the people on 
 range, cues normalised per video) and rally labels on gym footage to measure them.
 
 > The 4K moving-camera clips referred to above (Canada vs Italy, Choforo55 gym, Hawaii vs UCI, Long Beach vs UCLA) were removed on 2026-10-12 at the owner's request; testing moved to fixed end-line camera clips (data/videos/fixed).
+
+## Fixed end-line cameras, trained on score-bug labels (2026-10-13)
+Change label-rallies-from-score. Training data: full VolleyballWatchdog matches, cues from the pipeline's own stages
+(`scripts/extract_stage_cues.py`, `vball.rally_cues.stage_cues`), labels from the score bug (`scripts/label_rallies.py`).
+Of six downloaded matches, two have no usable court (line fit flagged needs_review, correctly: Pepperdine's light floor
+with thin white lines, McKendree's fit shifted) and one has too few score readings (u_7R29j5lBw, 26% of bug reads), so
+training uses three matches: Stanford v UCLA, USC v Hawai'i, GCU v USC (32,005 samples at 5 Hz, 405 points).
+Segmentation thresholds were chosen by leave-one-match-out on these three.
+
+Test: the six 3-minute fixed clips (`data/videos/fixed`), all from other matches, 80 points read from their bugs. A
+detected rally counts when the bug changes 0-12 s after its end (one to one).
+
+| Clip | Points | Detected | Matched | Precision | Recall | F1 | Median delay to bug (s) |
+|---|---|---|---|---|---|---|---|
+| fixed_gcu_ucla | 13 | 16 | 11 | 0.69 | 0.85 | 0.76 | 3.4 |
+| fixed_hawaii_irvine | 14 | 13 | 12 | 0.92 | 0.86 | 0.89 | 3.2 |
+| fixed_hawaii_pennstate | 13 | 16 | 12 | 0.75 | 0.92 | 0.83 | 3.2 |
+| fixed_quincy_ballstate | 10 | 14 | 9 | 0.64 | 0.90 | 0.75 | 4.0 |
+| fixed_ucla_concordia | 16 | 8 | 7 | 0.88 | 0.44 | 0.58 | 1.8 |
+| fixed_usc_pepperdine | 14 | 11 | 9 | 0.82 | 0.64 | 0.72 | 3.4 |
+| **all** | **80** | **78** | **60** | **0.77** | **0.75** | **0.76** | |
+
+For comparison, the preliminary model trained on the clips themselves (leave-one-clip-out) reached F1 0.71 and found
+nothing on the Quincy clip; the broadcast model does not apply to these views at all (reported as unavailable).
+
+What this does and does not show:
+- Matches are disjoint; arenas were not checked clip by clip. Five test clips share a team with the training matches
+  (UCLA, Hawai'i, USC, GCU), so some are probably filmed in the same arenas with the same camera. Only
+  fixed_quincy_ballstate involves neither team, and one 3-minute clip (10 points) is too little to claim the model
+  transfers to new gyms.
+- Labels are points, not rallies: the score bug gives each rally's end plus a delay, so rally starts are not measured,
+  and points the bug reader missed (up to 77 in one training match) leave rallies unlabelled in the training data.
+- Model saved as `models/rally_fixed_hgb.joblib` (not yet used by the rallies stage).
+
+Next: more arenas (the line fit must work on light floors first), and the rallies stage choosing this model for still
+end-line cameras.
