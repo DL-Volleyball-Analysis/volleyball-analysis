@@ -1,29 +1,30 @@
 ## ADDED Requirements
 
-### Requirement: Line support
-For a court mapping and a frame, the system SHALL compute line support: the share of evenly spaced points on the
-projected court lines (inside the image) that lie within a few pixels of a thin bright line in the frame.
+### Requirement: Court from painted lines
+For a camera shot with a still camera, the system SHALL fit the court model to the painted lines of the shot's
+background plate (the median of frames spread over the shot), considering bright and dark lines, and SHALL reject
+fits that are implausible, smaller than 8% of the image, or shaped like a fan or a sliver.
 
-#### Scenario: Correct mapping
-- **WHEN** the mapping of a broadcast frame puts the projected lines on the painted lines
-- **THEN** line support is above the acceptance threshold
+#### Scenario: End-line camera
+- **WHEN** a fixed camera behind an end line films a match on a court with white lines
+- **THEN** the fitted court lies on the painted end, attack and centre lines and sidelines
 
-#### Scenario: Wrong mapping
-- **WHEN** the mapping follows lines of another sport on a multi-sport gym floor
-- **THEN** line support is below the acceptance threshold
+#### Scenario: Dark volleyball lines on a multi-sport floor
+- **WHEN** the volleyball lines are painted darker than the floor and other sports' lines are white
+- **THEN** the fit follows the volleyball lines
 
-### Requirement: Refinement
-The system SHALL refine a keypoint-based mapping by searching nearby homographies for higher line support, and SHALL
-keep the refined mapping only if its support is higher and its floor keypoint error stays within the fit limit.
+### Requirement: Best evidence wins
+For a still shot the system SHALL score the line fit and the keypoint fit on the same plate by line support and SHALL
+use the higher-scoring one for every frame of the shot, recording which source it came from.
 
-#### Scenario: Slightly off mapping
-- **WHEN** a mapping is offset by a few pixels from the painted lines
-- **THEN** the refined mapping has higher line support and lower error on labelled points
+#### Scenario: Keypoints squeeze the court
+- **WHEN** the keypoint fit puts the whole court into the near half of an end-line view
+- **THEN** the line fit scores higher and is used
 
 ### Requirement: Status from line evidence
-A camera shot SHALL be ok when its median line support reaches the threshold and its floor fit error is within the
-limit; otherwise it SHALL need review. The threshold SHALL be chosen on labelled training images, not on test images.
+A still shot SHALL be ok when its chosen fit has at least five well supported court lines and at least 70% of its line
+samples supported; otherwise it SHALL need review. The net check SHALL NOT decide the status of such shots.
 
-#### Scenario: Back view with net points at the posts
-- **WHEN** a back view's floor mapping is correct and its net points sit at the net ends
-- **THEN** the shot is ok
+#### Scenario: Wrong court with consistent net points
+- **WHEN** a fit squeezes the court into the near half but its net points agree with it
+- **THEN** the shot needs review unless the line evidence supports it

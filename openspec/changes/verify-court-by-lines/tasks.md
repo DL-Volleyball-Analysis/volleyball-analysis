@@ -1,16 +1,16 @@
 # Tasks
 
-## 1. Line evidence
-- [ ] 1.1 `vball.court_lines`: ridge map, line sampling, support score; unit tests on synthetic court images
-- [ ] 1.2 Support of labelled fits on k6y7r test and VNL held-out (ROC AUC for error < 0.5 m); threshold from training images
+## 1. Line fit
+- [x] 1.1 `vball.court_lines`: background plate, line pixels (bright and dark), line candidates, court fit with checks and score; tests on synthetic courts (side and end-line views, a fan rejected, dark lines)
+- [ ] 1.2 Fit on the six fixed clips and five broadcast clips; overlays checked
 
-## 2. Refinement
-- [ ] 2.1 Homography refinement maximising support with the keypoint penalty; tests on shifted synthetic courts
-- [ ] 2.2 Error before / after refinement on the labelled test sets
+## 2. Pipeline
+- [ ] 2.1 Court registration: still shots compare the line fit with the keypoint fit, status from line evidence (court stage version bump); tests
+- [ ] 2.2 Rerun the fixed and broadcast clips; court, players, 3D before / after
 
-## 3. Pipeline
-- [ ] 3.1 Court registration status from line support + fit error (court stage version bump); net check kept for calibration
-- [ ] 3.2 Rerun the nine videos; overlays reviewed; results in docs/results/court-keypoints.md
+## 3. Evaluation
+- [ ] 3.1 One labelled frame per fixed clip; error in court metres; results in docs/results/court-keypoints.md
 
-## 4. Phase 2 (only if low end-line views stay unsolved)
-- [ ] 4.1 Perspective augmentation for low camera angles in court keypoint training (Kaggle); evaluation as above
+## 4. Phase 2 (only if needed)
+- [ ] 4.1 Moving cameras: line fit per sampled frame with players masked
+- [ ] 4.2 Perspective augmentation for low and end-line views in keypoint training (Kaggle)
