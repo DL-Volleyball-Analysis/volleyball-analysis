@@ -10,7 +10,6 @@ from vball.actors import (
     decide,
     person_crop,
     player_scores,
-    with_ball,
 )
 
 SET, SPIKE = ACTIONS.index("set"), ACTIONS.index("spike")
@@ -42,9 +41,10 @@ def test_the_ball_turns_a_look_alike_into_no_action():
     # two players both look like setting; only the one at the ball keeps it
     scores = {1: np.eye(len(ACTIONS))[SET] * 0.7, 2: np.eye(len(ACTIONS))[SET] * 0.7}
     boxes = {1: np.array([0, 0, 10, 40]), 2: np.array([300, 0, 310, 40])}
-    out = decide(with_ball(scores, boxes, np.array([5.0, -2.0]), ActorConfig(floor=0.3)), threshold=0.4)
-    assert out == {1: SET, 2: None}
-    assert decide(with_ball(scores, boxes, None), threshold=0.4) == {1: SET, 2: SET}
+    def weighted(ball, cfg=ActorConfig()):
+        return {p: sc * ball_prior(boxes[p], ball, cfg) for p, sc in scores.items()}
+    assert decide(weighted(np.array([5.0, -2.0]), ActorConfig(floor=0.3)), threshold=0.4) == {1: SET, 2: None}
+    assert decide(weighted(None), threshold=0.4) == {1: SET, 2: SET}
 
 
 def test_per_frame_ball_weighting():

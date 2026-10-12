@@ -8,7 +8,6 @@ export type Video = S['Video']
 export type Job = S['Job']
 export type StageInfo = S['StageInfo']
 export type Rally = S['Rally']
-export type Score = S['Score']
 export type BallWindow = S['BallWindow']
 export type Team = NonNullable<Rally['winner']>
 export type StageName = StageInfo['name']

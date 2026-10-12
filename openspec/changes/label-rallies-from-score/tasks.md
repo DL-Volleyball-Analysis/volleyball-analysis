@@ -2,7 +2,7 @@
 
 ## 1. Labels
 - [ ] 1.1 Download eight full matches (720p, local only)
-- [ ] 1.2 `vball.scorebug`: read, clean, point changes; tests on cropped score images and synthetic sequences
+- [x] 1.2 `vball.scorebug`: read, clean, point changes; tests on cropped score images and synthetic sequences
 - [ ] 1.3 `scripts/label_rallies.py`; check two matches by hand (every change found, no false ones); measure the update delay
 
 ## 2. Fixed-camera rallies

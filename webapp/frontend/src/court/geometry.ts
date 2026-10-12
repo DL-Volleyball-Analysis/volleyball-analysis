@@ -3,7 +3,7 @@
 export const LENGTH = 18
 export const WIDTH = 9
 export const NET_X = 9
-export const ATTACK_OFFSET = 3
+const ATTACK_OFFSET = 3
 
 export const LINES: [number, number, number, number][] = [
   [0, 0, LENGTH, 0],

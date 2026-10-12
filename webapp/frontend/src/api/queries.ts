@@ -45,7 +45,7 @@ export const useBallWindow = (id: string, window: number, enabled = true) =>
     retry: false, // 404 until ball tracking has run
   })
 
-export const COVERAGE_BINS = 400
+const COVERAGE_BINS = 400
 
 /** Ball detection coverage over the whole video, for the timeline's ball lane (404 until tracked). */
 export const useBallCoverage = (id: string) =>

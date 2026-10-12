@@ -123,3 +123,24 @@ All 6 kept flights (100%) are low quality, as the stage reports. The one physica
 flight that mixes two pieces of track (fit error 120 px); the check confirms that a low-quality flag is needed
 before any landing or net call is made from these flights. The cause is upstream: the 2D ball track (see
 `docs/results/ball-tracking.md`, labelled evaluation).
+
+## Moving cameras (2026-10-12)
+Change follow-camera-motion. Camera motion between frames is estimated by keyframe registration (`vball.camera_motion`)
+and used for court smoothing, gap filling, court corrections and a camera per 3D flight.
+
+Photometric check (mean absolute grey difference between a frame warped by the estimated motion and the frame 1 s / 3 s
+later, 12 starting points per clip, top and bottom bands masked):
+
+| Clip | Camera | 1 s: unwarped -> warped | 3 s: unwarped -> warped |
+|---|---|---|---|
+| broadcast_side_rally | still | 12.6 -> 12.6 | 14.2 -> 14.2 |
+| hawaii_uci_4k60 (removed since) | broadcast, pans and cuts | 33.1 -> 18.5 | 42.5 -> 28.6 |
+| canada_italy_4k60 (removed since) | handheld, pans | 23.1 -> 13.7 | 27.9 -> 15.9 |
+
+A first version that chained frame-to-frame estimates drifted on the still camera (12.6 -> 19.7 at 1 s); registering
+each frame to a keyframe fixed it.
+
+3D flights rejected as physically impossible, before -> after (same court and ball results), on the two broadcast
+clips whose camera pans: side_high_men 2 -> 1, side_high_women 4 -> 2. The Hawaii 4K clip that motivated the change (15 of
+33 flights rejected with one calibration for a 64 s panning shot) was removed at the owner's request before it could
+be rerun, so the larger before / after is not available.

@@ -3,7 +3,7 @@
 import { LENGTH, LINES, NET_X, WIDTH } from './geometry'
 
 export type Pt = [number, number]
-export type CourtSample = { frame: number; corners_px: number[][] }
+type CourtSample = { frame: number; corners_px: number[][] }
 export type CourtShot = { start_frame: number; end_frame: number; status: string; samples: CourtSample[] }
 
 /** Court corners in the order the backend uses: far left, far right, near right, near left (court metres). */

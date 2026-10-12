@@ -22,15 +22,18 @@ the court in metres, the players, rallies and the score.
 
 ```mermaid
 flowchart LR
-  V[Video] --> D[decode<br/>shots]
-  D --> C[court<br/>14 keypoints, homography,<br/>floor-net check]
+  V[Video] --> D[decode<br/>shots, camera motion]
+  D --> C[court<br/>keypoints or painted lines,<br/>follows the camera]
   D --> B[ball<br/>VballNet V4c]
   C --> P[players<br/>YOLO26s + BoT-SORT,<br/>court metres]
+  P --> A[actions<br/>per-player classifier,<br/>shirt numbers]
   B --> T[trajectory<br/>camera calibration,<br/>ballistic 3D fit]
   C --> T
-  P --> E[events / rallies<br/>planned]
-  T --> E
-  E --> UI[review app<br/>timeline, tactics board,<br/>statistics]
+  P --> R[rallies<br/>classifier on the<br/>system's cues]
+  B --> R
+  A --> UI[review app<br/>timeline, tactics board,<br/>statistics]
+  T --> UI
+  R --> UI
 ```
 
 Each stage is versioned and cached, reports why it could not produce a result (no usable court, camera not
@@ -43,21 +46,24 @@ Every number comes from a script and a labelled split, or is named a proxy or sy
 
 | Component | Result | Evidence |
 |---|---|---|
-| Court registration | 0.10 m median court-position error on held-out broadcast clips (96% within 0.3 m); 0.49 m on held-out gym images. A floor-net consistency check flags wrong courts. | labelled test images · [court-keypoints.md](docs/results/court-keypoints.md) |
+| Court registration | 0.10 m median court-position error on held-out broadcast clips (96% within 0.3 m); 0.49 m on held-out gym images. Fixed end-line cameras, where both keypoint models fail: the court fitted to the painted lines of an empty-court background plate is right on all six test clips (five arenas, by eye), and the net tape gives the focal length for 3D. | labelled test images; fixed clips by eye · [court-keypoints.md](docs/results/court-keypoints.md) |
+| Moving cameras | Frame-to-frame camera motion from the video (keyframe registration): the court, user corrections and 3D follow pans and zooms; a still camera stays still. | photometric check · [moving-camera.md](docs/prd/moving-camera.md) |
 | Player tracking | IDF1 0.690, HOTA 0.636, precision 0.970 on SportsMOT volleyball with a detector fine-tuned to box players only (no referees, line judges or spectators). | labelled benchmark · [player-tracking.md](docs/results/player-tracking.md) |
-| Ball tracking | VballNet V4c: 3.08 false jumps per 100 frames, 68.7% of frames detected on 5 broadcast clips; ~28% detection on wide high-angle shots. | label-free proxy · [ball-tracking.md](docs/results/ball-tracking.md) |
+| Ball tracking | VballNet V4c in the pipeline: 3.08 false jumps per 100 frames, 68.7% of frames detected on 5 broadcast clips. WASB fine-tuned on broadcast + gym data: F1 0.942 (10 px) on held-out gym matches, against 0.859 for VballNet and 0.527 for WASB's published weights; its broadcast test is pending before it replaces VballNet. | labelled test matches · [ball-tracking.md](docs/results/ball-tracking.md) |
 | 3D trajectory | Robust, bounded ballistic fit anchored to the players at each touch: attack error 0.31 m, set 0.12 m (median) on synthetic rallies with 30% missed and 12% false detections. On real clips 5 of 9 flights are kept, all flagged low quality; the 2D ball track is now the bottleneck. | synthetic + real · [trajectory.md](docs/results/trajectory.md) |
 | Action recognition | Per-player classifier (YOLO26s-cls on player crops) weighted by the ball's position: macro F1 0.678 for block / receive / set / spike on 16 unseen matches of the Volleyball dataset, against 0.303 for the capstone's YOLOv11m detector (which fails on set and receive there); 9-class person action accuracy 72.8%. Serves still come from the detector. | labelled benchmark · [actions.md](docs/results/actions.md) |
 | Shirt numbers | In the pipeline, voted per player over time. Digit mAP@0.5 0.824 on matches whose teams the model never saw; whole numbers read exactly from 63% of single crops. | labelled test split · [actions.md](docs/results/actions.md) |
+| Rally detection | Classifier on the system's own cues (court, players, ball): F1 0.742 at temporal IoU 0.5 on two held-out broadcast matches (220 rallies), against 0.423 for a ball-only rule. Does not transfer to fixed cameras (5 of 14 rallies on a fixed clip); point labels read from the on-screen score (77 points on six fixed clips, 2 missed) are the training data for a fixed-camera model. | labelled matches · [rallies.md](docs/results/rallies.md) |
 | Player statistics | Attack efficiency, kill rate, aces and serve errors per player from coach tags, CSV export. | tests · [player-stats.md](docs/prd/player-stats.md) |
+| Speed | A 3-minute fixed-camera clip in 19 minutes on a laptop CPU (court stage 3.7x and 3D 4.6x faster for still cameras). | measured · [analysis-speed.md](docs/results/analysis-speed.md) |
 
 ## Review app
 
 <img src="docs/assets/review-app.jpg" alt="Match review app: video with ball trail, rally list, rally details and timeline">
 
 <sub>Match review (React + FastAPI, <a href="webapp/README.md">webapp/</a>): video with overlays, rally list and
-details, timeline lanes for rallies, ball, landings and review flags. Rallies shown here are demo data until
-rally detection lands.</sub>
+details, timeline lanes for rallies, ball, landings and review flags. Rallies come from the rally detector where the
+footage is like its training data; elsewhere the stage says why it cannot tell them.</sub>
 
 <img src="docs/assets/boards-and-stats.png" alt="2D and 3D tactics boards and a player statistics table">
 
@@ -90,7 +96,10 @@ src/vball/          analysis package
   teams.py            team and role from torso colours
   rallies.py          rally segmentation, the rally classifier and boundary evaluation
   rally_cues.py       per-sample rally cues (court, players, ball) for training and the pipeline
-  court_registration.py  per-shot court mapping, model pick, user corrections
+  court_registration.py  per-shot court mapping, model pick, line evidence, user corrections
+  court_lines.py      court fitted to painted lines (background plate), focal length from the net tape
+  camera_motion.py    frame-to-frame camera motion (keyframe registration)
+  scorebug.py         point changes read from the on-screen score (rally and point-winner labels)
 scripts/            entry points (dataset build, evaluation, comparisons)
 webapp/             web app: FastAPI API + worker (backend/), React UI (frontend/); see webapp/README.md
 training/           training code: ball detector (WASB), action recognition, jersey numbers
@@ -108,7 +117,6 @@ data/datasets/      public datasets as downloaded + the training sets built from
 outputs/<topic>/    results of scripts and notebooks, one folder per topic:
                       ball/ court/ players/ actions/ rallies/ videos/ (rendered analyses)
 external/           third-party repositories, untouched
-trash/              files staged for deletion during a clean-up (review, then delete)
 ```
 A new result goes to `outputs/<topic>/<experiment>/`; a number worth keeping is written up in `docs/results/`.
 

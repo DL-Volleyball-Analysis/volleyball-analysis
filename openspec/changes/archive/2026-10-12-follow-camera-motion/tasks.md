@@ -12,4 +12,4 @@
 - [x] 3.1 Per-flight calibration and ball track in the flight's reference frame; tests
 
 ## 4. Evaluation
-- [ ] 4.1 Photometric check (still and panning clips) and Hawaii flights before / after; rerun the nine videos; results in docs/results
+- [x] 4.1 Photometric check (still and panning clips) and Hawaii flights before / after; rerun the nine videos; results in docs/results

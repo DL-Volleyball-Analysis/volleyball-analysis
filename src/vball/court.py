@@ -19,7 +19,6 @@ LINES = {
     "attack_a": ((NET_X - ATTACK_LINE_OFFSET, 0), (NET_X - ATTACK_LINE_OFFSET, WIDTH)),
     "attack_b": ((NET_X + ATTACK_LINE_OFFSET, 0), (NET_X + ATTACK_LINE_OFFSET, WIDTH)),
 }
-CORNERS = np.float32([[0, 0], [LENGTH, 0], [LENGTH, WIDTH], [0, WIDTH]])
 
 
 def to_image(H, pts) -> np.ndarray:
@@ -32,11 +31,6 @@ def to_court(H, pts) -> np.ndarray:
 
 def side_of_net(x_m: float) -> str:
     return "a" if x_m < NET_X else "b"
-
-
-def is_in(x_m: float, y_m: float, margin_m: float = 0.0) -> bool:
-    """Ball landing in/out; lines are part of the court, so allow a small margin."""
-    return -margin_m <= x_m <= LENGTH + margin_m and -margin_m <= y_m <= WIDTH + margin_m
 
 
 def draw(img, H, color=(0, 255, 255), thickness=3):

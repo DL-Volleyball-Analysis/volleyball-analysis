@@ -15,7 +15,6 @@ of the top `top_n` frames, so a single noisy frame neither creates nor erases an
     s = player_scores(detections, boxes, ball=ball_per_frame)   # {player: (frames, actions)}, ball-weighted
     s = combine(s, top_n=3)                                     # {player: (actions,)}
     labels = decide(s, threshold)                               # {player: action or None}
-    (with_ball weights already combined scores with one ball position)
 """
 from dataclasses import dataclass
 
@@ -80,13 +79,6 @@ def ball_prior(box: np.ndarray, xy: np.ndarray | None, cfg: ActorConfig = ActorC
     h = max(float(box[3] - box[1]), 1.0)
     p = np.exp(-(box_distance(box, xy) / (cfg.k * h)) ** 2)
     return float(cfg.floor + (1 - cfg.floor) * p)
-
-
-def with_ball(scores: dict[int, np.ndarray], boxes: dict[int, np.ndarray], ball_xy: np.ndarray | None,
-              cfg: ActorConfig = ActorConfig()) -> dict[int, np.ndarray]:
-    """Scores weighted by each player's prior at the ball (players without a box keep their scores)."""
-    return {p: s * (ball_prior(np.asarray(boxes[p], float), ball_xy, cfg) if p in boxes else 1.0)
-            for p, s in scores.items()}
 
 
 def decide(scores: dict[int, np.ndarray], threshold: float = ActorConfig().threshold) -> dict[int, int | None]:
