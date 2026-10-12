@@ -303,6 +303,29 @@ def implausible(f: "FlightFit", positions: np.ndarray, cfg: FlightConfig = Fligh
     return None
 
 
+def reconstruct_flight(cam: Camera, uv: np.ndarray, fl: Flight, fps: float, cfg: FlightConfig = FlightConfig(),
+                       rejected: list | None = None, players_at=None) -> dict | None:
+    """Fit one flight found by `segment`; None (and its (start, end, reason) appended to `rejected`) when it has no
+    fit or the fit is physically impossible."""
+    uv = np.asarray(uv, float)
+    try:
+        pat = {"start": players_at(fl.start), "end": players_at(fl.end)} if players_at else None
+        f = fit(cam, uv, fl, fps, cfg, players_at=pat)
+    except ValueError as e:  # no starting point (a camera whose rays miss the court heights)
+        if rejected is not None:
+            rejected.append((fl.start, fl.end, str(e)))
+        return None
+    frames = np.arange(fl.start, fl.end + 1)
+    positions = f.at(frames)
+    why = implausible(f, positions, cfg)
+    if why:
+        if rejected is not None:
+            rejected.append((fl.start, fl.end, why))
+        return None
+    return {"fit": f, "frames": frames, "positions": positions,
+            "observed": ~np.isnan(uv[frames]).any(axis=1), "derived": f.derived()}
+
+
 def reconstruct(cam: Camera, uv: np.ndarray, fps: float, cfg: FlightConfig = FlightConfig(),
                 rejected: list | None = None, players_at=None) -> list[dict]:
     """Segment a track and fit every flight. Each item: the fit, positions for every frame of the
@@ -312,20 +335,7 @@ def reconstruct(cam: Camera, uv: np.ndarray, fps: float, cfg: FlightConfig = Fli
     uv = np.asarray(uv, float)
     out = []
     for fl in segment(uv, cfg):
-        try:
-            pat = {"start": players_at(fl.start), "end": players_at(fl.end)} if players_at else None
-            f = fit(cam, uv, fl, fps, cfg, players_at=pat)
-        except ValueError as e:  # no starting point (a camera whose rays miss the court heights)
-            if rejected is not None:
-                rejected.append((fl.start, fl.end, str(e)))
-            continue
-        frames = np.arange(fl.start, fl.end + 1)
-        positions = f.at(frames)
-        why = implausible(f, positions, cfg)
-        if why:
-            if rejected is not None:
-                rejected.append((fl.start, fl.end, why))
-            continue
-        out.append({"fit": f, "frames": frames, "positions": positions,
-                    "observed": ~np.isnan(uv[frames]).any(axis=1), "derived": f.derived()})
+        rec = reconstruct_flight(cam, uv, fl, fps, cfg, rejected, players_at)
+        if rec is not None:
+            out.append(rec)
     return out

@@ -218,3 +218,59 @@ def test_a_near_half_correction_for_a_camera_behind_the_end_line():
     c = np.array(s["corners_px"])
     assert c[:, 1].min() < 680  # the far end line lies beyond the centre line, higher in the image
     assert np.allclose(np.array(s["keypoints"])[[2, 7, 9, 0], :2], pts)
+
+
+# --- camera motion (change follow-camera-motion) ---
+
+def shifting(n: int, dx: float = -3.0):
+    """Camera motion where the image moves dx px per frame (a pan), as vball.camera_motion.Motion."""
+    from vball.camera_motion import Motion
+    step = np.array([[1, 0, dx], [0, 1, 0], [0, 0, 1.0]])
+    return Motion(np.stack([np.eye(3)] + [step] * (n - 1)))
+
+
+def panned(f, dx=-3.0):
+    kp = keypoints()
+    kp[:, 0] += dx * f
+    return kp
+
+
+def test_motion_compensated_smoothing_keeps_a_fast_pan_and_removes_a_jump():
+    frames = list(range(0, 90, 6))
+    pan = [TRUE_CORNERS + [-3.0 * f, 0] for f in frames]
+    jumpy = list(pan)
+    jumpy[2] = pan[2] + [150, 0]
+    out = smooth_corners(jumpy, frames=frames, motion=shifting(90))
+    assert all(np.abs(o - p).max() < 1e-6 for o, p in zip(out, pan))
+
+
+def test_missed_samples_are_filled_with_the_court_moved_by_the_camera():
+    motion = shifting(91)
+    missed = {30, 36, 42}
+    loose = {**CONFIG, "review_consistency": 1.0}  # a shifted image is no pinhole camera; the net check does not apply
+    shot = register_shot(0, 90, 30.0, SIZE, lambda f: np.zeros((14, 3)) if f in missed else panned(f), loose, motion)
+    by_frame = {s["frame"]: s for s in shot["samples"]}
+    assert shot["status"] == "ok" and shot["filled"] == 3
+    for f in missed:
+        assert by_frame[f]["filled"]
+        assert np.abs(np.array(by_frame[f]["corners_px"]) - (TRUE_CORNERS + [-3.0 * f, 0])).max() < 1.0
+    without = register_shot(0, 90, 30.0, SIZE, lambda f: np.zeros((14, 3)) if f in missed else panned(f), loose)
+    assert without["filled"] == 0 and len(without["samples"]) == len(shot["samples"]) - 3
+
+
+def test_samples_are_not_filled_from_far_away():
+    shot = register_shot(0, 600, 30.0, SIZE, lambda f: panned(f) if f < 60 else np.zeros((14, 3)), motion=shifting(601),
+                         config={**CONFIG, "min_valid_share": 0.0})
+    assert max(s["frame"] for s in shot["samples"]) <= 54 + 5 * 30
+
+
+def test_a_correction_follows_a_panning_camera():
+    from vball.court_registration import apply_corrections
+    corners = np.array([[600, 300], [1320, 300], [1700, 800], [220, 800]], float)
+    court = {"status": "done", "shots": [{"start_frame": 0, "end_frame": 90, "status": "failed", "error": None, "samples": []}]}
+    out = apply_corrections(court, [{"shot": 0, "frame": 30, "points_px": corners.tolist()}], SIZE, motion=shifting(91), fps=30.0)
+    assert np.abs(corners_at(out, 60) - (corners + [-90.0, 0])).max() < 1e-6
+    assert np.abs(corners_at(out, 0) - (corners + [90.0, 0])).max() < 1e-6
+    kp30 = np.array(next(s for s in out["shots"][0]["samples"] if s["frame"] == 30)["keypoints"])
+    kp60 = np.array(next(s for s in out["shots"][0]["samples"] if s["frame"] == 60)["keypoints"])
+    assert np.allclose(kp60[:, :2], kp30[:, :2] + [-90.0, 0])  # net points move too

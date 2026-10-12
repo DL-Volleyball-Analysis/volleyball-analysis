@@ -21,6 +21,7 @@ This PRD answers *why, for whom, and what counts as success*. How the system mus
 | [ball-and-actors.md](ball-and-actors.md) | ball detection and actor attribution measured on labelled volleyball data |
 | [rally-detection.md](rally-detection.md) | rally (play / no play) detection measured on labelled full matches |
 | [ball-detector.md](ball-detector.md) | a ball detector trained for broadcast and gym footage on public labelled data |
+| [moving-camera.md](moving-camera.md) | court, corrections and 3D that follow a panning and zooming camera |
 
 Background: analysis of the capstone web app in [`docs/webapp_redesign.md`](../webapp_redesign.md); organisation-wide repo plan in [`docs/repo-organization.md`](../repo-organization.md).
 

@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from vball import actions, actors, ball, court_registration, jersey, players, teams, trajectory
+from vball import actions, actors, ball, camera_motion, court_registration, jersey, players, teams, trajectory
 from vball import rallies as vrallies
 from vball.calibration import calibrate
 from vball.court_keypoints import detect as detect_keypoints
@@ -42,6 +42,7 @@ ACTION_FPS, JERSEY_FPS = 10.0, 2.0
 GENERAL_PLAYER_MODEL = MODELS / "yolo26s.pt"  # COCO persons: fallback where the player-only detector misses players
 PLAYER_CFG = players.TrackerConfig(model=str(MODELS / "player_yolo26s_sportsmot.pt"), imgsz=960, tracker="botsort.yaml", det_fps=10.0)
 
+MOTION_FILE = "camera_motion.npz"
 SHOT_CUT_CORRELATION = 0.6  # HSV histogram correlation below this between frames = camera cut
 
 
@@ -60,25 +61,43 @@ def video_meta(path: Path) -> dict:
 
 
 def decode(video: Path, out: Path, prev: dict, tick) -> dict:
-    """Metadata and camera shots; the court homography is estimated per shot."""
+    """Metadata, camera shots and camera motion (vball.camera_motion, saved to camera_motion.npz); the court
+    homography is estimated per shot and follows the motion within it."""
     meta = video_meta(video)
     cap = cv2.VideoCapture(str(video))
-    cuts, last, i = [0], None, 0
-    while cap.grab():
-        ok, frame = cap.retrieve()
-        if not ok:
-            break
-        hsv = cv2.cvtColor(cv2.resize(frame, (160, 90)), cv2.COLOR_BGR2HSV)
-        h = cv2.normalize(cv2.calcHist([hsv], [0, 1], None, [16, 8], [0, 180, 0, 256]), None).ravel()
-        if last is not None and cv2.compareHist(last, h, cv2.HISTCMP_CORREL) < SHOT_CUT_CORRELATION:
-            cuts.append(i)
-        last, i = h, i + 1
-        if i % 200 == 0 and meta["frames"]:
-            tick(i / meta["frames"])
+    cuts, last = [0], None
+
+    def frames():
+        nonlocal last
+        i = 0
+        while cap.grab():
+            ok, frame = cap.retrieve()
+            if not ok:
+                break
+            hsv = cv2.cvtColor(cv2.resize(frame, (160, 90)), cv2.COLOR_BGR2HSV)
+            h = cv2.normalize(cv2.calcHist([hsv], [0, 1], None, [16, 8], [0, 180, 0, 256]), None).ravel()
+            if last is not None and cv2.compareHist(last, h, cv2.HISTCMP_CORREL) < SHOT_CUT_CORRELATION:
+                cuts.append(i)
+            last, i = h, i + 1
+            if i % 200 == 0 and meta["frames"]:
+                tick(i / meta["frames"])
+            yield frame
+
+    steps, share = camera_motion.estimate(frames())
     cap.release()
-    meta["frames"] = i  # container frame counts can be off; trust the decoded count
-    shots = [{"start_frame": a, "end_frame": b - 1} for a, b in zip(cuts, cuts[1:] + [i])]
-    return {"status": "done", **meta, "shots": shots}
+    n = len(steps) if last is not None else 0
+    for c in cuts[1:]:  # no motion across a cut
+        steps[c], share[c] = np.eye(3), 0.0
+    if n:
+        camera_motion.save(out / MOTION_FILE, steps, share)
+    meta["frames"] = n  # container frame counts can be off; trust the decoded count
+    shots = [{"start_frame": a, "end_frame": b - 1} for a, b in zip(cuts, cuts[1:] + [n])]
+    return {"status": "done", **meta, "shots": shots, "motion": MOTION_FILE if n else None,
+            "motion_share": round(float(np.median(share[1:])), 3) if n > 1 else None}
+
+
+def motion_of(out: Path) -> camera_motion.Motion | None:
+    return camera_motion.load(out / MOTION_FILE)
 
 
 def court_detector(weights: Path):
@@ -101,6 +120,7 @@ def court(video: Path, out: Path, prev: dict, tick) -> dict:
     shots = meta.get("shots") or [{"start_frame": 0, "end_frame": max(0, (meta.get("frames") or 1) - 1)}]
     wanted = sorted({f for sh in shots for f in court_registration.sample_frames(sh["start_frame"], sh["end_frame"], fps)})
     detectors = {name: court_detector(path) for name, path in models.items()}
+    motion = motion_of(out)
     # one sequential pass: decode only the sampled frames, every model on each
     keypoints, cap, i, k = {name: {} for name in models}, cv2.VideoCapture(str(video)), 0, 0
     while k < len(wanted) and cap.grab():
@@ -116,7 +136,7 @@ def court(video: Path, out: Path, prev: dict, tick) -> dict:
     cap.release()
     empty = np.zeros((14, 3))
     registered = court_registration.pick({
-        name: court_registration.register(shots, fps, size, lambda f, kp=kp: kp.get(f, empty))
+        name: court_registration.register(shots, fps, size, lambda f, kp=kp: kp.get(f, empty), motion=motion)
         for name, kp in keypoints.items()})
     counts = {st: sum(r["status"] == st for r in registered) for st in ("ok", "needs_review", "failed")}
     res = {"status": "done", "models": {name: path.name for name, path in models.items()}, "shots": registered,
@@ -371,12 +391,41 @@ def ball_uv(out: Path, n_frames: int) -> np.ndarray:
     return uv
 
 
-def trajectory_stage(video: Path, out: Path, prev: dict, tick) -> dict:
-    """3D flights per camera shot that has a usable camera calibration.
+def flight_camera(court_result: dict, frame: int, size: tuple[int, int], motion, tries: int = 5):
+    """(calibration, reason) for the camera at a frame: the court samples nearest the frame, their keypoints moved
+    to it by the camera motion, the first that calibrates."""
+    reason = "no court keypoints for calibration"
+    for sample in court_registration.calibration_samples(court_result, frame, frame)[:tries]:
+        kp = np.array(sample.get("keypoints") or [], float)
+        if kp.shape != (14, 3):
+            continue
+        kp = court_registration.warp_keypoints(motion, sample["frame"], frame, kp)
+        xy = np.where(kp[:, 2:3] >= 0.5, kp[:, :2], np.nan)  # unconfident keypoints count as unseen
+        c = calibrate(xy, size)
+        if c.status != "unusable":
+            return c, None
+        reason = c.reason
+    return None, reason
 
-    The calibration comes from the court stage's samples (raw keypoints, net points included): the first
-    usable one, nearest the middle of the shot. Writes flights.json: per flight its frames, ballistic
-    parameters, quality and derived values."""
+
+def to_frame(motion, uv: np.ndarray, first: int, frames, ref: int) -> np.ndarray:
+    """Ball positions uv (rows = frames from `first`) of the given frames moved to frame ref's image."""
+    out = uv.copy()
+    if motion is None:
+        return out
+    for f in frames:
+        if np.isfinite(out[f]).all():
+            out[f] = motion.warp(first + f, ref, out[f])[0]
+    return out
+
+
+def trajectory_stage(video: Path, out: Path, prev: dict, tick) -> dict:
+    """3D flights in camera shots with a usable court, each flight with the camera of its own middle frame.
+
+    With camera motion (decode stage), flights are found on the shot's ball track moved to the shot's first frame
+    (a pan is not ball motion), and each flight is fitted in its middle frame's image: the ball positions and the
+    nearest court sample's keypoints (net points included) are moved there and calibrated (vball.calibration).
+    Writes flights.json: per flight its frames, ballistic parameters, quality and derived values."""
     meta = prev["decode"]
     n, fps, size = meta.get("frames") or 0, meta.get("fps") or 30.0, (meta.get("width"), meta.get("height"))
     court_result = prev.get("court") or {}
@@ -386,6 +435,7 @@ def trajectory_stage(video: Path, out: Path, prev: dict, tick) -> dict:
         return {"status": "done", "flights": 0, "calibrated_shots": 0,
                 "message": "The camera could not be calibrated because the court was not found, so there are no 3D flights."}
     uv = ball_uv(out, n)
+    motion = motion_of(out)
     # players placed on court, per frame: anchors for the touches (change constrain-3d-flights)
     placed = {}
     if (out / "players.csv.gz").exists():
@@ -393,35 +443,40 @@ def trajectory_stage(video: Path, out: Path, prev: dict, tick) -> dict:
         if "placed" in p and p["placed"].any():
             p = p[p["placed"].astype(bool) & ((p["role"] == "player") if "role" in p else True)]
             placed = {int(f): g[["court_x", "court_y"]].to_numpy(float) for f, g in p.groupby("frame")}
-    flights, unusable, rejected = [], [], []
+    flights, unusable, rejected, uncalibrated, calibrated = [], [], [], 0, 0
     for k, shot in enumerate(shots):
         tick(k / len(shots))
-        cal, reason = None, "no court keypoints for calibration"
-        for sample in court_registration.calibration_samples(court_result, shot["start_frame"], shot["end_frame"]):
-            kp = np.array(sample.get("keypoints") or [], float)
-            if kp.shape != (14, 3):
-                continue
-            xy = np.where(kp[:, 2:3] >= 0.5, kp[:, :2], np.nan)  # unconfident keypoints count as unseen
-            c = calibrate(xy, size)
-            if c.status != "unusable":
-                cal = c
-                break
-            reason = c.reason
-        if cal is None:
-            unusable.append(reason)
-            continue
         a, b = shot["start_frame"], shot["end_frame"]
-        for rec in trajectory.reconstruct(cal.camera, uv[a:b + 1], fps, rejected=rejected,
-                                          players_at=lambda f, a=a: placed.get(a + f)):
+        track = uv[a:b + 1]
+        found, reason = trajectory.segment(to_frame(motion, track, a, range(len(track)), a)), None
+        cams = {}
+        for fl in found:
+            ref = a + (fl.start + fl.end) // 2
+            key = ref if motion is not None else None  # without motion the nearest sample is the camera of the shot
+            if key not in cams:
+                cams[key] = flight_camera(court_result, ref, size, motion)
+            cal, why = cams[key]
+            if cal is None:
+                uncalibrated, reason = uncalibrated + 1, why
+                continue
+            rec = trajectory.reconstruct_flight(cal.camera, to_frame(motion, track, a, range(fl.start, fl.end + 1), ref),
+                                                fl, fps, rejected=rejected, players_at=lambda f, a=a: placed.get(a + f))
+            if rec is None:
+                continue
             f = rec["fit"]
             flights.append({"start_frame": a + f.start, "end_frame": a + f.end, "p0": f.p0.tolist(), "v0": f.v0.tolist(),
                             "fit_px": f.fit_px, "depth_sd_m": f.depth_sd_m, "quality": f.quality, "reasons": f.reasons,
                             "derived": rec["derived"], "calibration": cal.status, "dropped": f.dropped,
-                            "anchors": f.anchors})
+                            "anchors": f.anchors, "camera_frame": ref})
+        if any(c for c, _ in cams.values()):
+            calibrated += 1
+        elif found:
+            unusable.append(reason)
     (out / "flights.json").write_text(json.dumps(flights))
-    res = {"status": "done", "flights": len(flights), "calibrated_shots": len(shots) - len(unusable),
+    res = {"status": "done", "flights": len(flights), "calibrated_shots": calibrated,
            "low_quality": sum(f["quality"] == "low" for f in flights), "rejected": len(rejected),
-           "anchored": sum(bool(f["anchors"]) for f in flights)}
+           "anchored": sum(bool(f["anchors"]) for f in flights), "uncalibrated": uncalibrated,
+           "motion": motion is not None}
     notes = []
     if unusable:
         notes.append(f"{len(unusable)} of {len(shots)} camera shots could not be calibrated ({unusable[0]}).")
@@ -466,9 +521,9 @@ def rallies(video: Path, out: Path, prev: dict, tick) -> dict:
 FUNCS = {"decode": decode, "court": court, "ball": ball_stage, "players": players_stage, "actions": actions_stage,
          "trajectory": trajectory_stage, "events": events, "rallies": rallies}
 # players -4: the general detector where the player-only one misses players
-VERSIONS = {"decode": "1", "court": "2", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-4",
+VERSIONS = {"decode": "2", "court": "3", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-4",
             "actions": "3",  # 3: per-player classifier + ball prior
-            "trajectory": "3", "events": "0.3", "rallies": "1"}  # rallies 1: detected from cues
+            "trajectory": "4", "events": "0.3", "rallies": "1"}  # rallies 1: detected from cues
 
 
 def stage_file(results: Path, stage: str) -> Path:
@@ -480,11 +535,14 @@ def load_stage(results: Path, stage: str) -> dict | None:
     return json.loads(f.read_text()) if f.exists() else None
 
 
-def corrected_court(court: dict | None, decode: dict | None, corrections: list[dict]) -> dict | None:
-    """The court stage result with the user's corrections overlaid (never written to court.json)."""
+def corrected_court(court: dict | None, decode: dict | None, corrections: list[dict], results: Path | None = None) -> dict | None:
+    """The court stage result with the user's corrections overlaid (never written to court.json). With the results
+    folder, a correction follows the camera motion through its shot."""
     if not corrections or not court or court.get("status") != "done" or not decode:
         return court
-    return court_registration.apply_corrections(court, corrections, (decode["width"], decode["height"]))
+    motion = motion_of(results) if results is not None else None
+    return court_registration.apply_corrections(court, corrections, (decode["width"], decode["height"]),
+                                                motion=motion, fps=decode.get("fps"))
 
 
 def run(video: Path, results: Path, from_stage: str = "decode",
@@ -509,7 +567,7 @@ def run(video: Path, results: Path, from_stage: str = "decode",
             stage_file(results, stage).write_text(json.dumps(res))
             cached = res
         if stage == "court" and court_corrections is not None:
-            cached = corrected_court(cached, out.get("decode"), court_corrections())
+            cached = corrected_court(cached, out.get("decode"), court_corrections(), results)
         out[stage] = cached
         done_weight += WEIGHTS[stage]
         on_progress(stage, done_weight)
