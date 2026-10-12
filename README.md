@@ -59,11 +59,12 @@ Every number comes from a script and a labelled split, or is named a proxy or sy
 
 ## Review app
 
-<img src="docs/assets/review-app.jpg" alt="Match review app: video with ball trail, rally list, rally details and timeline">
+<img src="docs/assets/review-app.jpg" alt="Match review app on a fixed end-line clip: court lines and players on the video, rally list, rally details and timeline">
 
-<sub>Match review (React + FastAPI, <a href="webapp/README.md">webapp/</a>): video with overlays, rally list and
-details, timeline lanes for rallies, ball, landings and review flags. Rallies come from the rally detector where the
-footage is like its training data; elsewhere the stage says why it cannot tell them.</sub>
+<sub>Match review (React + FastAPI, <a href="webapp/README.md">webapp/</a>) on a fixed end-line clip: the court
+fitted to the painted lines and the tracked players on the video, rally details and list, timeline lanes for rallies,
+ball, actions and tags. The rallies here come from the broadcast-trained rally model, which is not yet accurate on
+fixed cameras (a fixed-camera model is in progress). Footage: NCAA men's volleyball (VolleyballWatchdog), research use.</sub>
 
 <img src="docs/assets/boards-and-stats.png" alt="2D and 3D tactics boards and a player statistics table">
 
