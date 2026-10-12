@@ -321,3 +321,12 @@ def test_line_evidence_on_a_plate_replaces_a_squeezed_court():
     empty = with_line_evidence(register_shot(0, 60, 30.0, SIZE, lambda f: np.zeros((14, 3))),
                                np.full_like(plate, 120), 30.0, SIZE)
     assert empty["source"] == "keypoints" and empty["lines"] is None and empty["status"] == "failed"
+
+
+def test_still_shots_can_be_sampled_once_a_second():
+    from vball.court_registration import STILL_SAMPLE_FPS, register
+    shot = register_shot(0, 90, 30.0, SIZE, lambda f: keypoints(), rate=STILL_SAMPLE_FPS)
+    assert [s["frame"] for s in shot["samples"]] == [0, 30, 60, 90] and shot["status"] == "ok"
+    both = register([{"start_frame": 0, "end_frame": 90}, {"start_frame": 91, "end_frame": 181}], 30.0, SIZE,
+                    lambda f: keypoints(), rates=[STILL_SAMPLE_FPS, 5.0])
+    assert len(both[0]["samples"]) == 4 and len(both[1]["samples"]) == 16

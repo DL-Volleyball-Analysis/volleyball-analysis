@@ -44,6 +44,32 @@ def ball_summary(points: list, fps: float, width: int) -> tuple[float, float]:
     return len(seen) / len(points), float(np.median(speeds)) if speeds else 0.0
 
 
+def quick_check(video: Path, n: int = 30, device=None) -> pd.DataFrame:
+    """Cues on n frames spread over the video (court model and player detector only; motion and ball columns 0):
+    enough for `rallies.outside_training` to tell out-of-training footage without a full pass (change
+    speed-up-analysis)."""
+    from ultralytics import YOLO
+    court = YOLO(str(COURT_MODEL))
+    court_sz = int((court.overrides or {}).get("imgsz", 1280))
+    players = YOLO(str(PLAYER_MODEL))
+    cap = cv2.VideoCapture(str(video))
+    fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+    total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    rows = []
+    for f in np.unique(np.linspace(0, max(total - 1, 0), n).astype(int)):
+        cap.set(cv2.CAP_PROP_POS_FRAMES, int(f))
+        ok, frame = cap.read()
+        if not ok:
+            continue
+        kp = detect_court(court, frame, court_sz)
+        r = players(frame, imgsz=960, conf=0.25, verbose=False, device=device)[0]
+        rows.append([round(f / fps, 3), round(float(kp[:10, 2].mean()), 4),
+                     int(fit_homography(kp, (frame.shape[1], frame.shape[0])) is not None),
+                     0 if r.boxes is None else len(r.boxes), 0.0, 0.0, 0.0])
+    cap.release()
+    return pd.DataFrame(rows, columns=COLUMNS)
+
+
 def cues(video: Path, rate: float = 5.0, device=None, tick=lambda frac: None) -> tuple[pd.DataFrame, float, int]:
     """(cues per sample, fps, frames) for a video."""
     from ultralytics import YOLO

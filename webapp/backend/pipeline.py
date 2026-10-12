@@ -119,9 +119,12 @@ def court(video: Path, out: Path, prev: dict, tick) -> dict:
     meta = prev["decode"]
     fps, size = meta.get("fps") or 30.0, (meta.get("width"), meta.get("height"))
     shots = meta.get("shots") or [{"start_frame": 0, "end_frame": max(0, (meta.get("frames") or 1) - 1)}]
-    wanted = sorted({f for sh in shots for f in court_registration.sample_frames(sh["start_frame"], sh["end_frame"], fps)})
-    detectors = {name: court_detector(path) for name, path in models.items()}
     motion = motion_of(out)
+    # still shots need fewer keypoint samples: their court does not move and line evidence decides (speed-up-analysis)
+    rates = [court_registration.STILL_SAMPLE_FPS if court_registration.still(motion, sh["start_frame"], sh["end_frame"], size)
+             else court_registration.SAMPLE_FPS for sh in shots]
+    wanted = sorted({f for sh, r in zip(shots, rates) for f in court_registration.sample_frames(sh["start_frame"], sh["end_frame"], fps, r)})
+    detectors = {name: court_detector(path) for name, path in models.items()}
     # one sequential pass: decode only the sampled frames, every model on each
     keypoints, cap, i, k = {name: {} for name in models}, cv2.VideoCapture(str(video)), 0, 0
     while k < len(wanted) and cap.grab():
@@ -137,10 +140,10 @@ def court(video: Path, out: Path, prev: dict, tick) -> dict:
     cap.release()
     empty = np.zeros((14, 3))
     registered = court_registration.pick({
-        name: court_registration.register(shots, fps, size, lambda f, kp=kp: kp.get(f, empty), motion=motion)
+        name: court_registration.register(shots, fps, size, lambda f, kp=kp: kp.get(f, empty), motion=motion, rates=rates)
         for name, kp in keypoints.items()})
     for k, shot in enumerate(registered):  # still shots: line evidence on the background plate decides
-        if court_registration.still(motion, shot["start_frame"], shot["end_frame"], size):
+        if rates[k] == court_registration.STILL_SAMPLE_FPS:
             plate = court_lines.background_plate(video, shot["start_frame"], shot["end_frame"])
             if plate is not None:
                 registered[k] = court_registration.with_line_evidence(shot, plate, fps, size)
@@ -456,9 +459,11 @@ def trajectory_stage(video: Path, out: Path, prev: dict, tick) -> dict:
         track = uv[a:b + 1]
         found, reason = trajectory.segment(to_frame(motion, track, a, range(len(track)), a)), None
         cams = {}
+        # one camera for the whole shot without motion or with a still camera (speed-up-analysis); else per flight
+        moving = motion is not None and not court_registration.still(motion, a, b, size)
         for fl in found:
             ref = a + (fl.start + fl.end) // 2
-            key = ref if motion is not None else None  # without motion the nearest sample is the camera of the shot
+            key = ref if moving else None
             if key not in cams:
                 cams[key] = flight_camera(court_result, ref, size, motion)
             cal, why = cams[key]
@@ -505,13 +510,23 @@ def rally_cues(video: Path, tick):
     return df
 
 
+def rally_quick_check(video: Path):
+    """Cues on 30 frames spread over the video (vball.rally_cues.quick_check). Tests replace this function."""
+    from vball.rally_cues import quick_check
+    return quick_check(video)
+
+
 def rallies(video: Path, out: Path, prev: dict, tick) -> dict:
     """Rallies (start, end, confidence) from the system's cues with the trained rally model (docs/results/rallies.md).
     Winners stay a user decision until landing calls exist; the worker writes the rallies to the database."""
     if not RALLY_MODEL.exists():
         return {"status": "unavailable", "message": "The rally model is not installed."}
-    cues = rally_cues(video, tick)
-    why = vrallies.outside_training(cues) if cues is not None else None
+    quick = rally_quick_check(video)  # out-of-training footage is told from a few frames (speed-up-analysis)
+    why = vrallies.outside_training(quick) if quick is not None and len(quick) else None
+    cues = None
+    if not why:
+        cues = rally_cues(video, tick)
+        why = vrallies.outside_training(cues) if cues is not None else None
     if why:
         return {"status": "unavailable",
                 "message": f"Rallies cannot be told on this footage: {why}. The rally model was trained on broadcast "
@@ -527,9 +542,9 @@ def rallies(video: Path, out: Path, prev: dict, tick) -> dict:
 FUNCS = {"decode": decode, "court": court, "ball": ball_stage, "players": players_stage, "actions": actions_stage,
          "trajectory": trajectory_stage, "events": events, "rallies": rallies}
 # players -4: the general detector where the player-only one misses players
-VERSIONS = {"decode": "2", "court": "5", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-4",
+VERSIONS = {"decode": "2", "court": "6", "ball": f"{BALL_MODEL}-1", "players": f"{PLAYER_CFG.label()}-4",
             "actions": "3",  # 3: per-player classifier + ball prior
-            "trajectory": "4", "events": "0.3", "rallies": "1"}  # rallies 1: detected from cues
+            "trajectory": "5", "events": "0.3", "rallies": "2"}  # rallies 1: detected from cues; 2: quick check first
 
 
 def stage_file(results: Path, stage: str) -> Path:

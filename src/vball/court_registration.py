@@ -54,6 +54,7 @@ from .court_keypoints import (
 )
 
 SAMPLE_FPS = 5.0
+STILL_SAMPLE_FPS = 1.0  # still shots (change speed-up-analysis): the court does not move, line evidence decides
 SMOOTH_WINDOW = 5
 MAX_FILL_S = 5.0  # a sample without a court borrows the nearest detected one, moved by the camera motion
 CONFIG = {
@@ -156,10 +157,12 @@ def consistency_px(keypoints: np.ndarray, image_size: tuple[int, int]) -> float 
 
 
 def register_shot(start: int, end: int, fps: float, image_size: tuple[int, int],
-                  keypoints_at: Callable[[int], np.ndarray], config: dict = CONFIG, motion=None) -> dict:
-    """Register one shot. keypoints_at(frame) -> 14 x (x, y, conf) for a sampled frame. With camera motion
-    (vball.camera_motion.Motion), smoothing is motion-compensated and samples without a court are filled."""
-    frames = sample_frames(start, end, fps)
+                  keypoints_at: Callable[[int], np.ndarray], config: dict = CONFIG, motion=None,
+                  rate: float = SAMPLE_FPS) -> dict:
+    """Register one shot from samples at `rate` per second. keypoints_at(frame) -> 14 x (x, y, conf) for a sampled
+    frame. With camera motion (vball.camera_motion.Motion), smoothing is motion-compensated and samples without a
+    court are filled."""
+    frames = sample_frames(start, end, fps, rate)
     valid = []
     for f in frames:
         kp = np.asarray(keypoints_at(f), float)
@@ -191,10 +194,12 @@ def register_shot(start: int, end: int, fps: float, image_size: tuple[int, int],
 
 def register(shots: Iterable[dict], fps: float, image_size: tuple[int, int],
              keypoints_at: Callable[[int], np.ndarray], config: dict = CONFIG,
-             on_shot: Callable[[int], None] = lambda k: None, motion=None) -> list[dict]:
+             on_shot: Callable[[int], None] = lambda k: None, motion=None, rates: list[float] | None = None) -> list[dict]:
+    """Register every shot; rates: samples per second per shot (default SAMPLE_FPS)."""
     out = []
     for k, s in enumerate(shots):
-        out.append(register_shot(s["start_frame"], s["end_frame"], fps, image_size, keypoints_at, config, motion))
+        rate = rates[k] if rates is not None else SAMPLE_FPS
+        out.append(register_shot(s["start_frame"], s["end_frame"], fps, image_size, keypoints_at, config, motion, rate))
         on_shot(k)
     return out
 
