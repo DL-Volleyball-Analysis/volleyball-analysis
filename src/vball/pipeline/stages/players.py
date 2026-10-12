@@ -1,4 +1,5 @@
 """Players: detection, tracking, court positions and roles."""
+
 from dataclasses import replace
 from pathlib import Path
 
@@ -24,11 +25,17 @@ def choose_player_detector(video: Path, n_frames: int, samples: int = 8) -> tupl
     cap.release()
     spec = models.person_counts(config.PLAYER_CFG.model, picks, config.PLAYER_CFG.imgsz)
     gen = models.person_counts(str(config.GENERAL_PLAYER_MODEL), picks, config.PLAYER_CFG.imgsz)
-    info = {"player_only_median": float(np.median(spec)) if spec else 0.0, "general_median": float(np.median(gen)) if gen else 0.0}
+    info = {
+        "player_only_median": float(np.median(spec)) if spec else 0.0,
+        "general_median": float(np.median(gen)) if gen else 0.0,
+    }
     if spec and gen and players.prefer_generalist(spec, gen):
         cfg = replace(config.PLAYER_CFG, model=str(config.GENERAL_PLAYER_MODEL))
-        return cfg, {**info, "model": Path(cfg.model).stem,
-                     "reason": "the player-only detector found too few people on this footage"}
+        return cfg, {
+            **info,
+            "model": Path(cfg.model).stem,
+            "reason": "the player-only detector found too few people on this footage",
+        }
     return config.PLAYER_CFG, {**info, "model": Path(config.PLAYER_CFG.model).stem, "reason": "player-only detector"}
 
 
@@ -57,9 +64,15 @@ def run(video: Path, out: Path, prev: dict, tick) -> dict:
     df.to_csv(out / "players.csv.gz", index=False, float_format="%.2f")
     placed = bool(df["placed"].any()) if len(df) else False
     others = df.loc[df["role"] == "other", "track_id"].nunique() if len(df) else 0
-    res = {"status": "done", "model": cfg.label(), "detector_choice": choice,
-           "tracks": int(df["track_id"].nunique()) if len(df) else 0,
-           "rows": int(len(df)), "placed": placed, "other_tracks": int(others)}
+    res = {
+        "status": "done",
+        "model": cfg.label(),
+        "detector_choice": choice,
+        "tracks": int(df["track_id"].nunique()) if len(df) else 0,
+        "rows": int(len(df)),
+        "placed": placed,
+        "other_tracks": int(others),
+    }
     if not placed:
         res["message"] = "The court was not found, so everyone in view is kept and no court positions are given."
     return res

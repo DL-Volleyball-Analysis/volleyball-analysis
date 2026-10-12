@@ -13,7 +13,7 @@ dependencies = ["numpy", "pandas", "scipy", "opencv-python-headless", "onnxrunti
 where = ["src"]
 
 [tool.ruff]
-line-length = 150  # the existing code wraps near 120 and never past 150
+line-length = 120  # ruff format wraps code here
 target-version = "py312"
 extend-exclude = ["external", "private", "webapp/frontend", "notebooks"]
 
@@ -25,6 +25,9 @@ ignore = ["B008", "B905"]  # B905: zips of equal-length sequences by constructio
 
 [tool.ruff.lint.isort]
 known-first-party = ["vball"]
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 150  # comments and strings the formatter cannot wrap
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "webapp/backend/tests"]

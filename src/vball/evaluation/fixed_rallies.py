@@ -14,6 +14,7 @@ Cues: `vball.rally_cues.stage_cues` (scripts/extract_stage_cues.py). Classifier 
   .venv/bin/python scripts/train_fixed_rallies.py --test-cues outputs/rallies/fixed_cues \\
       --test-labels outputs/rallies/score_labels [--save models/rally_fixed_hgb.joblib]
 """
+
 import json
 from pathlib import Path
 
@@ -53,9 +54,15 @@ def match_ends(rallies: list[tuple[float, float, float]], changes: list[float], 
     tp = len(used)
     p = tp / len(rallies) if rallies else 0.0
     r = tp / len(changes) if changes else 0.0
-    return {"detected": len(rallies), "points": len(changes), "matched": tp, "precision": round(p, 3),
-            "recall": round(r, 3), "f1": round(2 * p * r / (p + r), 3) if p + r else 0.0,
-            "median_delay_s": round(float(np.median(delays)), 2) if delays else None}
+    return {
+        "detected": len(rallies),
+        "points": len(changes),
+        "matched": tp,
+        "precision": round(p, 3),
+        "recall": round(r, 3),
+        "f1": round(2 * p * r / (p + r), 3) if p + r else 0.0,
+        "median_delay_s": round(float(np.median(delays)), 2) if delays else None,
+    }
 
 
 def load(cues_dir: Path, labels_dir: Path, min_read_share: float = MIN_READ_SHARE) -> dict:
@@ -80,6 +87,7 @@ def load(cues_dir: Path, labels_dir: Path, min_read_share: float = MIN_READ_SHAR
 
 def classifier():
     from sklearn.ensemble import HistGradientBoostingClassifier
+
     return HistGradientBoostingClassifier(max_iter=300, learning_rate=0.05, class_weight="balanced", random_state=0)
 
 
@@ -107,12 +115,24 @@ def evaluate(model, matches: dict, cfg: RallyConfig) -> dict:
     det = sum(v["detected"] for v in per.values())
     pts = sum(v["points"] for v in per.values())
     p, r = (tp / det if det else 0.0), (tp / pts if pts else 0.0)
-    return {"precision": round(p, 3), "recall": round(r, 3), "f1": round(2 * p * r / (p + r), 3) if p + r else 0.0,
-            "matched": tp, "detected": det, "points": pts, "per_match": per}
+    return {
+        "precision": round(p, 3),
+        "recall": round(r, 3),
+        "f1": round(2 * p * r / (p + r), 3) if p + r else 0.0,
+        "matched": tp,
+        "detected": det,
+        "points": pts,
+        "per_match": per,
+    }
 
 
-GRID = [RallyConfig(smooth_s=s, p_on=on, p_off=off, min_rally_s=m, min_gap_s=g)
-        for s in (1.0, 2.0) for on, off in ((0.5, 0.5), (0.6, 0.4), (0.7, 0.5)) for m in (2.0, 3.0, 4.0) for g in (0.5, 1.5)]
+GRID = [
+    RallyConfig(smooth_s=s, p_on=on, p_off=off, min_rally_s=m, min_gap_s=g)
+    for s in (1.0, 2.0)
+    for on, off in ((0.5, 0.5), (0.6, 0.4), (0.7, 0.5))
+    for m in (2.0, 3.0, 4.0)
+    for g in (0.5, 1.5)
+]
 
 
 def choose_config(train: dict) -> RallyConfig:

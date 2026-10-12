@@ -38,6 +38,7 @@ Camera motion (vball.camera_motion, change follow-camera-motion): smoothing move
 sample's frame before the median, and sampled frames without a court get the nearest detected court (at most
 MAX_FILL_S away) moved to them, marked `filled` (they do not count as valid for the shot status).
 """
+
 from collections.abc import Callable, Iterable
 
 import cv2
@@ -61,9 +62,9 @@ CONFIG = {
     "min_valid_samples": 2,
     "min_valid_share": 0.5,
     "review_consistency": 0.015,  # median net-point distance / image width (~29 px at 1080p): evaluation clips
-                                  # 58-116 px when wrong by eye, 9-14 px when right
+    # 58-116 px when wrong by eye, 9-14 px when right
     "review_error": 0.005,  # median reprojection error / image diagonal (~11 px at 1080p); provisional, tuned
-                            # on the evaluation's error distribution (task 3.4)
+    # on the evaluation's error distribution (task 3.4)
 }
 
 COURT_CORNERS = K6Y7R_FLOOR[CORNER_IDS].astype(np.float64)
@@ -78,8 +79,9 @@ def sample_frames(start: int, end: int, fps: float, rate: float = SAMPLE_FPS) ->
     return frames
 
 
-def smooth_corners(corners: list[np.ndarray], window: int = SMOOTH_WINDOW, frames: list[int] | None = None,
-                   motion=None) -> list[np.ndarray]:
+def smooth_corners(
+    corners: list[np.ndarray], window: int = SMOOTH_WINDOW, frames: list[int] | None = None, motion=None
+) -> list[np.ndarray]:
     """Running median per corner coordinate over `window` consecutive samples. The window stays centred:
     near the ends of a shot it shrinks on both sides (a one-sided window would pull a panning camera's
     first and last samples toward their neighbours). With camera motion (vball.camera_motion.Motion) and the
@@ -90,13 +92,15 @@ def smooth_corners(corners: list[np.ndarray], window: int = SMOOTH_WINDOW, frame
         half = min(window // 2, i, len(arr) - 1 - i)
         js = range(i - half, i + half + 1)
         if motion is None or frames is None:
-            out.append(np.median(arr[i - half:i + half + 1], axis=0))
+            out.append(np.median(arr[i - half : i + half + 1], axis=0))
         else:
             out.append(np.median([motion.warp(frames[j], frames[i], arr[j]) for j in js], axis=0))
     return out
 
 
-def fill_gaps(frames: list[int], valid: dict[int, dict], motion, fps: float, max_fill_s: float = MAX_FILL_S) -> list[dict]:
+def fill_gaps(
+    frames: list[int], valid: dict[int, dict], motion, fps: float, max_fill_s: float = MAX_FILL_S
+) -> list[dict]:
     """Samples for sampled frames without a valid court: the nearest valid sample's corners and keypoints moved to
     the frame by the camera motion, when that sample is at most max_fill_s away. Marked filled."""
     have = sorted(valid)
@@ -110,8 +114,15 @@ def fill_gaps(frames: list[int], valid: dict[int, dict], motion, fps: float, max
         if abs(src - f) > max_fill_s * fps:
             continue
         v = valid[src]
-        out.append({"frame": f, "corners": motion.warp(src, f, v["corners"]), "error": v["error"],
-                    "keypoints": warp_keypoints(motion, src, f, v["keypoints"]), "filled": True})
+        out.append(
+            {
+                "frame": f,
+                "corners": motion.warp(src, f, v["corners"]),
+                "error": v["error"],
+                "keypoints": warp_keypoints(motion, src, f, v["keypoints"]),
+                "filled": True,
+            }
+        )
     return out
 
 
@@ -124,8 +135,9 @@ def warp_keypoints(motion, a: int, b: int, keypoints) -> np.ndarray:
     return kp
 
 
-def shot_status(n_samples: int, valid: int, errors: list[float], config: dict = CONFIG,
-                consistency: float | None = None) -> tuple[str, float | None]:
+def shot_status(
+    n_samples: int, valid: int, errors: list[float], config: dict = CONFIG, consistency: float | None = None
+) -> tuple[str, float | None]:
     """consistency: the shot's median 14-point calibration error over the image width (None without net points)."""
     if valid < config["min_valid_samples"]:
         return "failed", None
@@ -143,6 +155,7 @@ def consistency_px(keypoints: np.ndarray, image_size: tuple[int, int]) -> float 
     floor calibration. The net points take no part in the fit, so the camera cannot bend toward them."""
     from .calibration import calibrate
     from .court_keypoints import K6Y7R_NET_IDS, NET_TOP_MEN, NET_TOP_WOMEN, k6y7r_points_3d
+
     kp = np.asarray(keypoints, float)
     net = [i for i in K6Y7R_NET_IDS if kp[i, 2] >= 0.5]
     if not net:
@@ -152,13 +165,24 @@ def consistency_px(keypoints: np.ndarray, image_size: tuple[int, int]) -> float 
     cal = calibrate(floor, image_size, max_error_px=float("inf"), max_focal_sd=float("inf"))
     if cal.camera is None:
         return None
-    return float(min(np.median(np.linalg.norm(cal.camera.project(k6y7r_points_3d(h)[net]) - kp[net, :2], axis=1))
-                     for h in (NET_TOP_MEN, NET_TOP_WOMEN)))
+    return float(
+        min(
+            np.median(np.linalg.norm(cal.camera.project(k6y7r_points_3d(h)[net]) - kp[net, :2], axis=1))
+            for h in (NET_TOP_MEN, NET_TOP_WOMEN)
+        )
+    )
 
 
-def register_shot(start: int, end: int, fps: float, image_size: tuple[int, int],
-                  keypoints_at: Callable[[int], np.ndarray], config: dict = CONFIG, motion=None,
-                  rate: float = SAMPLE_FPS) -> dict:
+def register_shot(
+    start: int,
+    end: int,
+    fps: float,
+    image_size: tuple[int, int],
+    keypoints_at: Callable[[int], np.ndarray],
+    config: dict = CONFIG,
+    motion=None,
+    rate: float = SAMPLE_FPS,
+) -> dict:
     """Register one shot from samples at `rate` per second. keypoints_at(frame) -> 14 x (x, y, conf) for a sampled
     frame. With camera motion (vball.camera_motion.Motion), smoothing is motion-compensated and samples without a
     court are filled."""
@@ -182,19 +206,36 @@ def register_shot(start: int, end: int, fps: float, image_size: tuple[int, int],
             v["corners"] = c
         found = valid + fill_gaps(frames, {v["frame"]: v for v in valid}, motion, fps)
         for v in sorted(found, key=lambda v: v["frame"]):
-            x = {"frame": v["frame"], "corners_px": np.round(v["corners"], 2).tolist(), "error": round(v["error"], 5),
-                 "keypoints": np.round(v["keypoints"], 2).tolist()}
+            x = {
+                "frame": v["frame"],
+                "corners_px": np.round(v["corners"], 2).tolist(),
+                "error": round(v["error"], 5),
+                "keypoints": np.round(v["keypoints"], 2).tolist(),
+            }
             if v.get("filled"):
                 x["filled"] = True
             samples.append(x)
-    return {"start_frame": start, "end_frame": end, "status": status, "error": err,
-            "consistency": None if consistency is None else round(consistency, 5), "samples": samples,
-            "filled": sum(bool(x.get("filled")) for x in samples)}
+    return {
+        "start_frame": start,
+        "end_frame": end,
+        "status": status,
+        "error": err,
+        "consistency": None if consistency is None else round(consistency, 5),
+        "samples": samples,
+        "filled": sum(bool(x.get("filled")) for x in samples),
+    }
 
 
-def register(shots: Iterable[dict], fps: float, image_size: tuple[int, int],
-             keypoints_at: Callable[[int], np.ndarray], config: dict = CONFIG,
-             on_shot: Callable[[int], None] = lambda k: None, motion=None, rates: list[float] | None = None) -> list[dict]:
+def register(
+    shots: Iterable[dict],
+    fps: float,
+    image_size: tuple[int, int],
+    keypoints_at: Callable[[int], np.ndarray],
+    config: dict = CONFIG,
+    on_shot: Callable[[int], None] = lambda k: None,
+    motion=None,
+    rates: list[float] | None = None,
+) -> list[dict]:
     """Register every shot; rates: samples per second per shot (default SAMPLE_FPS)."""
     out = []
     for k, s in enumerate(shots):
@@ -205,9 +246,9 @@ def register(shots: Iterable[dict], fps: float, image_size: tuple[int, int],
 
 
 LINE_CONFIG = {
-    "still_px": 0.01,        # a shot is still when the camera motion moves the image centre less than this x width
-    "min_good_lines": 5,     # status ok from line evidence: well supported court lines ...
-    "min_support": 0.70,     # ... and the share of line samples on painted lines
+    "still_px": 0.01,  # a shot is still when the camera motion moves the image centre less than this x width
+    "min_good_lines": 5,  # status ok from line evidence: well supported court lines ...
+    "min_support": 0.70,  # ... and the share of line samples on painted lines
 }
 
 
@@ -236,24 +277,34 @@ def keypoint_homography(shot: dict) -> np.ndarray | None:
     return cv2.getPerspectiveTransform(COURT_CORNERS.astype(np.float32), corners)
 
 
-def with_line_evidence(shot: dict, plate: np.ndarray, fps: float, image_size: tuple[int, int],
-                       config: dict = LINE_CONFIG) -> dict:
+def with_line_evidence(
+    shot: dict, plate: np.ndarray, fps: float, image_size: tuple[int, int], config: dict = LINE_CONFIG
+) -> dict:
     """A still shot decided by line evidence on its background plate (change verify-court-by-lines): the court fitted
     to the painted lines (vball.court_lines) and the keypoint court are scored on the same plate, the better one is
     used for every sampled frame, and the status follows its line evidence, not the net check. For a line fit the net
     points come from the net tape (`court_lines.focal_from_net`), so the camera can be calibrated for 3D in end-line
     views. Records `source` ("lines" or "keypoints") and the line evidence."""
     from . import court_lines
+
     found = court_lines.fit(plate)
     H_kp = keypoint_homography(shot)
     kp = court_lines.score_homography(plate, H_kp, dark=found.dark if found else False) if H_kp is not None else None
     best = max([f for f in (found, kp) if f is not None], key=lambda f: f.score, default=None)
     if best is None:
         return {**shot, "source": "keypoints", "lines": None}
-    evidence = {"score": round(best.score, 1), "support": round(best.support, 3), "good_lines": best.good_lines,
-                "dark": best.dark}
-    out = {**shot, "status": line_status(best, config), "lines": evidence,
-           "source": "lines" if best is found else "keypoints"}
+    evidence = {
+        "score": round(best.score, 1),
+        "support": round(best.support, 3),
+        "good_lines": best.good_lines,
+        "dark": best.dark,
+    }
+    out = {
+        **shot,
+        "status": line_status(best, config),
+        "lines": evidence,
+        "source": "lines" if best is found else "keypoints",
+    }
     if best is found:
         corners = corners_from_homography(best.H)
         frames = sample_frames(shot["start_frame"], shot["end_frame"], fps)
@@ -261,6 +312,7 @@ def with_line_evidence(shot: dict, plate: np.ndarray, fps: float, image_size: tu
         net = court_lines.focal_from_net(plate, best.H)  # the floor alone leaves a symmetric view's focal length open
         if net is not None:
             from .court_keypoints import K6Y7R_NET_IDS, k6y7r_points_3d
+
             net_px = court_lines.project(best.H, net[0], image_size, k6y7r_points_3d(net[1])[K6Y7R_NET_IDS])
             evidence.update(focal_px=round(net[0], 1), net_top_m=net[1], net_support=round(net[2], 3))
         try:
@@ -283,11 +335,15 @@ def pick(candidates: dict[str, list[dict]]) -> list[dict]:
     names = list(candidates)
     if not names:
         return []
+
     def key(shot: dict):
         inf = float("inf")
-        return (STATUS_ORDER.index(shot["status"]),
-                inf if shot.get("consistency") is None else shot["consistency"],
-                inf if shot.get("error") is None else shot["error"])
+        return (
+            STATUS_ORDER.index(shot["status"]),
+            inf if shot.get("consistency") is None else shot["consistency"],
+            inf if shot.get("error") is None else shot["error"],
+        )
+
     out = []
     for k in range(len(candidates[names[0]])):
         best = min(names, key=lambda n: key(candidates[n][k]))
@@ -325,8 +381,9 @@ def corners_at(court: dict | None, frame: int, statuses: tuple[str, ...] = USABL
     return (1 - t) * np.array(a["corners_px"], float) + t * np.array(b["corners_px"], float)
 
 
-def mapping_at(court: dict | None, frame: int, image_size: tuple[int, int] | None = None,
-               statuses: tuple[str, ...] = USABLE) -> np.ndarray | None:
+def mapping_at(
+    court: dict | None, frame: int, image_size: tuple[int, int] | None = None, statuses: tuple[str, ...] = USABLE
+) -> np.ndarray | None:
     """Court -> image homography at a frame (from the interpolated corners), or None."""
     c = corners_at(court, frame, statuses)
     if c is None:
@@ -346,7 +403,7 @@ def calibration_samples(court: dict | None, start: int, end: int) -> list[dict]:
 
 
 CORRECTION_PRESETS = {
-    "corners": CORNER_IDS,   # the four court corners: far left, far right, near right, near left (side views)
+    "corners": CORNER_IDS,  # the four court corners: far left, far right, near right, near left (side views)
     "near_half": [2, 7, 9, 0],  # centre line left, right, end line right, left (camera behind an end line)
 }
 
@@ -374,8 +431,9 @@ def corrected_sample(frame: int, points_px, image_size: tuple[int, int], ids=COR
     return {"frame": int(frame), "corners_px": corners.tolist(), "error": 0.0, "keypoints": kp.tolist()}
 
 
-def apply_corrections(court: dict | None, corrections: Iterable[dict], image_size: tuple[int, int],
-                      motion=None, fps: float | None = None) -> dict | None:
+def apply_corrections(
+    court: dict | None, corrections: Iterable[dict], image_size: tuple[int, int], motion=None, fps: float | None = None
+) -> dict | None:
     """The court with user corrections overlaid. corrections: {"shot", "frame", "points_px", "ids"} each (ids
     default to the corners); a correction replaces its shot's samples and status (ok, corrected). With camera
     motion and the video's fps, the corrected sample is moved to every sampled frame of the shot, so the court
@@ -392,8 +450,14 @@ def apply_corrections(court: dict | None, corrections: Iterable[dict], image_siz
             if motion is not None and fps:
                 sh = shots[k]
                 frames = sorted(set(sample_frames(sh["start_frame"], sh["end_frame"], fps)) | {sample["frame"]})
-                samples = [{"frame": f, "corners_px": motion.warp(sample["frame"], f, sample["corners_px"]).tolist(),
-                            "error": 0.0, "keypoints": warp_keypoints(motion, sample["frame"], f, sample["keypoints"]).tolist()}
-                           for f in frames]
+                samples = [
+                    {
+                        "frame": f,
+                        "corners_px": motion.warp(sample["frame"], f, sample["corners_px"]).tolist(),
+                        "error": 0.0,
+                        "keypoints": warp_keypoints(motion, sample["frame"], f, sample["keypoints"]).tolist(),
+                    }
+                    for f in frames
+                ]
             shots[k].update(status="ok", corrected=True, error=0.0, consistency=None, samples=samples)
     return {**court, "shots": shots}

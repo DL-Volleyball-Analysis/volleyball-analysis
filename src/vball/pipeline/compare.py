@@ -7,6 +7,7 @@ A refactor must not change what the stages produce. Run the pipeline on the same
 Each video folder is compared file by file: JSON by value (numbers within --tol), CSV / CSV.GZ cell by cell, NPZ
 array by array, anything else byte for byte. Exit status 1 when anything differs or a file exists on one side only.
 """
+
 import json
 import math
 from pathlib import Path
@@ -59,7 +60,11 @@ def file_diff(a: Path, b: Path, tol: float) -> list[str]:
         x, y = np.load(a), np.load(b)
         if sorted(x.files) != sorted(y.files):
             return [f"arrays {sorted(x.files)} != {sorted(y.files)}"]
-        return [f"array {k} differs" for k in x.files if x[k].shape != y[k].shape or not np.allclose(x[k], y[k], atol=tol, equal_nan=True)]
+        return [
+            f"array {k} differs"
+            for k in x.files
+            if x[k].shape != y[k].shape or not np.allclose(x[k], y[k], atol=tol, equal_nan=True)
+        ]
     return [] if a.read_bytes() == b.read_bytes() else ["bytes differ"]
 
 

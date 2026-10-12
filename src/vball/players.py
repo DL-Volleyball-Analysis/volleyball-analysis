@@ -16,6 +16,7 @@ court mapping and drops people outside the court plus margins (referees, bench, 
 Stored by the web app as players.csv.gz with these columns. Teams are not assigned here: which team
 plays on which side changes between sets and belongs to rally scoring.
 """
+
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -53,8 +54,9 @@ def ultralytics_step(cfg: TrackerConfig) -> Step:
     model = YOLO(cfg.model)
 
     def step(image: np.ndarray):
-        r = model.track(image, persist=True, tracker=cfg.tracker, classes=[PERSON], imgsz=cfg.imgsz,
-                        conf=cfg.conf, verbose=False)[0]
+        r = model.track(
+            image, persist=True, tracker=cfg.tracker, classes=[PERSON], imgsz=cfg.imgsz, conf=cfg.conf, verbose=False
+        )[0]
         if r.boxes is None or r.boxes.id is None:
             return []
         ids = r.boxes.id.int().tolist()
@@ -70,8 +72,9 @@ def sample_every(src_fps: float, det_fps: float) -> int:
     return max(1, round(src_fps / det_fps)) if det_fps > 0 else 1
 
 
-def track_frames(frames: Iterable[np.ndarray], src_fps: float, cfg: TrackerConfig = TrackerConfig(),
-                 step: Step | None = None) -> pd.DataFrame:
+def track_frames(
+    frames: Iterable[np.ndarray], src_fps: float, cfg: TrackerConfig = TrackerConfig(), step: Step | None = None
+) -> pd.DataFrame:
     """Detect + track on sampled frames (0-based frame numbers), then fill the frames in between."""
     step = step or ultralytics_step(cfg)
     k = sample_every(src_fps, cfg.det_fps)
@@ -102,22 +105,35 @@ def interpolate_tracks(df: pd.DataFrame, n_frames: int, max_gap: int | None = No
             box_b = g.iloc[b][["x1", "y1", "x2", "y2"]].to_numpy(float)
             boxes = box_a + t[:, None] * (box_b - box_a)
             conf = min(g.iloc[a]["conf"], g.iloc[b]["conf"])
-            out.append(pd.DataFrame({
-                "frame": np.arange(f[a] + 1, f[b]), "track_id": tid,
-                "x1": boxes[:, 0], "y1": boxes[:, 1], "x2": boxes[:, 2], "y2": boxes[:, 3],
-                "conf": conf, "interpolated": True,
-            }))
+            out.append(
+                pd.DataFrame(
+                    {
+                        "frame": np.arange(f[a] + 1, f[b]),
+                        "track_id": tid,
+                        "x1": boxes[:, 0],
+                        "y1": boxes[:, 1],
+                        "x2": boxes[:, 2],
+                        "y2": boxes[:, 3],
+                        "conf": conf,
+                        "interpolated": True,
+                    }
+                )
+            )
     res = pd.concat(out, ignore_index=True)
     res = res[(res["frame"] >= 0) & (res["frame"] < n_frames)]
     return res.sort_values(["frame", "track_id"], ignore_index=True)[COLUMNS]
 
 
 SIDE_MARGIN_M = 3.0  # beyond the sidelines (free zone)
-END_MARGIN_M = 7.0   # behind the end lines, where servers stand
+END_MARGIN_M = 7.0  # behind the end lines, where servers stand
 
 
-def place_on_court(df: pd.DataFrame, homography_at: Callable[[int], np.ndarray | None],
-                   side_margin: float = SIDE_MARGIN_M, end_margin: float = END_MARGIN_M) -> pd.DataFrame:
+def place_on_court(
+    df: pd.DataFrame,
+    homography_at: Callable[[int], np.ndarray | None],
+    side_margin: float = SIDE_MARGIN_M,
+    end_margin: float = END_MARGIN_M,
+) -> pd.DataFrame:
     """Court position of each box's feet and the on-court filter.
 
     homography_at(frame) gives the court -> image homography of that frame, or None when the frame has
@@ -135,8 +151,12 @@ def place_on_court(df: pd.DataFrame, homography_at: Callable[[int], np.ndarray |
         out.loc[idx, "court_x"], out.loc[idx, "court_y"] = xy[:, 0], xy[:, 1]
         out.loc[idx, "side"] = [side_of_net(x) for x in xy[:, 0]]
         out.loc[idx, "placed"] = True
-        inside = ((xy[:, 0] >= -end_margin) & (xy[:, 0] <= LENGTH + end_margin)
-                  & (xy[:, 1] >= -side_margin) & (xy[:, 1] <= WIDTH + side_margin))
+        inside = (
+            (xy[:, 0] >= -end_margin)
+            & (xy[:, 0] <= LENGTH + end_margin)
+            & (xy[:, 1] >= -side_margin)
+            & (xy[:, 1] <= WIDTH + side_margin)
+        )
         keep[out.index.get_indexer(idx)] = inside
     return out[keep].reset_index(drop=True)
 
@@ -152,6 +172,7 @@ def roles(df: pd.DataFrame, assignments: dict | None = None, max_players: int = 
     players are kept: those placed on court first, then the most confident; the rest become `other`. Nothing is
     deleted: consumers filter on role."""
     from .teams import TeamConfig, on_court_share
+
     cfg = TeamConfig()
     out = df.copy()
     out["team"], out["role"] = "", "player"
@@ -166,15 +187,19 @@ def roles(df: pd.DataFrame, assignments: dict | None = None, max_players: int = 
             if on_court_share(xy, cfg.court_margin_m) < cfg.on_court_share:
                 out.loc[rows, "role"] = "other"
     placed = out["placed"].astype(bool) if "placed" in out else pd.Series(False, index=out.index)
-    rank = (out.assign(_p=placed, _player=out["role"] == "player")
-               .sort_values(["frame", "_player", "_p", "conf"], ascending=[True, False, False, False])
-               .groupby("frame").cumcount())
+    rank = (
+        out.assign(_p=placed, _player=out["role"] == "player")
+        .sort_values(["frame", "_player", "_p", "conf"], ascending=[True, False, False, False])
+        .groupby("frame")
+        .cumcount()
+    )
     out.loc[rank[rank >= max_players].index, "role"] = "other"
     return out
 
 
-def prefer_generalist(specialist_counts, generalist_counts, expected_players: int = MAX_PLAYERS,
-                      min_general: float = 8.0) -> bool:
+def prefer_generalist(
+    specialist_counts, generalist_counts, expected_players: int = MAX_PLAYERS, min_general: float = 8.0
+) -> bool:
     """Should a video use the general person detector instead of the player-only one?
 
     The player-only detector (fine-tuned on SportsMOT broadcast labels) leaves out referees and spectators, but on

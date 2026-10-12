@@ -1,4 +1,5 @@
 """Ball detectors' decoding and I/O without the real ONNX models: fake sessions return chosen outputs."""
+
 import json
 from types import SimpleNamespace
 
@@ -40,6 +41,7 @@ def test_vballnet_maps_heatmap_peaks_to_image_pixels_and_pads_the_last_window(mo
         out = np.zeros((1, 9, 288, 512), np.float32)
         out[0, :, 143:146, 255:258] = 0.9
         return [out]
+
     det = vballnet(monkeypatch, heat)
     frames = [np.zeros((1080, 1920), np.uint8)] * 11  # one full window + a window of 2 (padded to 9)
     cands = det.candidates(frames)
@@ -53,6 +55,7 @@ def test_vballnet_tiles_offset_candidates_and_merge_duplicates(monkeypatch):
         out = np.zeros((1, 9, 288, 512), np.float32)
         out[0, :, 143:146, 255:258] = 0.8
         return [out]
+
     det = vballnet(monkeypatch, heat, grid=(2, 2))
     cands = det.candidates([np.zeros((1080, 1920), np.uint8)] * 9)
     assert len(det.session.calls) == 5  # whole frame + 4 tiles
@@ -63,8 +66,9 @@ def test_vballnet_tiles_offset_candidates_and_merge_duplicates(monkeypatch):
 def ravel(monkeypatch, tmp_path, grid_fn, channels=1):
     cfg = {"config": {"image_width": 640, "image_height": 360, "input_channels": channels}}
     (tmp_path / "m.json").write_text(json.dumps(cfg))
-    monkeypatch.setattr(ball_detect, "_session",
-                        lambda path: FakeSession(grid_fn, input_name="frames", outputs=("logits", "ball_grid")))
+    monkeypatch.setattr(
+        ball_detect, "_session", lambda path: FakeSession(grid_fn, input_name="frames", outputs=("logits", "ball_grid"))
+    )
     return Ravel(tmp_path / "m.onnx", threshold=0.3, top_k=2)
 
 
@@ -72,12 +76,13 @@ def test_ravel_decodes_grid_peaks_with_offsets(monkeypatch, tmp_path):
     def grid(x):
         assert x.shape == (1, 9, 1, 360, 640)
         g = np.zeros((1, 9, 3, 36, 64), np.float32)
-        g[0, :, 0, 18, 32] = 0.9                 # the ball: cell (row 18, col 32), offset (0.5, 0.5)
+        g[0, :, 0, 18, 32] = 0.9  # the ball: cell (row 18, col 32), offset (0.5, 0.5)
         g[0, :, 1:, 18, 32] = 0.5
-        g[0, :, 0, 5, 5] = 0.4                   # a weaker second peak
-        g[0, :, 0, 5, 6] = 0.35                  # not a local maximum: dropped
-        g[0, :, 0, 30, 60] = 0.2                 # below threshold: dropped
+        g[0, :, 0, 5, 5] = 0.4  # a weaker second peak
+        g[0, :, 0, 5, 6] = 0.35  # not a local maximum: dropped
+        g[0, :, 0, 30, 60] = 0.2  # below threshold: dropped
         return [np.zeros(1), g]
+
     det = ravel(monkeypatch, tmp_path, grid)
     cands = det.candidates([np.zeros((1080, 1920, 3), np.uint8)] * 3)
     best, second = cands[0]
@@ -92,13 +97,16 @@ def test_ravel_colour_input(monkeypatch, tmp_path):
     def grid(x):
         seen.append(x.shape)
         return [np.zeros(1), np.zeros((1, 9, 3, 45, 80), np.float32)]
+
     det = ravel(monkeypatch, tmp_path, grid, channels=3)
     assert det.candidates([np.zeros((720, 1280, 3), np.uint8)]) == [[]] and seen == [(1, 9, 3, 360, 640)]
 
 
 def test_ball_load_reads_upstream_csv(tmp_path):
     p = tmp_path / "ball.csv"
-    pd.DataFrame({"Frame": [0, 1], "Visibility": [1, 0], "X": [10, -1], "Y": [20, -1], "Radius": [5, 0]}).to_csv(p, index=False)
+    pd.DataFrame({"Frame": [0, 1], "Visibility": [1, 0], "X": [10, -1], "Y": [20, -1], "Radius": [5, 0]}).to_csv(
+        p, index=False
+    )
     df = ball.load(p)
     assert list(df.columns) == ["frame", "visible", "x", "y", "radius"]
     assert df["visible"].tolist() == [1, 0] and np.isnan(df.loc[1, "x"])
@@ -114,6 +122,7 @@ def test_track_refined_runs_detector_and_tracker(monkeypatch, tmp_path):
     class Det:
         def candidates(self, frames):
             return [[Candidate(10.0 + 5 * i, 90.0, 0.9)] for i in range(len(frames))]
+
     monkeypatch.setattr(ball_detect, "load", lambda name: Det())
     monkeypatch.setattr("vball.ball_track.drop_fixed", lambda frames, cands, cfg=None, shift=None: cands)
     df = ball.track_refined(path, "ravel012")
@@ -133,13 +142,15 @@ def test_metrics():
 
 def test_wasb_letterbox_normalisation_and_three_frame_windows(monkeypatch):
     from vball.ball_detect import Wasb
+
     seen = []
 
     def heat(x):
         seen.append(x.shape)
         out = np.zeros((1, 3, 288, 512), np.float32)
-        out[0, :, 143:146, 255:258] = 0.9   # the centre of the 512 x 288 input
+        out[0, :, 143:146, 255:258] = 0.9  # the centre of the 512 x 288 input
         return [out]
+
     monkeypatch.setattr(ball_detect, "_session", lambda path: FakeSession(heat))
     det = Wasb("unused.onnx")
     x = det.prep(np.full((720, 1280, 3), 255, np.uint8))
@@ -148,4 +159,6 @@ def test_wasb_letterbox_normalisation_and_three_frame_windows(monkeypatch):
     assert len(cands) == 4 and seen == [(1, 9, 288, 512)] * 2
     assert abs(cands[3][0].x - 960) < 5 and abs(cands[3][0].y - 540) < 5
     sq = Wasb("unused.onnx").prep(np.full((100, 100, 3), 255, np.uint8))  # square frame: letterboxed (black bars)
-    assert np.allclose(sq[:, 144, 10], (0 - Wasb.MEAN) / Wasb.STD) and np.allclose(sq[:, 144, 256], (1 - Wasb.MEAN) / Wasb.STD)
+    assert np.allclose(sq[:, 144, 10], (0 - Wasb.MEAN) / Wasb.STD) and np.allclose(
+        sq[:, 144, 256], (1 - Wasb.MEAN) / Wasb.STD
+    )

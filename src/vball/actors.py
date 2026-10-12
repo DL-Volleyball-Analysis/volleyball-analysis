@@ -16,6 +16,7 @@ of the top `top_n` frames, so a single noisy frame neither creates nor erases an
     s = combine(s, top_n=3)                                     # {player: (actions,)}
     labels = decide(s, threshold)                               # {player: action or None}
 """
+
 from dataclasses import dataclass
 
 import cv2
@@ -26,16 +27,20 @@ from .actions import ACTIONS, iou
 
 @dataclass(frozen=True)
 class ActorConfig:
-    min_iou: float = 0.3     # action box vs player box
-    top_n: int = 3           # frames averaged per player
-    k: float = 1.0           # prior width, in box heights
-    floor: float = 0.3       # prior never below this (ball far or missed)
-    threshold: float = 0.4   # combined score needed for an action
+    min_iou: float = 0.3  # action box vs player box
+    top_n: int = 3  # frames averaged per player
+    k: float = 1.0  # prior width, in box heights
+    floor: float = 0.3  # prior never below this (ball far or missed)
+    threshold: float = 0.4  # combined score needed for an action
 
 
-def player_scores(detections: dict[int, np.ndarray], boxes: dict[int, dict[int, np.ndarray]],
-                  cfg: ActorConfig = ActorConfig(), ball: dict[int, np.ndarray | None] | None = None,
-                  n_actions: int = len(ACTIONS)) -> dict[int, np.ndarray]:
+def player_scores(
+    detections: dict[int, np.ndarray],
+    boxes: dict[int, dict[int, np.ndarray]],
+    cfg: ActorConfig = ActorConfig(),
+    ball: dict[int, np.ndarray | None] | None = None,
+    n_actions: int = len(ACTIONS),
+) -> dict[int, np.ndarray]:
     """detections: frame -> rows of (action index, conf, x1, y1, x2, y2); boxes: frame -> {player: (x1, y1, x2, y2)};
     ball: frame -> (x, y) or None (optional). Per player: (frames, actions) best confidence of each action among
     the detections overlapping its box, weighted by the ball prior of that frame when a ball is given."""
@@ -77,7 +82,7 @@ def ball_prior(box: np.ndarray, xy: np.ndarray | None, cfg: ActorConfig = ActorC
     if xy is None or np.isnan(xy).any():
         return 1.0
     h = max(float(box[3] - box[1]), 1.0)
-    p = np.exp(-(box_distance(box, xy) / (cfg.k * h)) ** 2)
+    p = np.exp(-((box_distance(box, xy) / (cfg.k * h)) ** 2))
     return float(cfg.floor + (1 - cfg.floor) * p)
 
 
@@ -104,12 +109,20 @@ def person_crop(frame: np.ndarray, box, margin: float = 0.15, pad_value: int = 1
     crop = frame[b:d, a:c]
     n = max(crop.shape[:2])
     top, left = (n - crop.shape[0]) // 2, (n - crop.shape[1]) // 2
-    return cv2.copyMakeBorder(crop, top, n - crop.shape[0] - top, left, n - crop.shape[1] - left,
-                              cv2.BORDER_CONSTANT, value=(pad_value,) * 3)
+    return cv2.copyMakeBorder(
+        crop, top, n - crop.shape[0] - top, left, n - crop.shape[1] - left, cv2.BORDER_CONSTANT, value=(pad_value,) * 3
+    )
 
 
-def classifier_rows(frame: int, boxes: np.ndarray, probs: np.ndarray, names: list[str], ball_xy=None,
-                    cfg: ActorConfig = ActorConfig(), min_conf: float = 0.25) -> list[tuple]:
+def classifier_rows(
+    frame: int,
+    boxes: np.ndarray,
+    probs: np.ndarray,
+    names: list[str],
+    ball_xy=None,
+    cfg: ActorConfig = ActorConfig(),
+    min_conf: float = 0.25,
+) -> list[tuple]:
     """Detection rows (frame, action, conf, x1, y1, x2, y2) for vball.actions from the classifier's output on the
     players of one frame. boxes: (n, 4); probs: (n, len(names)). A player gets a row when its most likely class is
     one of ours; conf is that probability times the ball prior (unchanged without a ball)."""

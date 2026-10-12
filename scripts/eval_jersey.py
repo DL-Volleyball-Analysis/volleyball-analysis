@@ -6,6 +6,7 @@ one- and two-digit numbers. Test crops come from matches whose teams appear in n
 
   .venv/bin/python scripts/eval_jersey.py [--model models/jersey_digits_yolo26s.pt] [--data data/datasets/jersey_digits]
 """
+
 import argparse
 from collections import Counter
 from pathlib import Path
@@ -33,6 +34,7 @@ def main():
     ap.add_argument("--data", default=str(DATASETS / "jersey_digits"))
     args = ap.parse_args()
     from ultralytics import YOLO
+
     model = YOLO(args.model)
     root = Path(args.data) / "test"
     out = Counter()
@@ -45,8 +47,11 @@ def main():
         if truth is None:
             continue
         r = model(img, imgsz=320, conf=0.25, verbose=False)[0]
-        pred = reading(np.column_stack([r.boxes.cls.cpu().numpy(), r.boxes.conf.cpu().numpy(),
-                                        r.boxes.xyxy.cpu().numpy()]) if len(r.boxes) else [])
+        pred = reading(
+            np.column_stack([r.boxes.cls.cpu().numpy(), r.boxes.conf.cpu().numpy(), r.boxes.xyxy.cpu().numpy()])
+            if len(r.boxes)
+            else []
+        )
         kind = "exact" if pred == truth else ("none" if pred is None else "wrong")
         out[kind] += 1
         by_len[min(len(truth), 2)][kind] += 1
@@ -58,8 +63,13 @@ def main():
     for k, c in by_len.items():
         m = sum(c.values())
         if m:
-            print(f"  {k}-digit numbers ({m}): exact {c['exact'] / m:.1%}, wrong {c['wrong'] / m:.1%}, not read {c['none'] / m:.1%}")
-    print("most common wrong readings (true -> read):", ", ".join(f"{t}->{p} x{k}" for (t, p), k in confusions.most_common(8)))
+            print(
+                f"  {k}-digit numbers ({m}): exact {c['exact'] / m:.1%}, wrong {c['wrong'] / m:.1%}, not read {c['none'] / m:.1%}"
+            )
+    print(
+        "most common wrong readings (true -> read):",
+        ", ".join(f"{t}->{p} x{k}" for (t, p), k in confusions.most_common(8)),
+    )
 
 
 if __name__ == "__main__":

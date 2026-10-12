@@ -12,6 +12,7 @@ threshold is low quality, with the reason, and the UI must show it as uncertain.
 
 Air drag and spin are not modelled (see the change's design for the optional drag comparison).
 """
+
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -29,12 +30,12 @@ class FlightConfig:
     # touch detection, tuned on synthetic 1080p / 50 fps rallies with 2 px noise: interior velocity
     # jumps stay below ~5 px/frame with an 8-frame window, touches are above ~13 px/frame. Touches
     # closer than ~2 windows apart (0.3 s at 50 fps) are not separated.
-    window: int = 8            # frames on each side for the image velocity at a candidate cut
-    min_jump_px: float = 8.0   # velocity change (px/frame) that marks a touch ...
-    rel_jump: float = 0.5      # ... and at least this fraction of the speed
-    max_gap: int = 6           # missing frames that end a flight
-    min_detections: int = 8    # shorter flights are not reconstructed
-    max_fit_px: float = 4.0    # quality: median reprojection residual
+    window: int = 8  # frames on each side for the image velocity at a candidate cut
+    min_jump_px: float = 8.0  # velocity change (px/frame) that marks a touch ...
+    rel_jump: float = 0.5  # ... and at least this fraction of the speed
+    max_gap: int = 6  # missing frames that end a flight
+    min_detections: int = 8  # shorter flights are not reconstructed
+    max_fit_px: float = 4.0  # quality: median reprojection residual
     # physically impossible flights are dropped, not drawn as "low quality": a dashed line through the
     # stands still misleads. Fastest recorded spikes and serves are about 35 m/s.
     max_speed_mps: float = 40.0
@@ -42,34 +43,34 @@ class FlightConfig:
     max_height_m: float = 20.0
     max_depth_sd_m: float = 0.5  # quality: position sd along the camera ray (mid-flight)
     # change constrain-3d-flights; each can be switched off for the ablation
-    robust: bool = True        # drop detections inconsistent with the flight and refit
-    outlier_px: float = 8.0    # ... above max(outlier_k x median residual, outlier_px)
+    robust: bool = True  # drop detections inconsistent with the flight and refit
+    outlier_px: float = 8.0  # ... above max(outlier_k x median residual, outlier_px)
     outlier_k: float = 3.0
     robust_rounds: int = 3
-    bounded: bool = True       # keep the start inside the hall and the speed within the limit
-    anchor_radius_m: float = 2.5   # nearest player to the ball's ray within this distance anchors a touch
-    anchor_sigma_m: float = 1.0    # soft prior on the ball's horizontal position at an anchored touch
+    bounded: bool = True  # keep the start inside the hall and the speed within the limit
+    anchor_radius_m: float = 2.5  # nearest player to the ball's ray within this distance anchors a touch
+    anchor_sigma_m: float = 1.0  # soft prior on the ball's horizontal position at an anchored touch
     anchor_weight_px: float = 4.0  # a 1-sigma anchor deviation costs like this many pixels of reprojection
 
 
 @dataclass
 class Flight:
     start: int  # first frame (inclusive)
-    end: int    # last frame (inclusive)
+    end: int  # last frame (inclusive)
 
 
 @dataclass
 class FlightFit:
     start: int
     end: int
-    p0: np.ndarray                 # position at the start frame (m)
-    v0: np.ndarray                 # velocity at the start frame (m/s)
+    p0: np.ndarray  # position at the start frame (m)
+    v0: np.ndarray  # velocity at the start frame (m/s)
     fps: float
-    fit_px: float                  # median reprojection residual
-    depth_sd_m: float              # sd of the mid-flight position along the camera ray
-    quality: str = "ok"            # "ok" | "low"
+    fit_px: float  # median reprojection residual
+    depth_sd_m: float  # sd of the mid-flight position along the camera ray
+    quality: str = "ok"  # "ok" | "low"
     reasons: list[str] = field(default_factory=list)
-    dropped: int = 0               # detections left out as inconsistent with the flight
+    dropped: int = 0  # detections left out as inconsistent with the flight
     anchors: list[str] = field(default_factory=list)  # "start" / "end": touches pulled toward a player
 
     def at(self, frames) -> np.ndarray:
@@ -80,22 +81,27 @@ class FlightFit:
         """Landing point, net crossing, start speed and apex, where they apply (None otherwise)."""
         T = (self.end - self.start) / self.fps
         a = 0.5 * G[2]
-        out = {"start_speed_mps": float(np.linalg.norm(self.v0)), "apex": None, "net_crossing": None,
-               "landing": None, "quality": self.quality}
+        out = {
+            "start_speed_mps": float(np.linalg.norm(self.v0)),
+            "apex": None,
+            "net_crossing": None,
+            "landing": None,
+            "quality": self.quality,
+        }
         t_apex = -self.v0[2] / G[2]
         if 0 < t_apex < T:
-            out["apex"] = {"t": float(t_apex), "height_m": float(self.p0[2] + self.v0[2] * t_apex + a * t_apex ** 2)}
+            out["apex"] = {"t": float(t_apex), "height_m": float(self.p0[2] + self.v0[2] * t_apex + a * t_apex**2)}
         if abs(self.v0[0]) > 1e-9:
             t_net = (NET_X - self.p0[0]) / self.v0[0]
             if 0 <= t_net <= T:
-                p = self.p0 + self.v0 * t_net + 0.5 * G * t_net ** 2
+                p = self.p0 + self.v0 * t_net + 0.5 * G * t_net**2
                 out["net_crossing"] = {"t": float(t_net), "height_m": float(p[2]), "y_m": float(p[1])}
         # floor contact: later root of z(t) = BALL_RADIUS; reported when the flight ends there
         disc = self.v0[2] ** 2 - 4 * a * (self.p0[2] - BALL_RADIUS)
         if disc >= 0:
             t_land = (-self.v0[2] - np.sqrt(disc)) / (2 * a)
             if 0 < t_land <= T + 3 / self.fps:
-                p = self.p0 + self.v0 * t_land + 0.5 * G * t_land ** 2
+                p = self.p0 + self.v0 * t_land + 0.5 * G * t_land**2
                 out["landing"] = {"t": float(t_land), "x_m": float(p[0]), "y_m": float(p[1])}
         return out
 
@@ -132,8 +138,8 @@ def segment(uv: np.ndarray, cfg: FlightConfig = FlightConfig()) -> list[Flight]:
         for i in range(k, len(run) - k):
             # velocity at frame i extrapolated from a quadratic on each side: continuous along a
             # ballistic arc (also at the apex, where the image direction reverses), broken at a touch
-            vb = _end_velocity(run[i - k:i + 1], pts[i - k:i + 1], run[i])
-            va = _end_velocity(run[i:i + k + 1], pts[i:i + k + 1], run[i])
+            vb = _end_velocity(run[i - k : i + 1], pts[i - k : i + 1], run[i])
+            va = _end_velocity(run[i : i + k + 1], pts[i : i + k + 1], run[i])
             jump = np.linalg.norm(va - vb)
             speed = max(np.linalg.norm(va), np.linalg.norm(vb))
             if jump > max(cfg.min_jump_px, cfg.rel_jump * speed):
@@ -145,7 +151,7 @@ def segment(uv: np.ndarray, cfg: FlightConfig = FlightConfig()) -> list[Flight]:
                 j = i
                 while j + 1 < len(run) and score[j + 1] > 0:
                     j += 1
-                cuts.append(i + int(np.argmax(score[i:j + 1])))
+                cuts.append(i + int(np.argmax(score[i : j + 1])))
                 i = j + 1
             else:
                 i += 1
@@ -195,12 +201,19 @@ def anchor_for(cam: Camera, uv: np.ndarray, players_xy, radius_m: float) -> np.n
     return pts[k] if dist[k] <= radius_m else None
 
 
-def fit(cam: Camera, uv: np.ndarray, flight: Flight, fps: float, cfg: FlightConfig = FlightConfig(),
-        players_at: dict | None = None) -> FlightFit:
+def fit(
+    cam: Camera,
+    uv: np.ndarray,
+    flight: Flight,
+    fps: float,
+    cfg: FlightConfig = FlightConfig(),
+    players_at: dict | None = None,
+) -> FlightFit:
     """Ballistic fit of one flight. uv: the whole track (N, 2) with NaN rows for misses. players_at: optional
     {"start": players_xy, "end": players_xy}, the court positions of the players at the flight's first and last
     frame, used as soft anchors (change constrain-3d-flights)."""
     from ..court import LENGTH, WIDTH
+
     frames = np.arange(flight.start, flight.end + 1)
     obs_all = uv[frames]
     seen = ~np.isnan(obs_all).any(axis=1)
@@ -234,8 +247,9 @@ def fit(cam: Camera, uv: np.ndarray, flight: Flight, fps: float, cfg: FlightConf
                 x0 = np.concatenate([a, v0])
                 if cfg.bounded:
                     x0 = np.clip(x0, lo + 1e-6, hi - 1e-6)
-                sol = least_squares(residuals, x0, loss="huber", f_scale=2.0,
-                                    bounds=(lo, hi) if cfg.bounded else (-np.inf, np.inf))
+                sol = least_squares(
+                    residuals, x0, loss="huber", f_scale=2.0, bounds=(lo, hi) if cfg.bounded else (-np.inf, np.inf)
+                )
                 if best is None or sol.cost < best.cost:
                     best = sol
         return best
@@ -269,10 +283,10 @@ def fit(cam: Camera, uv: np.ndarray, flight: Flight, fps: float, cfg: FlightConf
     # the camera ray through that point; noise level from the residuals (at least 1 px)
     sigma = max(1.0, 1.4826 * fit_px)
     JtJ = best.jac.T @ best.jac
-    cov = sigma ** 2 * np.linalg.pinv(JtJ)
+    cov = sigma**2 * np.linalg.pinv(JtJ)
     tm = T / 2
     A = np.hstack([np.eye(3), tm * np.eye(3)])
-    p_mid = best.x[:3] + best.x[3:] * tm + 0.5 * G * tm ** 2
+    p_mid = best.x[:3] + best.x[3:] * tm + 0.5 * G * tm**2
     d = p_mid - cam.position
     d /= np.linalg.norm(d)
     depth_sd = float(np.sqrt(max(d @ A @ cov @ A.T @ d, 0.0)))
@@ -284,14 +298,26 @@ def fit(cam: Camera, uv: np.ndarray, flight: Flight, fps: float, cfg: FlightConf
         reasons.append("depth poorly constrained")
     if cfg.bounded and (np.isclose(best.x, lo, atol=1e-3).any() or np.isclose(best.x, hi, atol=1e-3).any()):
         reasons.append("on a bound")
-    return FlightFit(flight.start, flight.end, best.x[:3], best.x[3:], fps, fit_px, depth_sd,
-                     "low" if reasons else "ok", reasons, dropped, sorted(anchors))
+    return FlightFit(
+        flight.start,
+        flight.end,
+        best.x[:3],
+        best.x[3:],
+        fps,
+        fit_px,
+        depth_sd,
+        "low" if reasons else "ok",
+        reasons,
+        dropped,
+        sorted(anchors),
+    )
 
 
 def implausible(f: "FlightFit", positions: np.ndarray, cfg: FlightConfig = FlightConfig()) -> str | None:
     """Why a fitted flight cannot be a volleyball flight, or None. (Low quality is about uncertainty; this is
     about impossibility: a wrong camera or false detections can fit a path through the stands.)"""
     from ..court import LENGTH, WIDTH
+
     if np.linalg.norm(f.v0) > cfg.max_speed_mps:
         return f"start speed {np.linalg.norm(f.v0):.0f} m/s"
     m = cfg.hall_margin_m
@@ -303,8 +329,15 @@ def implausible(f: "FlightFit", positions: np.ndarray, cfg: FlightConfig = Fligh
     return None
 
 
-def reconstruct_flight(cam: Camera, uv: np.ndarray, fl: Flight, fps: float, cfg: FlightConfig = FlightConfig(),
-                       rejected: list | None = None, players_at=None) -> dict | None:
+def reconstruct_flight(
+    cam: Camera,
+    uv: np.ndarray,
+    fl: Flight,
+    fps: float,
+    cfg: FlightConfig = FlightConfig(),
+    rejected: list | None = None,
+    players_at=None,
+) -> dict | None:
     """Fit one flight found by `segment`; None (and its (start, end, reason) appended to `rejected`) when it has no
     fit or the fit is physically impossible."""
     uv = np.asarray(uv, float)
@@ -322,12 +355,23 @@ def reconstruct_flight(cam: Camera, uv: np.ndarray, fl: Flight, fps: float, cfg:
         if rejected is not None:
             rejected.append((fl.start, fl.end, why))
         return None
-    return {"fit": f, "frames": frames, "positions": positions,
-            "observed": ~np.isnan(uv[frames]).any(axis=1), "derived": f.derived()}
+    return {
+        "fit": f,
+        "frames": frames,
+        "positions": positions,
+        "observed": ~np.isnan(uv[frames]).any(axis=1),
+        "derived": f.derived(),
+    }
 
 
-def reconstruct(cam: Camera, uv: np.ndarray, fps: float, cfg: FlightConfig = FlightConfig(),
-                rejected: list | None = None, players_at=None) -> list[dict]:
+def reconstruct(
+    cam: Camera,
+    uv: np.ndarray,
+    fps: float,
+    cfg: FlightConfig = FlightConfig(),
+    rejected: list | None = None,
+    players_at=None,
+) -> list[dict]:
     """Segment a track and fit every flight. Each item: the fit, positions for every frame of the
     flight with an observed flag, and the derived values. Physically impossible fits are left out; when a
     list is passed as `rejected`, their (start, end, reason) are appended to it. players_at: optional

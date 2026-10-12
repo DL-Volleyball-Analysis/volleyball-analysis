@@ -1,4 +1,5 @@
 """Decode: metadata, camera shots and camera motion."""
+
 from pathlib import Path
 
 import cv2
@@ -55,5 +56,10 @@ def run(video: Path, out: Path, prev: dict, tick) -> dict:
         camera_motion.save(out / config.MOTION_FILE, steps, share)
     meta["frames"] = n  # container frame counts can be off; trust the decoded count
     shots = [{"start_frame": a, "end_frame": b - 1} for a, b in zip(cuts, cuts[1:] + [n])]
-    return {"status": "done", **meta, "shots": shots, "motion": config.MOTION_FILE if n else None,
-            "motion_share": round(float(np.median(share[1:])), 3) if n > 1 else None}
+    return {
+        "status": "done",
+        **meta,
+        "shots": shots,
+        "motion": config.MOTION_FILE if n else None,
+        "motion_share": round(float(np.median(share[1:])), 3) if n > 1 else None,
+    }

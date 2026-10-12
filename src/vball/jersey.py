@@ -10,6 +10,7 @@ Trackers sometimes swap identities, so a track can carry two players. `segments`
 labelled by the readings within a window around it, and consecutive readings with the same local number form a
 segment; a label then follows an identity switch, or falls back to the tracking id where the readings disagree.
 """
+
 from collections import Counter
 from dataclasses import dataclass
 
@@ -18,15 +19,15 @@ import numpy as np
 
 @dataclass(frozen=True)
 class JerseyConfig:
-    min_conf: float = 0.5     # digits below this are ignored
-    min_readings: int = 3     # a vote needs at least this many readings
-    min_share: float = 0.6    # ... and this share agreeing
+    min_conf: float = 0.5  # digits below this are ignored
+    min_readings: int = 3  # a vote needs at least this many readings
+    min_share: float = 0.6  # ... and this share agreeing
 
 
 @dataclass
 class Vote:
-    number: int | None   # None: no clear vote
-    share: float         # share of readings that agree with the most frequent one
+    number: int | None  # None: no clear vote
+    share: float  # share of readings that agree with the most frequent one
     readings: int
 
 
@@ -58,8 +59,9 @@ def vote(readings: list[str | None], cfg: JerseyConfig = JerseyConfig()) -> Vote
     return Vote(int(best) if ok else None, share, len(r))
 
 
-def segments(frames: list[int], readings: list[str | None], window: int,
-             cfg: JerseyConfig = JerseyConfig()) -> list[tuple[int, int, int | None]]:
+def segments(
+    frames: list[int], readings: list[str | None], window: int, cfg: JerseyConfig = JerseyConfig()
+) -> list[tuple[int, int, int | None]]:
     """Time-local numbers of one track: (first frame, last frame, number or None) runs over its reading frames.
     Each reading frame takes the vote of the readings within +-window frames of it."""
     order = np.argsort(frames)

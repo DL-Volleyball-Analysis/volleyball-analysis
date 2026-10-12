@@ -1,4 +1,3 @@
-
 from vball.datasets import jersey_crops as b
 
 
@@ -19,7 +18,11 @@ def test_frames_are_grouped_by_match():
     assert b.match_of("graz_1-2_cutted_f6896_id3_jpg.rf.x.jpg") == "graz_1"  # a second part of the same match
     assert b.match_of("poland_italy_raw_out_14_2_jpg.rf.x.jpg") == "poland_italy"
     assert b.match_of("usm_ucen_2_full_raw_out_3_1_jpg.rf.x.jpg") == "usm_ucen_2_full"
-    assert b.split_of("japan_poland") == "test" and b.split_of("usm_usach_1") == "valid" and b.split_of("graz_1") == "train"
+    assert (
+        b.split_of("japan_poland") == "test"
+        and b.split_of("usm_usach_1") == "valid"
+        and b.split_of("graz_1") == "train"
+    )
 
 
 def test_no_match_is_in_two_splits():
@@ -28,8 +31,12 @@ def test_no_match_is_in_two_splits():
 
 def test_build_keeps_digit_crops_split_by_match(tmp_path, monkeypatch):
     import yaml
+
     sources = []
-    for name, img_name in (("set-a", "japan_poland_raw_out_1_jpg.rf.x.jpg"), ("set-b", "graz_1_cutted_f1_jpg.rf.y.jpg")):
+    for name, img_name in (
+        ("set-a", "japan_poland_raw_out_1_jpg.rf.x.jpg"),
+        ("set-b", "graz_1_cutted_f1_jpg.rf.y.jpg"),
+    ):
         src = tmp_path / name
         (src / "train" / "images").mkdir(parents=True)
         (src / "train" / "labels").mkdir(parents=True)

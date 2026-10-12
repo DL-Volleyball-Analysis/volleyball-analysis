@@ -5,6 +5,7 @@ time to a 2-hour match at the same frame rate.
 
   .venv/bin/python scripts/time_player_stage.py
 """
+
 import argparse
 import time
 from pathlib import Path
@@ -38,8 +39,10 @@ def main():
         df = players.track_frames(frames(clip), fps, cfg)
         dt = time.perf_counter() - t0
         total_s, total_video_s = total_s + dt, total_video_s + n / fps
-        print(f"{clip.stem:28s} {n:5d} frames at {fps:.0f} fps: {dt:6.1f} s ({dt / (n / fps):.2f}x real time), "
-              f"{df['track_id'].nunique()} tracks")
+        print(
+            f"{clip.stem:28s} {n:5d} frames at {fps:.0f} fps: {dt:6.1f} s ({dt / (n / fps):.2f}x real time), "
+            f"{df['track_id'].nunique()} tracks"
+        )
     ratio = total_s / total_video_s
     print(f"overall {ratio:.2f}x real time -> a 2-hour match takes {2 * ratio:.1f} h for this stage")
 

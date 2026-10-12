@@ -13,6 +13,7 @@ Reports the share of non-player tracks and boxes marked other (caught), of playe
 
   .venv/bin/python scripts/eval_roles.py [--tracks outputs/players/tracking/yolo26s_960_botsort_10fps/data]
 """
+
 import argparse
 from collections import Counter
 from pathlib import Path

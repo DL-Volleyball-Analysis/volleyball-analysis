@@ -14,6 +14,7 @@ Statistics (`summarise`), per player and per team, for each set and the match:
   serves, aces, serve errors; `unknown` counts tags whose outcome is unknown (the row is incomplete).
 Team rows sum the player counts and recompute the ratios; ratios are never averaged.
 """
+
 from dataclasses import dataclass
 
 MAX_GAP_S = 2.0
@@ -25,8 +26,8 @@ SERVE_OUTCOMES = ("ace", "error", "in_play")
 class Tag:
     id: str
     time_s: float
-    kind: str                   # "attack" | "serve"
-    team: str                   # "a" | "b"
+    kind: str  # "attack" | "serve"
+    team: str  # "a" | "b"
     number: int
     outcome: str | None = None  # set by the user; None = infer
 
@@ -53,8 +54,8 @@ class Rally:
 class TagResult:
     tag: Tag
     rally: int | None  # rally idx, None when outside rallies
-    outcome: str       # kill / error / in_play / ace / unknown / "outside"
-    inferred: bool     # True when not set by the user
+    outcome: str  # kill / error / in_play / ace / unknown / "outside"
+    inferred: bool  # True when not set by the user
 
 
 def rally_of(time_s: float, rallies: list[Rally], max_gap_s: float = MAX_GAP_S) -> Rally | None:
@@ -105,7 +106,7 @@ class Line:
     serves: int = 0
     aces: int = 0
     serve_errors: int = 0
-    unknown: int = 0          # tags (attacks and serves) with an unknown outcome
+    unknown: int = 0  # tags (attacks and serves) with an unknown outcome
     unknown_attacks: int = 0
 
     @property
@@ -137,10 +138,21 @@ class Line:
         self.unknown += res.outcome == "unknown"
 
     def as_dict(self) -> dict:
-        return {"team": self.team, "number": self.number, "set_no": self.set_no, "attempts": self.attempts,
-                "kills": self.kills, "attack_errors": self.attack_errors, "efficiency": self.efficiency,
-                "kill_rate": self.kill_rate, "serves": self.serves, "aces": self.aces,
-                "serve_errors": self.serve_errors, "unknown": self.unknown, "incomplete": self.incomplete}
+        return {
+            "team": self.team,
+            "number": self.number,
+            "set_no": self.set_no,
+            "attempts": self.attempts,
+            "kills": self.kills,
+            "attack_errors": self.attack_errors,
+            "efficiency": self.efficiency,
+            "kill_rate": self.kill_rate,
+            "serves": self.serves,
+            "aces": self.aces,
+            "serve_errors": self.serve_errors,
+            "unknown": self.unknown,
+            "incomplete": self.incomplete,
+        }
 
 
 def summarise(results: list[TagResult], rallies: list[Rally]) -> list[Line]:
@@ -170,8 +182,21 @@ def summarise(results: list[TagResult], rallies: list[Rally]) -> list[Line]:
     return [lines[k] for k in sorted(lines, key=order)]
 
 
-CSV_HEADER = ["team", "number", "name", "set", "attempts", "kills", "attack_errors", "efficiency",
-              "kill_rate", "serves", "aces", "serve_errors", "unknown"]
+CSV_HEADER = [
+    "team",
+    "number",
+    "name",
+    "set",
+    "attempts",
+    "kills",
+    "attack_errors",
+    "efficiency",
+    "kill_rate",
+    "serves",
+    "aces",
+    "serve_errors",
+    "unknown",
+]
 
 
 def csv_rows(lines: list[Line], names: dict[tuple[str, int], str] | None = None) -> list[list]:
@@ -183,8 +208,21 @@ def csv_rows(lines: list[Line], names: dict[tuple[str, int], str] | None = None)
 
     rows = [CSV_HEADER]
     for ln in lines:
-        rows.append([ln.team.upper(), "TOTAL" if ln.number is None else ln.number,
-                     "" if ln.number is None else names.get((ln.team, ln.number), ""),
-                     "match" if ln.set_no is None else ln.set_no, ln.attempts, ln.kills, ln.attack_errors,
-                     ratio(ln.efficiency), ratio(ln.kill_rate), ln.serves, ln.aces, ln.serve_errors, ln.unknown])
+        rows.append(
+            [
+                ln.team.upper(),
+                "TOTAL" if ln.number is None else ln.number,
+                "" if ln.number is None else names.get((ln.team, ln.number), ""),
+                "match" if ln.set_no is None else ln.set_no,
+                ln.attempts,
+                ln.kills,
+                ln.attack_errors,
+                ratio(ln.efficiency),
+                ratio(ln.kill_rate),
+                ln.serves,
+                ln.aces,
+                ln.serve_errors,
+                ln.unknown,
+            ]
+        )
     return rows

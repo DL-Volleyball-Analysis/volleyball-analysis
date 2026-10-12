@@ -14,6 +14,7 @@ padded to a square with grey (classifiers resize or centre-crop to a square; a t
   python scripts/build_volleyball_actions.py --videos <dir with <match>/<clip>/<frame>.jpg> \
       --pkl annot_all.pkl --out <dir> [--margin 0.15] [--standing-share 0.2]
 """
+
 import argparse
 from pathlib import Path
 

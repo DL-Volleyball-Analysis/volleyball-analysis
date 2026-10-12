@@ -1,4 +1,3 @@
-
 from vball.datasets import sportsmot_detection as b
 
 
@@ -6,7 +5,7 @@ def test_mot_boxes_become_normalised_yolo_lines_clipped_to_the_image():
     lines = b.mot_to_yolo([(100, 50, 40, 120), (1260, 700, 40, 40), (1300, 10, 20, 20)], 1280, 720).splitlines()
     assert lines[0] == "0 0.093750 0.152778 0.031250 0.166667"
     assert lines[1] == "0 0.992188 0.986111 0.015625 0.027778"  # clipped at the right and bottom edges
-    assert len(lines) == 2                                       # fully outside: dropped
+    assert len(lines) == 2  # fully outside: dropped
     assert b.mot_to_yolo([], 1280, 720) == ""
 
 
@@ -20,6 +19,7 @@ def test_validation_holds_out_whole_match_videos():
 def test_build_writes_every_third_frame_with_yolo_labels(tmp_path):
     import cv2
     import numpy as np
+
     seq = tmp_path / "src" / "v_x_c001"
     (seq / "gt").mkdir(parents=True)
     (seq / "img1").mkdir()
@@ -29,7 +29,9 @@ def test_build_writes_every_third_frame_with_yolo_labels(tmp_path):
         cv2.imwrite(str(seq / "img1" / f"{f:06d}.jpg"), np.zeros((50, 100, 3), np.uint8))
     counts = b.build(tmp_path / "src", tmp_path / "out", ["v_x_c001"], every=3)
     assert counts == {"train": 2, "valid": 0}
-    assert (tmp_path / "out" / "train" / "labels" / "v_x_c001_000001.txt").read_text() == "0 0.200000 0.400000 0.200000 0.400000\n"
+    assert (
+        tmp_path / "out" / "train" / "labels" / "v_x_c001_000001.txt"
+    ).read_text() == "0 0.200000 0.400000 0.200000 0.400000\n"
     assert "nc: 1" in (tmp_path / "out" / "data.yaml").read_text()
     try:
         b.build(tmp_path / "src", tmp_path / "out", ["missing"])

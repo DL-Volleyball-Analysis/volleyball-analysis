@@ -10,6 +10,7 @@ frame-to-frame estimates instead drifted on a still camera (change follow-camera
 estimate gets the identity and share 0). The mapping is exact for a camera that rotates and zooms about a fixed point,
 and for points on one plane (the floor) under any camera motion.
 """
+
 from collections.abc import Callable, Iterable
 from pathlib import Path
 
@@ -32,7 +33,9 @@ def _corners(g: np.ndarray) -> np.ndarray | None:
     return cv2.goodFeaturesToTrack(g, MAX_CORNERS, 0.005, 10)
 
 
-def _register(a: np.ndarray, pts: np.ndarray | None, b: np.ndarray, guess: np.ndarray | None) -> tuple[np.ndarray | None, float]:
+def _register(
+    a: np.ndarray, pts: np.ndarray | None, b: np.ndarray, guess: np.ndarray | None
+) -> tuple[np.ndarray | None, float]:
     """Homography image a -> image b from corners pts of a, and the share of corners that agree with it."""
     if pts is None or len(pts) < 12:
         return None, 0.0
@@ -51,7 +54,9 @@ def _register(a: np.ndarray, pts: np.ndarray | None, b: np.ndarray, guess: np.nd
     return H, float(inl.sum()) / len(pts)
 
 
-def estimate(frames: Iterable[np.ndarray], tick: Callable[[int], None] = lambda i: None) -> tuple[np.ndarray, np.ndarray]:
+def estimate(
+    frames: Iterable[np.ndarray], tick: Callable[[int], None] = lambda i: None
+) -> tuple[np.ndarray, np.ndarray]:
     """(steps (n, 3, 3), inlier share (n,)) for a sequence of BGR or grey frames."""
     steps, share = [np.eye(3)], [1.0]
     key = pts = prev = None

@@ -12,7 +12,16 @@ def test_players_stage_runs_after_ball_without_a_court(client, clip, fake_ball):
     v = upload(client, clip)
     assert run_worker_once()["status"] == "done"
     stages = client.get(f"/videos/{v['id']}/stages").json()
-    assert [s["name"] for s in stages] == ["decode", "court", "ball", "players", "actions", "trajectory", "events", "rallies"]
+    assert [s["name"] for s in stages] == [
+        "decode",
+        "court",
+        "ball",
+        "players",
+        "actions",
+        "trajectory",
+        "events",
+        "rallies",
+    ]
     p = {s["name"]: s for s in stages}["players"]
     assert p["status"] == "done" and p["summary"]["tracks"] == 2 and p["summary"]["placed"] is False
     assert "court was not found" in p["message"]
@@ -25,23 +34,40 @@ def test_players_stage_runs_after_ball_without_a_court(client, clip, fake_ball):
 
 def test_with_a_court_mapping_people_off_court_are_dropped(client, clip, fake_ball, monkeypatch):
     from vball import pipeline
+
     # court -> image: 10 px per metre, origin at (60, 145), court y up the image
     H = np.array([[10.0, 0, 60], [0, -10.0, 145], [0, 0, 1]])
     corners = cv2.perspectiveTransform(COURT_CORNERS.reshape(-1, 1, 2), H).reshape(-1, 2).tolist()
-    monkeypatch.setitem(pipeline.FUNCS, "court", lambda *a: {"status": "done", "shots": [
-        {"start_frame": 0, "end_frame": 49, "status": "ok", "error": 0.001,
-         "samples": [{"frame": 0, "corners_px": corners, "error": 0.001, "keypoints": []}]}]})
+    monkeypatch.setitem(
+        pipeline.FUNCS,
+        "court",
+        lambda *a: {
+            "status": "done",
+            "shots": [
+                {
+                    "start_frame": 0,
+                    "end_frame": 49,
+                    "status": "ok",
+                    "error": 0.001,
+                    "samples": [{"frame": 0, "corners_px": corners, "error": 0.001, "keypoints": []}],
+                }
+            ],
+        },
+    )
     v = upload(client, clip)
     assert run_worker_once()["status"] == "done"
     w = client.get(f"/videos/{v['id']}/players", params={"start": 0, "end": 0}).json()
     assert w["placed"] is True
-    assert [b["track_id"] for b in w["boxes"]] == [1]  # track 2 maps to y = 12.5 m: 3.5 m beyond the far sideline, outside the 3 m margin
+    assert [b["track_id"] for b in w["boxes"]] == [
+        1
+    ]  # track 2 maps to y = 12.5 m: 3.5 m beyond the far sideline, outside the 3 m margin
     b = w["boxes"][0]
     assert b["court_x"] == pytest.approx(9.0) and b["court_y"] == pytest.approx(4.5) and b["side"] == "b"
 
 
 def test_rerun_from_events_reuses_players(client, clip, fake_ball, monkeypatch):
     from vball import pipeline
+
     v = upload(client, clip)
     run_worker_once()
     calls = []
@@ -58,10 +84,14 @@ def test_players_404_before_the_stage_ran(client, clip):
 
 def test_homography_lookup_by_shot():
     from vball import pipeline
+
     corners = [[40, 60], [280, 60], [310, 170], [10, 170]]
-    court = {"shots": [
-        {"start_frame": 0, "end_frame": 9, "status": "ok", "samples": [{"frame": 0, "corners_px": corners}]},
-        {"start_frame": 10, "end_frame": 19, "status": "failed", "samples": []}]}
+    court = {
+        "shots": [
+            {"start_frame": 0, "end_frame": 9, "status": "ok", "samples": [{"frame": 0, "corners_px": corners}]},
+            {"start_frame": 10, "end_frame": 19, "status": "failed", "samples": []},
+        ]
+    }
     at = pipeline.results.court_homography_at(court, (320, 180))
     assert at(5) is not None and at(12) is None and at(30) is None
     assert pipeline.results.court_homography_at(None)(0) is None
@@ -70,8 +100,11 @@ def test_homography_lookup_by_shot():
 def test_people_marked_other_are_returned_but_flagged(client, clip, fake_ball, monkeypatch):
     from vball import pipeline
     from vball.teams import Assignment
+
     # track 2 (far outside the court in the fake tracker) looks like neither team: a referee
-    monkeypatch.setattr(pipeline.players, "team_assignments", lambda video, df: {1: Assignment("a", False), 2: Assignment(None, True)})
+    monkeypatch.setattr(
+        pipeline.players, "team_assignments", lambda video, df: {1: Assignment("a", False), 2: Assignment(None, True)}
+    )
     v = upload(client, clip)
     assert run_worker_once()["status"] == "done"
     p = {s["name"]: s for s in client.get(f"/videos/{v['id']}/stages").json()}["players"]
@@ -83,14 +116,19 @@ def test_people_marked_other_are_returned_but_flagged(client, clip, fake_ball, m
 
 def test_general_detector_when_the_player_detector_misses_players(client, clip, fake_ball, monkeypatch, tmp_path):
     from vball import pipeline
+
     general = tmp_path / "general.pt"
     general.write_bytes(b"")
     specialist = tmp_path / "specialist.pt"
     specialist.write_bytes(b"")
     monkeypatch.setattr(pipeline.config, "GENERAL_PLAYER_MODEL", general)
-    monkeypatch.setattr(pipeline.config, "PLAYER_CFG", dataclasses.replace(pipeline.config.PLAYER_CFG, model=str(specialist)))
+    monkeypatch.setattr(
+        pipeline.config, "PLAYER_CFG", dataclasses.replace(pipeline.config.PLAYER_CFG, model=str(specialist))
+    )
     counts = {str(specialist): 2, str(general): 13}  # an amateur gym: the player-only detector finds 2 of 13 people
-    monkeypatch.setattr(pipeline.models, "person_counts", lambda weights, frames, imgsz: [counts[str(weights)]] * len(frames))
+    monkeypatch.setattr(
+        pipeline.models, "person_counts", lambda weights, frames, imgsz: [counts[str(weights)]] * len(frames)
+    )
     v = upload(client, clip)
     assert run_worker_once()["status"] == "done"
     s = {x["name"]: x for x in client.get(f"/videos/{v['id']}/stages").json()}["players"]

@@ -22,14 +22,16 @@ def court_keypoints(camera=CAM):
 def calibrated(monkeypatch, tmp_path):
     """The real court stage with a fake detector seeing the synthetic camera; ball stage with the arc."""
     from vball import pipeline
+
     weights = tmp_path / "court_kpt.pt"
     weights.write_bytes(b"")
     monkeypatch.setattr(pipeline.config, "COURT_MODELS", {"gym": weights})
-    monkeypatch.setattr(pipeline.models, "court_detector", lambda weights: (lambda frame: court_keypoints()))
+    monkeypatch.setattr(pipeline.models, "court_detector", lambda weights: lambda frame: court_keypoints())
 
     def track(video, model, out_dir=None, force=False):
         uv = ARC.uv
         return pd.DataFrame({"frame": np.arange(len(uv)), "visible": 1, "x": uv[:, 0], "y": uv[:, 1], "radius": 3})
+
     monkeypatch.setattr("vball.ball.track", track)
 
 
@@ -60,7 +62,7 @@ def test_court_stage_to_3d_flights_end_to_end(client, clip, calibrated):
         assert f["source"] == "model" and f["landing"] is None
         pos = np.array([[s["x"], s["y"], s["z"]] for s in f["samples"]])
         first = round(f["start_s"] * 25)
-        err = np.linalg.norm(pos - ARC.positions[first:first + len(pos)], axis=1)
+        err = np.linalg.norm(pos - ARC.positions[first : first + len(pos)], axis=1)
         assert np.median(err) < 0.05  # noise-free detections
         assert all(s["observed"] for s in f["samples"])
         assert f["dropped"] == 0 and isinstance(f["anchors"], list)  # clean detections; anchors need placed players
@@ -69,12 +71,26 @@ def test_court_stage_to_3d_flights_end_to_end(client, clip, calibrated):
 
 def test_an_unusable_calibration_is_reported(client, clip, fake_ball, monkeypatch):
     from vball import pipeline
+
     # a shot the court stage accepted, but whose keypoints fit no camera
     kp = np.column_stack([np.random.default_rng(0).uniform(0, 300, (14, 2)), np.full(14, 0.9)]).tolist()
     corners = [[40, 60], [280, 60], [310, 170], [10, 170]]
-    monkeypatch.setitem(pipeline.FUNCS, "court", lambda *a: {"status": "done", "shots": [
-        {"start_frame": 0, "end_frame": 49, "status": "ok", "error": 0.001,
-         "samples": [{"frame": 0, "corners_px": corners, "error": 0.001, "keypoints": kp}]}]})
+    monkeypatch.setitem(
+        pipeline.FUNCS,
+        "court",
+        lambda *a: {
+            "status": "done",
+            "shots": [
+                {
+                    "start_frame": 0,
+                    "end_frame": 49,
+                    "status": "ok",
+                    "error": 0.001,
+                    "samples": [{"frame": 0, "corners_px": corners, "error": 0.001, "keypoints": kp}],
+                }
+            ],
+        },
+    )
     v = upload(client, clip)
     run_worker_once()
     t = stage(client, v["id"], "trajectory")
@@ -84,9 +100,23 @@ def test_an_unusable_calibration_is_reported(client, clip, fake_ball, monkeypatc
 
 def test_demo_rallies_get_demo_flights_landing_at_the_rally_landing(client, clip):
     from vball_app import deps
+
     v = upload(client, clip)
-    deps.db.replace_rallies(v["id"], [{"idx": 0, "start_s": 0.0, "end_s": 6.0, "winner": "a", "reason": "in",
-                                       "landing_x": 14.0, "landing_y": 3.0, "source": "demo"}])
+    deps.db.replace_rallies(
+        v["id"],
+        [
+            {
+                "idx": 0,
+                "start_s": 0.0,
+                "end_s": 6.0,
+                "winner": "a",
+                "reason": "in",
+                "landing_x": 14.0,
+                "landing_y": 3.0,
+                "source": "demo",
+            }
+        ],
+    )
     fl = client.get(f"/videos/{v['id']}/flights").json()
     assert len(fl) == 4 and {f["source"] for f in fl} == {"demo"}
     assert fl[-1]["landing"] == pytest.approx({"x_m": 14.0, "y_m": 3.0}, abs=0.05)
@@ -98,9 +128,23 @@ def test_demo_rallies_get_demo_flights_landing_at_the_rally_landing(client, clip
 
 def test_a_short_demo_rally_keeps_only_the_last_flights(client, clip):
     from vball_app import deps
+
     v = upload(client, clip)
-    deps.db.replace_rallies(v["id"], [{"idx": 0, "start_s": 0.0, "end_s": 1.2, "winner": "b", "reason": "in",
-                                       "landing_x": 4.0, "landing_y": 4.0, "source": "demo"}])
+    deps.db.replace_rallies(
+        v["id"],
+        [
+            {
+                "idx": 0,
+                "start_s": 0.0,
+                "end_s": 1.2,
+                "winner": "b",
+                "reason": "in",
+                "landing_x": 4.0,
+                "landing_y": 4.0,
+                "source": "demo",
+            }
+        ],
+    )
     fl = client.get(f"/videos/{v['id']}/flights").json()
     assert len(fl) == 1 and fl[0]["end_s"] - fl[0]["start_s"] == pytest.approx(0.5, abs=0.05)
 
@@ -114,6 +158,7 @@ def test_every_demo_flight_that_crosses_the_net_clears_it():
     import random
 
     from vball_app import demo
+
     rallies = demo.demo_rallies(600.0, random.Random(1))  # 300 rallies with random landings
     flights = demo.demo_flights([{**r, "end_s": r["start_s"] + 5.0} for r in rallies], 25.0)
     crossings = [f["derived"]["net_crossing"]["height_m"] for f in flights if f["derived"]["net_crossing"]]
@@ -122,10 +167,24 @@ def test_every_demo_flight_that_crosses_the_net_clears_it():
 
 def test_samples_without_keypoints_do_not_break_the_stage(client, clip, fake_ball, monkeypatch):
     from vball import pipeline
+
     corners = [[40, 60], [280, 60], [310, 170], [10, 170]]
-    monkeypatch.setitem(pipeline.FUNCS, "court", lambda *a: {"status": "done", "shots": [
-        {"start_frame": 0, "end_frame": 49, "status": "ok", "error": 0.001,
-         "samples": [{"frame": 0, "corners_px": corners, "error": 0.001, "keypoints": []}]}]})
+    monkeypatch.setitem(
+        pipeline.FUNCS,
+        "court",
+        lambda *a: {
+            "status": "done",
+            "shots": [
+                {
+                    "start_frame": 0,
+                    "end_frame": 49,
+                    "status": "ok",
+                    "error": 0.001,
+                    "samples": [{"frame": 0, "corners_px": corners, "error": 0.001, "keypoints": []}],
+                }
+            ],
+        },
+    )
     v = upload(client, clip)
     assert run_worker_once()["status"] == "done"
     t = stage(client, v["id"], "trajectory")

@@ -9,6 +9,7 @@ Usage:
   .venv/bin/python scripts/eval_player_tracking.py --gt-as-tracker      # sanity check: must score 1.0
   options: --seqs N (first N volleyball sequences), --max-frames N (per sequence, for quick runs)
 """
+
 import configparser
 import time
 from pathlib import Path
@@ -39,10 +40,17 @@ def seq_info(seq: str) -> tuple[float, int]:
 def write_mot(df: pd.DataFrame, path: Path) -> None:
     """MOTChallenge rows: frame (1-based), id (>= 1), left, top, width, height, conf, -1, -1, -1."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    out = pd.DataFrame({
-        "frame": df["frame"] + 1, "id": df["track_id"] + 1 - df["track_id"].min() if len(df) else [],
-        "x": df["x1"], "y": df["y1"], "w": df["x2"] - df["x1"], "h": df["y2"] - df["y1"], "conf": df["conf"],
-    })
+    out = pd.DataFrame(
+        {
+            "frame": df["frame"] + 1,
+            "id": df["track_id"] + 1 - df["track_id"].min() if len(df) else [],
+            "x": df["x1"],
+            "y": df["y1"],
+            "w": df["x2"] - df["x1"],
+            "h": df["y2"] - df["y1"],
+            "conf": df["conf"],
+        }
+    )
     out["a"] = out["b"] = out["c"] = -1
     out.to_csv(path, header=False, index=False, float_format="%.2f")
 
@@ -105,19 +113,45 @@ def evaluate(seqs: list[str], label: str, max_frames: int | None) -> pd.DataFram
     seqmap.write_text("name\n" + "\n".join(seqs) + "\n")  # TrackEval skips the first line as a header
 
     eval_cfg = trackeval.Evaluator.get_default_eval_config()
-    eval_cfg.update({"PRINT_RESULTS": False, "PRINT_CONFIG": False, "OUTPUT_SUMMARY": False,
-                     "OUTPUT_DETAILED": False, "PLOT_CURVES": False, "USE_PARALLEL": False})
+    eval_cfg.update(
+        {
+            "PRINT_RESULTS": False,
+            "PRINT_CONFIG": False,
+            "OUTPUT_SUMMARY": False,
+            "OUTPUT_DETAILED": False,
+            "PLOT_CURVES": False,
+            "USE_PARALLEL": False,
+        }
+    )
     ds_cfg = trackeval.datasets.MotChallenge2DBox.get_default_dataset_config()
-    ds_cfg.update({"GT_FOLDER": str(gt_folder), "TRACKERS_FOLDER": str(RESULTS), "TRACKERS_TO_EVAL": [label],
-                   "SEQMAP_FILE": str(seqmap), "SKIP_SPLIT_FOL": True, "DO_PREPROC": False,
-                   "PRINT_CONFIG": False, "TRACKER_SUB_FOLDER": "data", "OUTPUT_SUB_FOLDER": "eval"})
+    ds_cfg.update(
+        {
+            "GT_FOLDER": str(gt_folder),
+            "TRACKERS_FOLDER": str(RESULTS),
+            "TRACKERS_TO_EVAL": [label],
+            "SEQMAP_FILE": str(seqmap),
+            "SKIP_SPLIT_FOL": True,
+            "DO_PREPROC": False,
+            "PRINT_CONFIG": False,
+            "TRACKER_SUB_FOLDER": "data",
+            "OUTPUT_SUB_FOLDER": "eval",
+        }
+    )
     metrics = [trackeval.metrics.HOTA(), trackeval.metrics.CLEAR(), trackeval.metrics.Identity()]
     res, _ = trackeval.Evaluator(eval_cfg).evaluate([trackeval.datasets.MotChallenge2DBox(ds_cfg)], metrics)
     per_seq = res["MotChallenge2DBox"][label]
     rows = []
     for seq, r in per_seq.items():
         p = r["pedestrian"]
-        rows.append({"seq": seq, "HOTA": float(np.mean(p["HOTA"]["HOTA"])), "IDF1": p["Identity"]["IDF1"],
-                     "MOTA": p["CLEAR"]["MOTA"], "recall": p["CLEAR"]["CLR_Re"], "precision": p["CLEAR"]["CLR_Pr"],
-                     "IDSW": p["CLEAR"]["IDSW"]})
+        rows.append(
+            {
+                "seq": seq,
+                "HOTA": float(np.mean(p["HOTA"]["HOTA"])),
+                "IDF1": p["Identity"]["IDF1"],
+                "MOTA": p["CLEAR"]["MOTA"],
+                "recall": p["CLEAR"]["CLR_Re"],
+                "precision": p["CLEAR"]["CLR_Pr"],
+                "IDSW": p["CLEAR"]["IDSW"],
+            }
+        )
     return pd.DataFrame(rows).set_index("seq")

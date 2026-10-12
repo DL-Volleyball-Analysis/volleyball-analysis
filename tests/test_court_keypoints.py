@@ -7,7 +7,7 @@ from vball.court_keypoints import K6Y7R_FLIP_IDX, K6Y7R_FLOOR
 def project_side_view(width=1280):
     """Image positions of the 10 floor points for a camera behind the near sideline (side view).
     Court y = 9 is the far sideline; x grows left to right in the image."""
-    img = np.float32([[300, 250], [980, 250], [1200, 600], [80, 600]])   # far-left, far-right, near-right, near-left
+    img = np.float32([[300, 250], [980, 250], [1200, 600], [80, 600]])  # far-left, far-right, near-right, near-left
     court = np.float32([[0, 9], [18, 9], [18, 0], [0, 0]])
     H = cv2.getPerspectiveTransform(court, img)
     return cv2.perspectiveTransform(K6Y7R_FLOOR.reshape(-1, 1, 2), H).reshape(-1, 2), width
@@ -64,6 +64,7 @@ def project(pts3d, cam):
 
 def test_complete_floor_from_front_zone_is_exact():
     from vball.court_keypoints import FRONT_ZONE_IDS, complete_floor, k6y7r_points_3d
+
     cam = synthetic_camera()
     truth = project(k6y7r_points_3d()[:10], cam)
     completed = complete_floor(truth[FRONT_ZONE_IDS], FRONT_ZONE_IDS)
@@ -72,6 +73,7 @@ def test_complete_floor_from_front_zone_is_exact():
 
 def test_net_points_from_floor_recover_the_camera():
     from vball.court_keypoints import K6Y7R_NET_IDS, k6y7r_points_3d, net_points_from_floor
+
     cam = synthetic_camera()
     pts = k6y7r_points_3d()
     net = net_points_from_floor(project(pts[:10], cam), cam[3])
@@ -81,5 +83,6 @@ def test_net_points_from_floor_recover_the_camera():
 
 def test_centred_camera_gives_no_net_points_instead_of_a_guess():
     from vball.court_keypoints import k6y7r_points_3d, net_points_from_floor
+
     cam = synthetic_camera(eye=(9.0, -14.0, 9.0))
     assert net_points_from_floor(project(k6y7r_points_3d()[:10], cam), cam[3]) is None

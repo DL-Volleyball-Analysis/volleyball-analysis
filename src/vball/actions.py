@@ -10,6 +10,7 @@ only while their boxes keep overlapping, so two unassigned players are not joine
 Detections: rows of (frame, action, conf, x1, y1, x2, y2) in pixels. Tracks: the players stage table
 (`vball.players.COLUMNS`), one box per track and frame.
 """
+
 from dataclasses import dataclass
 
 import numpy as np
@@ -21,8 +22,8 @@ DETECTION_COLUMNS = ["frame", "action", "conf", "x1", "y1", "x2", "y2"]
 
 @dataclass(frozen=True)
 class ActionConfig:
-    min_iou: float = 0.3   # action box vs player box
-    max_gap: int = 3       # samples; a longer pause starts a new event
+    min_iou: float = 0.3  # action box vs player box
+    max_gap: int = 3  # samples; a longer pause starts a new event
     min_peak: float = 0.6  # events below this peak confidence are dropped
     min_conf: float = 0.25  # detections below this are ignored before merging
 
@@ -91,6 +92,7 @@ def merge(assigned: pd.DataFrame, sample_step: int, cfg: ActionConfig = ActionCo
     return sorted((e for e in done if e.peak_conf >= cfg.min_peak), key=lambda e: (e.start_frame, e.action))
 
 
-def events(detections: pd.DataFrame, tracks: pd.DataFrame, sample_step: int,
-           cfg: ActionConfig = ActionConfig()) -> list[Event]:
+def events(
+    detections: pd.DataFrame, tracks: pd.DataFrame, sample_step: int, cfg: ActionConfig = ActionConfig()
+) -> list[Event]:
     return merge(assign(detections, tracks, cfg), sample_step, cfg)

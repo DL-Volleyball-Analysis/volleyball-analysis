@@ -14,6 +14,7 @@ Segmentation thresholds (vball.rallies.RallyConfig) are chosen on validation by 
   python scripts/eval_rallies.py --cues <dir with <match>.csv and <match>.json> \
       --labels data/datasets/gamestate/labels [--out outputs/rallies]
 """
+
 import argparse
 import itertools
 import json
@@ -24,7 +25,7 @@ import pandas as pd
 
 from vball.rallies import RallyConfig, evaluate, features, match, read_cvat, save_model, segment
 
-DEV = [2, 3, 4, 8, 10, 13]   # training + leave-one-match-out model selection
+DEV = [2, 3, 4, 8, 10, 13]  # training + leave-one-match-out model selection
 TEST = [6, 9]
 
 
@@ -51,8 +52,13 @@ def ball_rule(c: pd.DataFrame, rate: float) -> np.ndarray:
 
 
 def choose_config(val: dict, probs: dict) -> RallyConfig:  # val: matches with labels, probs: their P(play)
-    grid = {"p_on": [0.5, 0.6, 0.7], "p_off": [0.3, 0.4, 0.5], "min_rally_s": [2.0, 3.0, 4.0],
-            "min_gap_s": [0.5, 1.0, 2.0], "smooth_s": [0.5, 1.0, 2.0]}
+    grid = {
+        "p_on": [0.5, 0.6, 0.7],
+        "p_off": [0.3, 0.4, 0.5],
+        "min_rally_s": [2.0, 3.0, 4.0],
+        "min_gap_s": [0.5, 1.0, 2.0],
+        "smooth_s": [0.5, 1.0, 2.0],
+    }
     best = None
     for vals in itertools.product(*grid.values()):
         cfg = RallyConfig(**dict(zip(grid, vals)))
@@ -76,19 +82,30 @@ def report(name: str, data: dict, probs: dict, cfg: RallyConfig) -> dict:
     pairs = [pr for m in data for pr in match(det[m], data[m][2])]
     starts = [abs(d[0] - g[0]) for d, g in pairs]
     ends = [abs(d[1] - g[1]) for d, g in pairs]
-    res = {"precision": p, "recall": r, "f1": 2 * p * r / max(p + r, 1e-9), "matched": tp, "detected": nd, "labelled": ng,
-           "start_err_median_s": float(np.median(starts)) if starts else None,
-           "end_err_median_s": float(np.median(ends)) if ends else None,
-           "within_1s": float(np.mean(np.array(starts + ends) <= 1.0)) if starts else None,
-           "per_match": per, "config": cfg.__dict__}
+    res = {
+        "precision": p,
+        "recall": r,
+        "f1": 2 * p * r / max(p + r, 1e-9),
+        "matched": tp,
+        "detected": nd,
+        "labelled": ng,
+        "start_err_median_s": float(np.median(starts)) if starts else None,
+        "end_err_median_s": float(np.median(ends)) if ends else None,
+        "within_1s": float(np.mean(np.array(starts + ends) <= 1.0)) if starts else None,
+        "per_match": per,
+        "config": cfg.__dict__,
+    }
     fmt = lambda v, spec: "n/a" if v is None else format(v, spec)  # noqa: E731
-    print(f"{name:16s} P {p:.3f} R {r:.3f} F1 {res['f1']:.3f}  median start err {fmt(res['start_err_median_s'], '.2f')} s, "
-          f"end err {fmt(res['end_err_median_s'], '.2f')} s, within 1 s {fmt(res['within_1s'], '.0%')}  ({tp}/{ng} rallies, {nd} detected)")
+    print(
+        f"{name:16s} P {p:.3f} R {r:.3f} F1 {res['f1']:.3f}  median start err {fmt(res['start_err_median_s'], '.2f')} s, "
+        f"end err {fmt(res['end_err_median_s'], '.2f')} s, within 1 s {fmt(res['within_1s'], '.0%')}  ({tp}/{ng} rallies, {nd} detected)"
+    )
     return res
 
 
 def fit(data: dict, matches: list[int], rate: float):
     from sklearn.ensemble import HistGradientBoostingClassifier
+
     X = pd.concat([features(data[m][1], rate) for m in matches])
     y = np.concatenate([play_labels(data[m][0], data[m][2]) for m in matches])
     return HistGradientBoostingClassifier(max_iter=300, learning_rate=0.05, random_state=0).fit(X, y)
@@ -106,19 +123,25 @@ def main():
     test = load(Path(args.cues), Path(args.labels), TEST)
 
     # out-of-fold probabilities on the development matches
-    oof = {m: fit(dev, [n for n in DEV if n != m], args.rate).predict_proba(features(dev[m][1], args.rate))[:, 1]
-           for m in DEV}
+    oof = {
+        m: fit(dev, [n for n in DEV if n != m], args.rate).predict_proba(features(dev[m][1], args.rate))[:, 1]
+        for m in DEV
+    }
     final = fit(dev, DEV, args.rate)
     methods = {
-        "ball rule": ({m: ball_rule(dev[m][1], args.rate) for m in DEV},
-                      {m: ball_rule(test[m][1], args.rate) for m in TEST}),
+        "ball rule": (
+            {m: ball_rule(dev[m][1], args.rate) for m in DEV},
+            {m: ball_rule(test[m][1], args.rate) for m in TEST},
+        ),
         "classifier": (oof, {m: final.predict_proba(features(test[m][1], args.rate))[:, 1] for m in TEST}),
     }
     results = {}
     for name, (p_dev, p_test) in methods.items():
         cfg = choose_config(dev, p_dev)
-        results[name] = {"dev (out of fold)": report(f"{name} dev", dev, p_dev, cfg),
-                         "test": report(f"{name} test", test, p_test, cfg)}
+        results[name] = {
+            "dev (out of fold)": report(f"{name} dev", dev, p_dev, cfg),
+            "test": report(f"{name} test", test, p_test, cfg),
+        }
         acc = np.mean([((p_test[m] >= 0.5) == play_labels(test[m][0], test[m][2])).mean() for m in TEST])
         results[name]["test_sample_accuracy"] = float(acc)
     out = Path(args.out)
@@ -127,8 +150,16 @@ def main():
     if args.save:  # the reported numbers come from the model above; this one has also seen the test matches
         everything = {**dev, **test}
         cfg = RallyConfig(**results["classifier"]["test"]["config"])
-        save_model(Path(args.save), fit(everything, DEV + TEST, args.rate), cfg, args.rate,
-                   {"trained_on": "game-state dataset, all 8 matches", "test_f1_of_dev_model": results["classifier"]["test"]["f1"]})
+        save_model(
+            Path(args.save),
+            fit(everything, DEV + TEST, args.rate),
+            cfg,
+            args.rate,
+            {
+                "trained_on": "game-state dataset, all 8 matches",
+                "test_f1_of_dev_model": results["classifier"]["test"]["f1"],
+            },
+        )
         print("saved", args.save)
     print("written", out / "results.json")
 

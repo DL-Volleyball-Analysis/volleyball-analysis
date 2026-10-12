@@ -16,6 +16,7 @@ OREL_TEST: a backline and a side view), labels in original pixels.
   python scripts/eval_ball_detection.py --videos <dir with <match>/<clip>/<frame>.jpg> \
       --ann <volleyball_ball_annotation dir> [--max-clips N] [--detectors v4c ravel012] [--no-track]
 """
+
 import argparse
 import json
 import time
@@ -41,6 +42,7 @@ def labels_frame(xy: np.ndarray, vis: np.ndarray) -> pd.DataFrame:
 def orel_clips(root: Path):
     """(match, clip, frame loader, labels) for the held-out orel gym matches."""
     from vball.datasets import ball_clips as bbc
+
     for match, clip, video, xy, vis in bbc.orel_clips(root):
         if match in bbc.OREL_TEST:
             yield match, clip, (lambda v=video: list(bbc.read_video(v))), labels_frame(xy, vis)
@@ -77,7 +79,9 @@ def main():
     ap.add_argument("--no-track", action="store_true", help="only the detectors alone")
     ap.add_argument("--max-clips", type=int, default=None, help="evenly spaced subset of the test clips")
     ap.add_argument("--out", default=str(OUTPUTS / "ball" / "eval_volleyball"))
-    ap.add_argument("--wasb-model", type=Path, default=None, help="another WASB ONNX (e.g. a fine-tuned run) for 'wasb'")
+    ap.add_argument(
+        "--wasb-model", type=Path, default=None, help="another WASB ONNX (e.g. a fine-tuned run) for 'wasb'"
+    )
     args = ap.parse_args()
     if args.wasb_model is not None:
         ball_detect.BALL_MODELS["wasb"] = args.wasb_model
@@ -96,8 +100,8 @@ def main():
     preds = {m: [] for m in methods}
     labels, secs = [], {m: 0.0 for m in methods}
     for n, (match, clip, load_frames, lab) in enumerate(all_clips):
-        frames = load_frames()[:len(lab)]
-        lab = lab.iloc[:len(frames)]
+        frames = load_frames()[: len(lab)]
+        lab = lab.iloc[: len(frames)]
         key = {"match": match, "clip": clip}
         labels.append(lab.assign(**key))
         for d, det in dets.items():
@@ -119,7 +123,7 @@ def main():
     gt["frame"] = np.arange(len(gt))  # one global frame index so clips do not collide in the merge
     n_frames = len(gt)
     results = {}
-    print(f"\n{"method":16s} " + "  ".join(f"P/R/F1 @{t:.0f}px" for t in TAUS) + "   ms/frame")
+    print(f"\n{'method':16s} " + "  ".join(f"P/R/F1 @{t:.0f}px" for t in TAUS) + "   ms/frame")
     for m in methods:
         pr = pd.concat(preds[m], ignore_index=True)
         pr["frame"] = np.arange(len(pr))
@@ -127,10 +131,21 @@ def main():
         res = {f"tau{int(t)}": accuracy(pr, gt, t) for t in TAUS}
         res["ms_per_frame"] = 1000 * secs[m] / n_frames
         results[m] = res
-        cells = "  ".join(f"{r['precision']:.3f}/{r['recall']:.3f}/{r['f1']:.3f}" for r in (res[f"tau{int(t)}"] for t in TAUS))
+        cells = "  ".join(
+            f"{r['precision']:.3f}/{r['recall']:.3f}/{r['f1']:.3f}" for r in (res[f"tau{int(t)}"] for t in TAUS)
+        )
         print(f"{m:16s} {cells}   {res['ms_per_frame']:.0f}")
-    (out / "results.json").write_text(json.dumps({"clips": len(all_clips), "frames": n_frames,
-                                                  "visible_share": float(gt["visible"].mean()), "methods": results}, indent=2))
+    (out / "results.json").write_text(
+        json.dumps(
+            {
+                "clips": len(all_clips),
+                "frames": n_frames,
+                "visible_share": float(gt["visible"].mean()),
+                "methods": results,
+            },
+            indent=2,
+        )
+    )
     print(f"\nlabels: {gt['visible'].mean():.1%} of frames have a visible ball; results in {out}")
 
 

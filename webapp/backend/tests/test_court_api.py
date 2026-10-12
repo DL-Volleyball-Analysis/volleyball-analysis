@@ -15,6 +15,7 @@ def stage(client, vid, name):
 @pytest.fixture
 def installed(monkeypatch, tmp_path):
     from vball import pipeline
+
     weights = tmp_path / "court_kpt.pt"
     weights.write_bytes(b"")
     monkeypatch.setattr(pipeline.config, "COURT_MODELS", {"gym": weights})
@@ -28,7 +29,9 @@ def test_court_found_in_every_shot(client, clip, fake_ball, installed, monkeypat
         def detect(frame):
             seen.append(frame.shape)
             return np.column_stack([CAM.project(k6y7r_points_3d()), np.full(14, 0.9)])
+
         return detect
+
     monkeypatch.setattr(installed, "court_detector", detector)
     v = upload(client, clip)
     assert run_worker_once()["status"] == "done"
@@ -46,6 +49,7 @@ def test_a_shot_without_a_court_fails_and_is_reported(client, clip, fake_ball, i
         kp = np.column_stack([CAM.project(k6y7r_points_3d()), np.full(14, 0.9)])
         # the second shot (frames 25-49, red) shows no court
         return lambda frame: kp if frame[90, 160, 1] > 100 else np.zeros((14, 3))
+
     monkeypatch.setattr(installed, "court_detector", detector)
     v = upload(client, clip)
     run_worker_once()
@@ -57,6 +61,7 @@ def test_a_shot_without_a_court_fails_and_is_reported(client, clip, fake_ball, i
 
 def test_without_a_model_the_court_stage_is_unavailable(client, clip, fake_ball, monkeypatch, tmp_path):
     from vball import pipeline
+
     monkeypatch.setattr(pipeline.config, "COURT_MODELS", {"gym": tmp_path / "missing.pt"})
     v = upload(client, clip)
     run_worker_once()
@@ -66,6 +71,7 @@ def test_without_a_model_the_court_stage_is_unavailable(client, clip, fake_ball,
 
 def test_each_shot_uses_the_model_that_found_its_court(client, clip, fake_ball, monkeypatch, tmp_path):
     from vball import pipeline
+
     for name in ("gym", "broadcast"):
         (tmp_path / f"{name}.pt").write_bytes(b"")
     monkeypatch.setattr(pipeline.config, "COURT_MODELS", {n: tmp_path / f"{n}.pt" for n in ("gym", "broadcast")})
@@ -74,6 +80,7 @@ def test_each_shot_uses_the_model_that_found_its_court(client, clip, fake_ball, 
     def detector(weights):
         first_shot = weights.stem == "gym"  # the gym model finds the court in shot 1 (green), broadcast in shot 2 (red)
         return lambda frame: kp if (frame[90, 160, 1] > 100) == first_shot else np.zeros((14, 3))
+
     monkeypatch.setattr(pipeline.models, "court_detector", detector)
     v = upload(client, clip)
     run_worker_once()
@@ -85,7 +92,7 @@ def test_each_shot_uses_the_model_that_found_its_court(client, clip, fake_ball, 
 
 def failing_court(installed, monkeypatch):
     """A court model that finds nothing: every shot fails, so only a correction gives a court."""
-    monkeypatch.setattr(installed, "court_detector", lambda weights: (lambda frame: np.zeros((14, 3))))
+    monkeypatch.setattr(installed, "court_detector", lambda weights: lambda frame: np.zeros((14, 3)))
 
 
 CORNERS = CAM.project(k6y7r_points_3d()[[0, 4, 5, 9]]).tolist()  # the true corners of the test camera
@@ -126,7 +133,10 @@ def test_court_correction_errors(client, clip, fake_ball, installed, monkeypatch
     assert client.put(f"/videos/{vid}/court/0", json={"frame": 40, "points_px": CORNERS}).status_code == 422
     crossed = [CORNERS[0], CORNERS[3], CORNERS[2], CORNERS[1]]
     assert client.put(f"/videos/{vid}/court/0", json={"frame": 10, "points_px": crossed}).status_code == 422
-    assert client.put(f"/videos/{vid}/court/0", json={"frame": 10, "points_px": CORNERS, "preset": "nope"}).status_code == 422
+    assert (
+        client.put(f"/videos/{vid}/court/0", json={"frame": 10, "points_px": CORNERS, "preset": "nope"}).status_code
+        == 422
+    )
     assert client.delete(f"/videos/{vid}/court/0").status_code == 404
     assert client.get("/videos/nope/court").status_code == 404
 
@@ -143,14 +153,18 @@ def test_near_half_correction(client, clip, fake_ball, installed, monkeypatch):
 
 def test_no_second_job_while_one_is_active(client, clip, fake_ball, installed, monkeypatch):
     from vball_app import deps
+
     failing_court(installed, monkeypatch)
     v = upload(client, clip)
     run_worker_once()
-    client.post(f"/videos/{v['id']}/jobs", json={"from_stage": "ball"})   # queued, not yet run
+    client.post(f"/videos/{v['id']}/jobs", json={"from_stage": "ball"})  # queued, not yet run
     r = client.put(f"/videos/{v['id']}/court/0", json={"frame": 10, "points_px": CORNERS})
     assert r.json()["queued"] is False
     with deps.db.connect() as c:
-        assert c.execute("SELECT COUNT(*) FROM jobs WHERE video_id = ? AND status = 'queued'", (v["id"],)).fetchone()[0] == 1
+        assert (
+            c.execute("SELECT COUNT(*) FROM jobs WHERE video_id = ? AND status = 'queued'", (v["id"],)).fetchone()[0]
+            == 1
+        )
     run_worker_once()  # the queued job reads the correction when it reaches the court stage
     players = client.get(f"/videos/{v['id']}/players?start=0&end=0.9").json()
     assert players["placed"] is True

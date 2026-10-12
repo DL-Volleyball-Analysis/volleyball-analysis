@@ -3,15 +3,16 @@
 A set is won at 25 points (15 in the deciding set) with a 2-point lead; the match is best of 5.
 Teams are "a" / "b" (teams, not court sides: teams change ends between sets).
 """
+
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class Score:
-    set_no: int     # set this rally belongs to (1-based)
-    a: int          # points in that set after the rally
+    set_no: int  # set this rally belongs to (1-based)
+    a: int  # points in that set after the rally
     b: int
-    sets_a: int     # sets won after the rally (includes the set this rally ended)
+    sets_a: int  # sets won after the rally (includes the set this rally ended)
     sets_b: int
     set_over: bool  # this rally ended the set
 

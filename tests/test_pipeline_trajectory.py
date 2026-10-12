@@ -1,4 +1,5 @@
 """Change follow-camera-motion: the 3D stage takes the camera of each flight's own frame."""
+
 import cv2
 import numpy as np
 
@@ -28,8 +29,16 @@ def motion(n: int) -> Motion:
 def test_each_flight_gets_the_camera_of_its_own_frame():
     m = motion(301)
     kp0 = np.column_stack([cam_at(0).project(k6y7r_points_3d()), np.ones(14)])
-    court = {"shots": [{"start_frame": 0, "end_frame": 300, "status": "ok",
-                        "samples": [{"frame": 0, "corners_px": kp0[CORNER_IDS, :2].tolist(), "keypoints": kp0.tolist()}]}]}
+    court = {
+        "shots": [
+            {
+                "start_frame": 0,
+                "end_frame": 300,
+                "status": "ok",
+                "samples": [{"frame": 0, "corners_px": kp0[CORNER_IDS, :2].tolist(), "keypoints": kp0.tolist()}],
+            }
+        ]
+    }
     cal, why = pipeline.trajectory.flight_camera(court, 300, SIZE, m)
     assert why is None
     true = cam_at(300).project(k6y7r_points_3d())

@@ -14,6 +14,7 @@
 
     track(frames, cands) -> DataFrame[frame, visible, x, y, radius]  (same columns as vball.ball.track)
 """
+
 from dataclasses import dataclass
 
 import cv2
@@ -25,17 +26,17 @@ from .ball_detect import Candidate
 
 @dataclass(frozen=True)
 class TrackConfig:
-    motion_k: int = 3          # frames before and after used for the fixed-object check
-    motion_r: int = 8          # half size of the compared patch, pixels
-    min_motion: float = 30.0   # mean absolute grey change below this: possibly a fixed object ...
-    fixed_window: int = 10     # ... if candidates also sit at the same aligned spot in the frames around it
-    fixed_frames: int = 6      # (at least this many of the +-fixed_window frames)
+    motion_k: int = 3  # frames before and after used for the fixed-object check
+    motion_r: int = 8  # half size of the compared patch, pixels
+    min_motion: float = 30.0  # mean absolute grey change below this: possibly a fixed object ...
+    fixed_window: int = 10  # ... if candidates also sit at the same aligned spot in the frames around it
+    fixed_frames: int = 6  # (at least this many of the +-fixed_window frames)
     fixed_radius: float = 6.0  # pixels
-    max_step: float = 0.04     # largest ball step per frame, as a share of the frame width
+    max_step: float = 0.04  # largest ball step per frame, as a share of the frame width
     miss_cost: float = 0.6
-    forget: int = 15           # after this many frames without a detection, any position may follow
-    max_gap: int = 5           # gaps up to this many frames are filled
-    fit_side: int = 4          # detections used on each side of a gap
+    forget: int = 15  # after this many frames without a detection, any position may follow
+    max_gap: int = 5  # gaps up to this many frames are filled
+    fit_side: int = 4  # detections used on each side of a gap
 
 
 def camera_shift(frames: list[np.ndarray], scale: float = 0.25) -> np.ndarray:
@@ -55,34 +56,50 @@ def motion(frames: list[np.ndarray], shift: np.ndarray, i: int, x: float, y: flo
     """Smallest mean absolute change of the patch at (x, y) in frame i against frames i-k and i+k, aligned by
     the camera shift. inf when neither neighbour exists (no evidence either way)."""
     xi, yi = int(round(x)), int(round(y))
-    a = frames[i][yi - r:yi + r + 1, xi - r:xi + r + 1].astype(np.float32)
+    a = frames[i][yi - r : yi + r + 1, xi - r : xi + r + 1].astype(np.float32)
     vals = []
     for j in (i - k, i + k):
         if not 0 <= j < len(frames):
             continue
         dx, dy = shift[j] - shift[i]
         xj, yj = int(round(x + dx)), int(round(y + dy))
-        b = frames[j][yj - r:yj + r + 1, xj - r:xj + r + 1].astype(np.float32)
+        b = frames[j][yj - r : yj + r + 1, xj - r : xj + r + 1].astype(np.float32)
         if a.shape == b.shape == (2 * r + 1, 2 * r + 1):
             vals.append(float(np.abs(a - b).mean()))
     return min(vals) if vals else float("inf")
 
 
-def drop_fixed(frames: list[np.ndarray], cands: list[list[Candidate]], cfg: TrackConfig = TrackConfig(),
-               shift: np.ndarray | None = None) -> list[list[Candidate]]:
+def drop_fixed(
+    frames: list[np.ndarray],
+    cands: list[list[Candidate]],
+    cfg: TrackConfig = TrackConfig(),
+    shift: np.ndarray | None = None,
+) -> list[list[Candidate]]:
     shift = camera_shift(frames) if shift is None else shift
-    aligned = [np.array([[c.x - shift[i][0], c.y - shift[i][1]] for c in cs]).reshape(-1, 2) for i, cs in enumerate(cands)]
+    aligned = [
+        np.array([[c.x - shift[i][0], c.y - shift[i][1]] for c in cs]).reshape(-1, 2) for i, cs in enumerate(cands)
+    ]
 
     def recurs(i: int, p: np.ndarray) -> bool:
         lo, hi = max(0, i - cfg.fixed_window), min(len(cands), i + cfg.fixed_window + 1)
-        hits = sum(1 for j in range(lo, hi) if j != i and len(aligned[j])
-                   and np.min(np.hypot(*(aligned[j] - p).T)) <= cfg.fixed_radius)
+        hits = sum(
+            1
+            for j in range(lo, hi)
+            if j != i and len(aligned[j]) and np.min(np.hypot(*(aligned[j] - p).T)) <= cfg.fixed_radius
+        )
         return hits >= cfg.fixed_frames
 
-    return [[c for k, c in enumerate(cs)
-             if not (motion(frames, shift, i, c.x, c.y, cfg.motion_k, cfg.motion_r) < cfg.min_motion
-                     and recurs(i, aligned[i][k]))]
-            for i, cs in enumerate(cands)]
+    return [
+        [
+            c
+            for k, c in enumerate(cs)
+            if not (
+                motion(frames, shift, i, c.x, c.y, cfg.motion_k, cfg.motion_r) < cfg.min_motion
+                and recurs(i, aligned[i][k])
+            )
+        ]
+        for i, cs in enumerate(cands)
+    ]
 
 
 def link(cands: list[list[Candidate]], width: int, cfg: TrackConfig = TrackConfig()) -> list[Candidate | None]:
@@ -93,7 +110,7 @@ def link(cands: list[list[Candidate]], width: int, cfg: TrackConfig = TrackConfi
     step = cfg.max_step * width
     states = [list(c) + [None] for c in cands]
     cost = [np.array([1 - s.score if s else cfg.miss_cost for s in states[0]])]
-    last = [[s for s in states[0]]]           # last detection on the best path into each state
+    last = [[s for s in states[0]]]  # last detection on the best path into each state
     gap = [[0 if s else 1 for s in states[0]]]
     back = []
     for i in range(1, n):
@@ -139,13 +156,13 @@ def fill_gaps(xy: np.ndarray, cfg: TrackConfig = TrackConfig()) -> tuple[np.ndar
     for a, b in zip(idx[:-1], idx[1:]):
         if not 1 < b - a <= cfg.max_gap + 1:
             continue
-        left, right = idx[idx <= a][-cfg.fit_side:], idx[idx >= b][:cfg.fit_side]
+        left, right = idx[idx <= a][-cfg.fit_side :], idx[idx >= b][: cfg.fit_side]
         t = np.concatenate([left, right])
         deg = 2 if len(t) >= 4 else 1
         for d in range(2):
             coef = np.polyfit(t, xy[t, d], deg)
-            xy[a + 1:b, d] = np.polyval(coef, np.arange(a + 1, b))
-        filled[a + 1:b] = True
+            xy[a + 1 : b, d] = np.polyval(coef, np.arange(a + 1, b))
+        filled[a + 1 : b] = True
     return xy, filled
 
 
@@ -157,5 +174,13 @@ def track(frames: list[np.ndarray], cands: list[list[Candidate]], cfg: TrackConf
     xy = np.array([[c.x, c.y] if c else [np.nan, np.nan] for c in path], float).reshape(-1, 2)
     xy, filled = fill_gaps(xy, cfg)
     visible = ~np.isnan(xy[:, 0])
-    return pd.DataFrame({"frame": np.arange(len(xy)), "visible": visible.astype(int), "x": xy[:, 0], "y": xy[:, 1],
-                         "radius": np.nan, "filled": filled.astype(int)})
+    return pd.DataFrame(
+        {
+            "frame": np.arange(len(xy)),
+            "visible": visible.astype(int),
+            "x": xy[:, 0],
+            "y": xy[:, 1],
+            "radius": np.nan,
+            "filled": filled.astype(int),
+        }
+    )

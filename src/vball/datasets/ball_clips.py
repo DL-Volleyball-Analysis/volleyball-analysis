@@ -14,6 +14,7 @@ Sources and splits (by match, so no match is in two splits):
 
   python scripts/build_ball_clips.py --out <dir> [--volleyball-videos <dir> --volleyball-ann <dir>] [--orel <dir>]
 """
+
 import csv
 from pathlib import Path
 

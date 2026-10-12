@@ -1,4 +1,5 @@
 """Project locations. Everything else imports paths from here."""
+
 import os
 from pathlib import Path
 
@@ -13,7 +14,7 @@ EXTERNAL = ROOT / "external"
 VBALLNET_SRC = EXTERNAL / "fast-volleyball-tracking-inference" / "src"
 
 BALL_MODELS = {
-    "v4c": MODELS / "vballnet_v4c.onnx",          # F1 0.902, ~150 FPS CPU (upstream benchmark)
+    "v4c": MODELS / "vballnet_v4c.onnx",  # F1 0.902, ~150 FPS CPU (upstream benchmark)
     "fast_v1": MODELS / "vballnet_fast_v1.onnx",  # model family used in the original capstone
     # RAVEL-VB releases from the same upstream repo (read in place, external/ stays untouched)
     "ravel011": EXTERNAL / "fast-volleyball-tracking-inference" / "models" / "RAVEL-VB-011-9f.onnx",  # 1024x576 grey
@@ -28,6 +29,7 @@ def import_external(repo: str, package: str):
     """A third-party package kept untouched in external/<repo>/<package> (not installed), imported by file location."""
     import importlib.util
     import sys
+
     if package in sys.modules:
         return sys.modules[package]
     init = EXTERNAL / repo / package / "__init__.py"

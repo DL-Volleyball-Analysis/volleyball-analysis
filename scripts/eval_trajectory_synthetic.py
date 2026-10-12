@@ -12,6 +12,7 @@ standard deviation, and the share flagged low quality. Also checks segmentation 
 points, noise), true flight boundaries, and four fit settings: no constraints, bounds, + robust refit,
 + player anchors (a player near each touch, ~0.3 m from the touch's ground point).
 """
+
 import argparse
 
 import numpy as np
@@ -22,8 +23,12 @@ from vball.trajectory.synthetic import CAM, DURATIONS, FPS, SIZE, TOUCHES, corru
 NAMES = ["serve", "receive", "set", "attack"]
 
 
-ABLATION = {"none": FlightConfig(robust=False, bounded=False), "bounds": FlightConfig(robust=False),
-            "+ robust": FlightConfig(), "+ anchors": FlightConfig()}
+ABLATION = {
+    "none": FlightConfig(robust=False, bounded=False),
+    "bounds": FlightConfig(robust=False),
+    "+ robust": FlightConfig(),
+    "+ anchors": FlightConfig(),
+}
 
 
 def ablation(seeds: int, miss: float, false: float, noise: float) -> None:
@@ -74,24 +79,30 @@ def main():
         r = render(CAM, TOUCHES, DURATIONS, FPS, noise_px=args.noise, seed=seed)
         found = [(f.start, f.end) for f in segment(r.uv)]
         truth = list(zip(r.touches, r.touches[1:]))
-        seg_ok += len(found) == len(truth) and all(abs(a - c) <= 2 and abs(b - d) <= 2
-                                                   for (a, b), (c, d) in zip(found, truth))
+        seg_ok += len(found) == len(truth) and all(
+            abs(a - c) <= 2 and abs(b - d) <= 2 for (a, b), (c, d) in zip(found, truth)
+        )
         for n, fl in zip(NAMES, true_flights(r)):
             f = fit(CAM, r.uv, fl, FPS)
             frames = np.arange(fl.start, fl.end + 1)
             err = np.linalg.norm(f.at(frames) - r.positions[frames], axis=1)
             mid = len(frames) // 2
-            rows[n].append((np.median(err), err[mid] / f.depth_sd_m, f.depth_sd_m, f.quality == "low",
-                            len(frames) / FPS))
+            rows[n].append(
+                (np.median(err), err[mid] / f.depth_sd_m, f.depth_sd_m, f.quality == "low", len(frames) / FPS)
+            )
 
-    print(f"{args.seeds} seeds, {args.noise} px noise, camera f = {CAM.focal:.0f} px at "
-          f"{np.round(CAM.position, 1).tolist()} m, {FPS:.0f} fps")
+    print(
+        f"{args.seeds} seeds, {args.noise} px noise, camera f = {CAM.focal:.0f} px at "
+        f"{np.round(CAM.position, 1).tolist()} m, {FPS:.0f} fps"
+    )
     print(f"segmentation: all touches within 2 frames in {seg_ok}/{args.seeds} rallies")
     print("flight    duration_s  median_err_m  p90_err_m  depth_sd_m  max_err/sd  low_quality")
     for n, s in rows.items():
         s = np.array(s, float)
-        print(f"{n:9s} {s[0, 4]:10.2f} {np.median(s[:, 0]):13.3f} {np.quantile(s[:, 0], 0.9):10.3f} "
-              f"{np.median(s[:, 2]):11.2f} {s[:, 1].max():11.2f} {int(s[:, 3].sum()):6d}/{args.seeds}")
+        print(
+            f"{n:9s} {s[0, 4]:10.2f} {np.median(s[:, 0]):13.3f} {np.quantile(s[:, 0], 0.9):10.3f} "
+            f"{np.median(s[:, 2]):11.2f} {s[:, 1].max():11.2f} {int(s[:, 3].sum()):6d}/{args.seeds}"
+        )
 
 
 if __name__ == "__main__":

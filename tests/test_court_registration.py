@@ -34,6 +34,7 @@ def keypoints(camera=CAM, noise=0.0, seed=0, conf=0.9):
 
 # --- fit_homography and the sanity check (tasks 1.1, 1.2) ---
 
+
 @pytest.mark.parametrize("seed", range(3))
 def test_fit_recovers_the_corners_with_noise_and_an_outlier(seed):
     kp = keypoints(noise=0.5, seed=seed)
@@ -72,6 +73,7 @@ def test_folded_and_tiny_courts_are_rejected():
 
 # --- per-shot registration (tasks 2.1-2.4) ---
 
+
 def test_samples_stay_inside_the_shot():
     frames = sample_frames(100, 160, fps=30)
     assert frames[0] == 100 and frames[-1] == 160 and all(100 <= f <= 160 for f in frames)
@@ -92,6 +94,7 @@ def test_mapping_follows_a_panning_camera_between_samples():
     # camera pans along the court over 60 frames at 30 fps
     def cam_at(f):
         return look_at([9.0 + f / 20, -14.0, 7.5], [9.0 + f / 20, 4.5, 0.5], 1600.0, SIZE)
+
     shot = register_shot(0, 60, 30.0, SIZE, lambda f: keypoints(cam_at(f)))
     assert shot["status"] == "ok" and [s["frame"] for s in shot["samples"]][:3] == [0, 6, 12]
     court = {"shots": [shot]}
@@ -169,28 +172,55 @@ def test_later_stages_only_use_shots_that_are_ok():
 
 def test_pick_prefers_status_then_consistency_then_error():
     from vball.court_registration import pick
+
     def shot(status, consistency=None, error=None):
-        return {"start_frame": 0, "end_frame": 9, "status": status, "consistency": consistency, "error": error, "samples": []}
-    shots = pick({
-        "gym": [shot("ok", 0.010, 0.002), shot("needs_review", 0.05, 0.001), shot("failed"), shot("ok", 0.004, 0.003)],
-        "broadcast": [shot("needs_review", 0.001, 0.001), shot("ok", 0.012, 0.004), shot("failed"), shot("ok", 0.004, 0.001)],
-    })
+        return {
+            "start_frame": 0,
+            "end_frame": 9,
+            "status": status,
+            "consistency": consistency,
+            "error": error,
+            "samples": [],
+        }
+
+    shots = pick(
+        {
+            "gym": [
+                shot("ok", 0.010, 0.002),
+                shot("needs_review", 0.05, 0.001),
+                shot("failed"),
+                shot("ok", 0.004, 0.003),
+            ],
+            "broadcast": [
+                shot("needs_review", 0.001, 0.001),
+                shot("ok", 0.012, 0.004),
+                shot("failed"),
+                shot("ok", 0.004, 0.001),
+            ],
+        }
+    )
     assert [s["model"] for s in shots] == ["gym", "broadcast", "gym", "broadcast"]
     assert shots[0]["status"] == "ok" and shots[1]["status"] == "ok"
 
 
 def test_pick_with_one_model_keeps_its_shots():
     from vball.court_registration import pick
+
     one = [{"start_frame": 0, "end_frame": 9, "status": "failed", "consistency": None, "error": None, "samples": []}]
     assert pick({"v2": one}) == [{**one[0], "model": "v2"}] and pick({}) == []
 
 
 def test_a_correction_overrides_its_shot_and_leaves_the_stored_court_alone():
     from vball.court_registration import apply_corrections, mapping_at
+
     corners = [[600, 300], [1320, 300], [1700, 800], [220, 800]]
-    court = {"status": "done", "shots": [
-        {"start_frame": 0, "end_frame": 99, "status": "needs_review", "error": 0.02, "samples": []},
-        {"start_frame": 100, "end_frame": 199, "status": "ok", "error": 0.001, "samples": []}]}
+    court = {
+        "status": "done",
+        "shots": [
+            {"start_frame": 0, "end_frame": 99, "status": "needs_review", "error": 0.02, "samples": []},
+            {"start_frame": 100, "end_frame": 199, "status": "ok", "error": 0.001, "samples": []},
+        ],
+    }
     out = apply_corrections(court, [{"shot": 0, "frame": 40, "points_px": corners}], (1920, 1080))
     s = out["shots"][0]
     assert s["status"] == "ok" and s["corrected"] and court["shots"][0]["status"] == "needs_review"
@@ -206,12 +236,14 @@ def test_an_implausible_correction_is_rejected():
     import pytest
 
     from vball.court_registration import corrected_sample
+
     with pytest.raises(ValueError):
         corrected_sample(0, [[600, 300], [220, 800], [1700, 800], [1320, 300]], (1920, 1080))  # crossed
 
 
 def test_a_near_half_correction_for_a_camera_behind_the_end_line():
     from vball.court_registration import CORRECTION_PRESETS, corrected_sample
+
     # centre line left / right (at the net posts' feet), near end line right / left, on a Tokyo 2020 end-line view
     pts = [[355, 680], [1606, 680], [1776, 1060], [190, 1060]]
     s = corrected_sample(100, pts, (1920, 1080), CORRECTION_PRESETS["near_half"])
@@ -222,9 +254,11 @@ def test_a_near_half_correction_for_a_camera_behind_the_end_line():
 
 # --- camera motion (change follow-camera-motion) ---
 
+
 def shifting(n: int, dx: float = -3.0):
     """Camera motion where the image moves dx px per frame (a pan), as vball.camera_motion.Motion."""
     from vball.camera_motion import Motion
+
     step = np.array([[1, 0, dx], [0, 1, 0], [0, 0, 1.0]])
     return Motion(np.stack([np.eye(3)] + [step] * (n - 1)))
 
@@ -259,16 +293,29 @@ def test_missed_samples_are_filled_with_the_court_moved_by_the_camera():
 
 
 def test_samples_are_not_filled_from_far_away():
-    shot = register_shot(0, 600, 30.0, SIZE, lambda f: panned(f) if f < 60 else np.zeros((14, 3)), motion=shifting(601),
-                         config={**CONFIG, "min_valid_share": 0.0})
+    shot = register_shot(
+        0,
+        600,
+        30.0,
+        SIZE,
+        lambda f: panned(f) if f < 60 else np.zeros((14, 3)),
+        motion=shifting(601),
+        config={**CONFIG, "min_valid_share": 0.0},
+    )
     assert max(s["frame"] for s in shot["samples"]) <= 54 + 5 * 30
 
 
 def test_a_correction_follows_a_panning_camera():
     from vball.court_registration import apply_corrections
+
     corners = np.array([[600, 300], [1320, 300], [1700, 800], [220, 800]], float)
-    court = {"status": "done", "shots": [{"start_frame": 0, "end_frame": 90, "status": "failed", "error": None, "samples": []}]}
-    out = apply_corrections(court, [{"shot": 0, "frame": 30, "points_px": corners.tolist()}], SIZE, motion=shifting(91), fps=30.0)
+    court = {
+        "status": "done",
+        "shots": [{"start_frame": 0, "end_frame": 90, "status": "failed", "error": None, "samples": []}],
+    }
+    out = apply_corrections(
+        court, [{"shot": 0, "frame": 30, "points_px": corners.tolist()}], SIZE, motion=shifting(91), fps=30.0
+    )
     assert np.abs(corners_at(out, 60) - (corners + [-90.0, 0])).max() < 1e-6
     assert np.abs(corners_at(out, 0) - (corners + [90.0, 0])).max() < 1e-6
     kp30 = np.array(next(s for s in out["shots"][0]["samples"] if s["frame"] == 30)["keypoints"])
@@ -278,9 +325,11 @@ def test_a_correction_follows_a_panning_camera():
 
 # --- line evidence for still shots (change verify-court-by-lines) ---
 
+
 def test_still_needs_motion_and_a_camera_that_does_not_move():
     from vball.camera_motion import Motion
     from vball.court_registration import still
+
     assert not still(None, 0, 90, SIZE)
     assert still(Motion(np.stack([np.eye(3)] * 91)), 0, 90, SIZE)
     assert not still(shifting(91), 0, 90, SIZE)  # 3 px a frame: 270 px over the shot
@@ -289,8 +338,10 @@ def test_still_needs_motion_and_a_camera_that_does_not_move():
 def test_status_from_line_evidence():
     from vball.court_lines import Fit
     from vball.court_registration import line_status
+
     def fit(good, sup):
         return Fit(np.eye(3), 0.0, sup, 100, good, False)
+
     assert line_status(fit(6, 90)) == "ok"
     assert line_status(fit(4, 90)) == "needs_review"
     assert line_status(fit(6, 60)) == "needs_review"
@@ -301,6 +352,7 @@ def test_line_evidence_on_a_plate_replaces_a_squeezed_court():
 
     from vball.court import LINES
     from vball.court_registration import keypoint_homography, with_line_evidence
+
     cam = look_at([-9.0, 4.5, 8.0], [8.0, 4.5, 0.0], 1000.0, SIZE)
     pts = np.array([[0, 0], [18, 0], [18, 9], [0, 9]], float)
     H, _ = cv.findHomography(pts, cam.project(np.c_[pts, np.zeros(4)]))
@@ -318,15 +370,22 @@ def test_line_evidence_on_a_plate_replaces_a_squeezed_court():
     true = cam.project(k6y7r_points_3d()[CORNER_IDS])
     got = np.array(out["samples"][0]["corners_px"])
     assert min(np.abs(got - true).max(), np.abs(got[[2, 3, 0, 1]] - true).max()) < 8.0
-    empty = with_line_evidence(register_shot(0, 60, 30.0, SIZE, lambda f: np.zeros((14, 3))),
-                               np.full_like(plate, 120), 30.0, SIZE)
+    empty = with_line_evidence(
+        register_shot(0, 60, 30.0, SIZE, lambda f: np.zeros((14, 3))), np.full_like(plate, 120), 30.0, SIZE
+    )
     assert empty["source"] == "keypoints" and empty["lines"] is None and empty["status"] == "failed"
 
 
 def test_still_shots_can_be_sampled_once_a_second():
     from vball.court_registration import STILL_SAMPLE_FPS, register
+
     shot = register_shot(0, 90, 30.0, SIZE, lambda f: keypoints(), rate=STILL_SAMPLE_FPS)
     assert [s["frame"] for s in shot["samples"]] == [0, 30, 60, 90] and shot["status"] == "ok"
-    both = register([{"start_frame": 0, "end_frame": 90}, {"start_frame": 91, "end_frame": 181}], 30.0, SIZE,
-                    lambda f: keypoints(), rates=[STILL_SAMPLE_FPS, 5.0])
+    both = register(
+        [{"start_frame": 0, "end_frame": 90}, {"start_frame": 91, "end_frame": 181}],
+        30.0,
+        SIZE,
+        lambda f: keypoints(),
+        rates=[STILL_SAMPLE_FPS, 5.0],
+    )
     assert len(both[0]["samples"]) == 4 and len(both[1]["samples"]) == 16

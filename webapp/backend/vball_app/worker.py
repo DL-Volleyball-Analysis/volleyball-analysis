@@ -2,6 +2,7 @@
 
 Usage: python -m vball_app.worker   (next to the API: uvicorn vball_app.main:app)
 """
+
 import time
 import traceback
 from pathlib import Path
@@ -29,8 +30,13 @@ def process(db: Database, job: dict) -> None:
             last.update(stage=stage, p=p)
 
     try:
-        out = pipeline.run(Path(video["path"]), RESULTS / video["id"], job["from_stage"], on_progress,
-                           court_corrections=lambda: db.court_corrections(video["id"]))
+        out = pipeline.run(
+            Path(video["path"]),
+            RESULTS / video["id"],
+            job["from_stage"],
+            on_progress,
+            court_corrections=lambda: db.court_corrections(video["id"]),
+        )
         r = out.get("rallies") or {}
         if r.get("status") == "done":  # detected rallies replace demo or earlier ones; corrections move along
             db.replace_detected_rallies(video["id"], r.get("rallies", []))

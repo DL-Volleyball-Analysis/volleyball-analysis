@@ -3,6 +3,7 @@
 Usage: .venv/bin/python scripts/inspect_court_keypoints.py <dataset_dir> [n_samples]
 Overlays go to outputs/court/keypoints_inspect/<dataset_name>/.
 """
+
 import argparse
 from pathlib import Path
 
@@ -15,7 +16,7 @@ from vball.paths import OUTPUTS
 
 def load_labels(label_path: Path, k: int) -> np.ndarray:
     rows = [list(map(float, line.split())) for line in label_path.read_text().splitlines() if line.strip()]
-    return np.array([r[5:5 + 3 * k] for r in rows]).reshape(-1, k, 3)
+    return np.array([r[5 : 5 + 3 * k] for r in rows]).reshape(-1, k, 3)
 
 
 def main():

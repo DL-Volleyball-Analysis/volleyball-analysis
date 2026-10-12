@@ -5,6 +5,7 @@ stage computes. `<out>.json` next to the CSV holds the video's fps and frame cou
 
   python scripts/extract_rally_cues.py --video match.mp4 --out cues.csv [--rate 5] [--device 0]
 """
+
 import argparse
 import json
 from pathlib import Path

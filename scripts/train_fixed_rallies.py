@@ -14,6 +14,7 @@ Cues: `vball.rally_cues.stage_cues` (scripts/extract_stage_cues.py). Classifier 
   .venv/bin/python scripts/train_fixed_rallies.py --test-cues outputs/rallies/fixed_cues \\
       --test-labels outputs/rallies/score_labels [--save models/rally_fixed_hgb.joblib]
 """
+
 import argparse
 import json
 from pathlib import Path
@@ -32,8 +33,10 @@ def main():
     ap.add_argument("--save", type=Path, default=None)
     args = ap.parse_args()
     train, test = load(args.train_cues, args.train_labels), load(args.test_cues, args.test_labels)
-    print(f"train: {len(train)} matches, {sum(len(c) for c, _ in train.values())} samples, "
-          f"{sum(len(ch) for _, ch in train.values())} points; test: {len(test)} clips, {sum(len(ch) for _, ch in test.values())} points")
+    print(
+        f"train: {len(train)} matches, {sum(len(c) for c, _ in train.values())} samples, "
+        f"{sum(len(ch) for _, ch in train.values())} points; test: {len(test)} clips, {sum(len(ch) for _, ch in test.values())} points"
+    )
     cfg = choose_config(train)
     model = fit(train)
     res = evaluate(model, test, cfg)

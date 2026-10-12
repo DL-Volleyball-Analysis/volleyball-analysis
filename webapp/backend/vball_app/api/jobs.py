@@ -1,4 +1,5 @@
 """Analysis jobs and stage results."""
+
 import asyncio
 import json
 
@@ -46,8 +47,7 @@ async def job_stream(vid: str, request: Request):
                 break
             await asyncio.sleep(0.5)
 
-    return StreamingResponse(events(), media_type="text/event-stream",
-                             headers={"Cache-Control": "no-cache"})
+    return StreamingResponse(events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
 
 
 @router.get("/videos/{vid}/stages", response_model=list[StageInfo])
@@ -63,6 +63,9 @@ def stages(vid: str):
         message = res.pop("message", None)
         if name == "court" and (n := len(db.court_corrections(vid))):
             message = f"{message or ''} {n} camera shot{'s' if n > 1 else ''} set by you.".strip()
-        out.append(StageInfo(name=name, status=res.pop("status"), version=res.pop("version", None),
-                             message=message, summary=res))
+        out.append(
+            StageInfo(
+                name=name, status=res.pop("status"), version=res.pop("version", None), message=message, summary=res
+            )
+        )
     return out

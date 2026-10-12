@@ -6,6 +6,7 @@ centres, nearest neighbour, in box heights); the share of frames since the previ
 detection and the median detected speed (image widths per second). Frames are read as a stream. Used by
 scripts/extract_rally_cues.py (training data) and the pipeline's rallies stage, so both compute the same features.
 """
+
 from pathlib import Path
 
 import cv2
@@ -39,8 +40,11 @@ def ball_summary(points: list, fps: float, width: int) -> tuple[float, float]:
     if not points:
         return 0.0, 0.0
     seen = [p for p in points if p is not None]
-    speeds = [np.hypot(b[0] - a[0], b[1] - a[1]) * fps / width
-              for a, b in zip(points[:-1], points[1:]) if a is not None and b is not None]
+    speeds = [
+        np.hypot(b[0] - a[0], b[1] - a[1]) * fps / width
+        for a, b in zip(points[:-1], points[1:])
+        if a is not None and b is not None
+    ]
     return len(seen) / len(points), float(np.median(speeds)) if speeds else 0.0
 
 
@@ -49,6 +53,7 @@ def quick_check(video: Path, n: int = 30, device=None) -> pd.DataFrame:
     enough for `rallies.outside_training` to tell out-of-training footage without a full pass (change
     speed-up-analysis)."""
     from ultralytics import YOLO
+
     court = YOLO(str(COURT_MODEL))
     court_sz = int((court.overrides or {}).get("imgsz", 1280))
     players = YOLO(str(PLAYER_MODEL))
@@ -63,9 +68,17 @@ def quick_check(video: Path, n: int = 30, device=None) -> pd.DataFrame:
             continue
         kp = detect_court(court, frame, court_sz)
         r = players(frame, imgsz=960, conf=0.25, verbose=False, device=device)[0]
-        rows.append([round(f / fps, 3), round(float(kp[:10, 2].mean()), 4),
-                     int(fit_homography(kp, (frame.shape[1], frame.shape[0])) is not None),
-                     0 if r.boxes is None else len(r.boxes), 0.0, 0.0, 0.0])
+        rows.append(
+            [
+                round(f / fps, 3),
+                round(float(kp[:10, 2].mean()), 4),
+                int(fit_homography(kp, (frame.shape[1], frame.shape[0])) is not None),
+                0 if r.boxes is None else len(r.boxes),
+                0.0,
+                0.0,
+                0.0,
+            ]
+        )
     cap.release()
     return pd.DataFrame(rows, columns=COLUMNS)
 
@@ -73,6 +86,7 @@ def quick_check(video: Path, n: int = 30, device=None) -> pd.DataFrame:
 def cues(video: Path, rate: float = 5.0, device=None, tick=lambda frac: None) -> tuple[pd.DataFrame, float, int]:
     """(cues per sample, fps, frames) for a video."""
     from ultralytics import YOLO
+
     court = YOLO(str(COURT_MODEL))
     court_sz = int((court.overrides or {}).get("imgsz", 1280))
     players = YOLO(str(PLAYER_MODEL))
@@ -106,8 +120,17 @@ def cues(video: Path, rate: float = 5.0, device=None, tick=lambda frac: None) ->
             r = players(frame, imgsz=960, conf=0.25, verbose=False, device=device)[0]
             boxes = r.boxes.xyxy.cpu().numpy() if r.boxes is not None else np.zeros((0, 4))
             seen, speed = ball_summary(ball_pts, fps, width)
-            rows.append([round(i / fps, 3), round(float(kp[:10, 2].mean()), 4), int(fit_homography(kp, size) is not None),
-                         len(boxes), round(player_motion(prev_boxes, boxes), 4), round(seen, 3), round(speed, 4)])
+            rows.append(
+                [
+                    round(i / fps, 3),
+                    round(float(kp[:10, 2].mean()), 4),
+                    int(fit_homography(kp, size) is not None),
+                    len(boxes),
+                    round(player_motion(prev_boxes, boxes), 4),
+                    round(seen, 3),
+                    round(speed, 4),
+                ]
+            )
             prev_boxes, ball_pts = boxes, []
             if total and i % (step * 25) == 0:
                 tick(i / total)
@@ -117,12 +140,29 @@ def cues(video: Path, rate: float = 5.0, device=None, tick=lambda frac: None) ->
 
 
 # --- cues from the pipeline's own results (change label-rallies-from-score) -----------------------------------------
-STAGE_COLUMNS = ["t", "ball_seen", "ball_speed", "ball_rise", "on_court", "both_sides", "behind_end", "player_speed",
-                 "player_spread"]
+STAGE_COLUMNS = [
+    "t",
+    "ball_seen",
+    "ball_speed",
+    "ball_rise",
+    "on_court",
+    "both_sides",
+    "behind_end",
+    "player_speed",
+    "player_spread",
+]
 
 
-def stage_cues(ball: pd.DataFrame, people: pd.DataFrame, fps: float, n_frames: int, image_size: tuple[int, int],
-               H: np.ndarray | None, rate: float = 5.0, margin_m: float = 1.0) -> pd.DataFrame:
+def stage_cues(
+    ball: pd.DataFrame,
+    people: pd.DataFrame,
+    fps: float,
+    n_frames: int,
+    image_size: tuple[int, int],
+    H: np.ndarray | None,
+    rate: float = 5.0,
+    margin_m: float = 1.0,
+) -> pd.DataFrame:
     """Rally cues at `rate` per second from results the pipeline already has, for a still camera whose court is known:
 
     ball (frame, visible, x, y; every frame): share of frames with a ball since the previous sample, its median speed
@@ -133,6 +173,7 @@ def stage_cues(ball: pd.DataFrame, people: pd.DataFrame, fps: float, n_frames: i
     the previous detected frame (nearest neighbour) and the spread of their positions along the court (m).
     Without H every people cue is 0."""
     from .court import LENGTH, WIDTH, to_court
+
     w = float(image_size[0])
     step = max(1, int(round(fps / rate)))
     vis = np.zeros(n_frames, bool)
@@ -152,8 +193,8 @@ def stage_cues(ball: pd.DataFrame, people: pd.DataFrame, fps: float, n_frames: i
     rows, prev, last_speed = [], None, 0.0
     for i in range(0, n_frames, step):
         a = max(0, i - step + 1)
-        seen = vis[a:i + 1]
-        d = np.diff(xy[a:i + 1], axis=0) * fps / w
+        seen = vis[a : i + 1]
+        d = np.diff(xy[a : i + 1], axis=0) * fps / w
         ok = ~np.isnan(d).any(axis=1)
         speed = float(np.median(np.hypot(d[ok, 0], d[ok, 1]))) if ok.any() else 0.0
         rise = float(np.median(-d[ok, 1])) if ok.any() else 0.0
@@ -165,7 +206,12 @@ def stage_cues(ball: pd.DataFrame, people: pd.DataFrame, fps: float, n_frames: i
             c = court_points(f)
             inside_w = (c[:, 1] > -margin_m) & (c[:, 1] < WIDTH + margin_m)
             court = inside_w & (c[:, 0] > -margin_m) & (c[:, 0] < LENGTH + margin_m)
-            behind = int((inside_w & ((c[:, 0] < -margin_m) & (c[:, 0] > -9) | (c[:, 0] > LENGTH + margin_m) & (c[:, 0] < LENGTH + 9))).sum())
+            behind = int(
+                (
+                    inside_w
+                    & ((c[:, 0] < -margin_m) & (c[:, 0] > -9) | (c[:, 0] > LENGTH + margin_m) & (c[:, 0] < LENGTH + 9))
+                ).sum()
+            )
             pts = c[court]
             on = len(pts)
             both = int(min((pts[:, 0] < 9).sum(), (pts[:, 0] >= 9).sum())) if on else 0
@@ -177,6 +223,17 @@ def stage_cues(ball: pd.DataFrame, people: pd.DataFrame, fps: float, n_frames: i
                     last_speed = float(np.median(dist) * fps / (f - prev[0]))
                 prev = (f, pts)
             pspeed = last_speed  # samples between two detected frames keep the latest speed
-        rows.append([round(i / fps, 3), round(float(seen.mean()) if len(seen) else 0.0, 3), round(speed, 4), round(rise, 4),
-                     on, both, behind, round(pspeed, 3), round(spread, 3)])
+        rows.append(
+            [
+                round(i / fps, 3),
+                round(float(seen.mean()) if len(seen) else 0.0, 3),
+                round(speed, 4),
+                round(rise, 4),
+                on,
+                both,
+                behind,
+                round(pspeed, 3),
+                round(spread, 3),
+            ]
+        )
     return pd.DataFrame(rows, columns=STAGE_COLUMNS)

@@ -13,6 +13,7 @@ datasets and ignored class names, so balls, whole players and whole-number boxes
 
 Usage: .venv/bin/python scripts/build_jersey_dataset.py [--no-drive]
 """
+
 import argparse
 import shutil
 from pathlib import Path

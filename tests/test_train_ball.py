@@ -21,10 +21,18 @@ def fake_clips(root: Path):
                 img = np.zeros((tw.H, tw.W, 3), np.uint8)
                 cv2.circle(img, (100 + 10 * f, 50), 3, (255, 255, 255), -1)
                 cv2.imwrite(str(root / folder / f"{f:05d}.jpg"), img)
-            pd.DataFrame({"frame": range(5), "visible": [1, 1, 0, 1, 1], "x": [100, 110, -1, 130, 140],
-                          "y": [50, 50, -1, 50, 50]}).to_csv(root / folder / "labels.csv", index=False)
+            pd.DataFrame(
+                {
+                    "frame": range(5),
+                    "visible": [1, 1, 0, 1, 1],
+                    "x": [100, 110, -1, 130, 140],
+                    "y": [50, 50, -1, 50, 50],
+                }
+            ).to_csv(root / folder / "labels.csv", index=False)
             rows.append((src, "m", f"c{c}", "train", folder, 5, 4))
-    pd.DataFrame(rows, columns=["source", "match", "clip", "split", "folder", "frames", "visible"]).to_csv(root / "manifest.csv", index=False)
+    pd.DataFrame(rows, columns=["source", "match", "clip", "split", "folder", "frames", "visible"]).to_csv(
+        root / "manifest.csv", index=False
+    )
 
 
 def test_heatmap_peak_and_empty():
@@ -50,7 +58,7 @@ def test_windows_validation_split_and_mix(tmp_path):
 def test_flip_mirrors_labels(tmp_path, monkeypatch):
     fake_clips(tmp_path)
     w = tw.Windows(tw.load_clips(tmp_path, "train"), 2.5, augment=True)
-    monkeypatch.setattr(tw.random, "random", lambda: 0.0)          # always flip
+    monkeypatch.setattr(tw.random, "random", lambda: 0.0)  # always flip
     monkeypatch.setattr(tw.random, "uniform", lambda a, b: (a + b) / 2)  # no colour change
     _, y, xy = w[0]
     assert xy[0, 0] == tw.W - 1 - 100 and xy[2, 0] == -1  # a missing ball stays missing

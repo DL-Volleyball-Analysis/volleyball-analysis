@@ -29,20 +29,30 @@ def fake_sources(tmp: Path):
     for split, match, stem in (("train", "match3", "a"), ("test", "match8", "b"), ("train", "20250623_beach", "c")):
         (orel / "data" / split / match / "csv").mkdir(parents=True)
         (orel / "data" / split / match / "video").mkdir(parents=True)
-        v = cv2.VideoWriter(str(orel / "data" / split / match / "video" / f"{stem}.mp4"), cv2.VideoWriter_fourcc(*"mp4v"), 30, (320, 180))
+        v = cv2.VideoWriter(
+            str(orel / "data" / split / match / "video" / f"{stem}.mp4"),
+            cv2.VideoWriter_fourcc(*"mp4v"),
+            30,
+            (320, 180),
+        )
         for _ in range(4):
             v.write(np.full((180, 320, 3), 80, np.uint8))
         v.release()
-        pd.DataFrame({"Frame": range(4), "Visibility": [1, 0, 1, 1], "X": [160, -1, 0, 320], "Y": [90, -1, 0, 180]}).to_csv(
-            orel / "data" / split / match / "csv" / f"{stem}_ball.csv", index=False)
+        pd.DataFrame(
+            {"Frame": range(4), "Visibility": [1, 0, 1, 1], "X": [160, -1, 0, 320], "Y": [90, -1, 0, 180]}
+        ).to_csv(orel / "data" / split / match / "csv" / f"{stem}_ball.csv", index=False)
     return (vb_videos, vb_ann), orel
 
 
 def test_build_splits_by_match_and_writes_input_frames(tmp_path):
     vb, orel = fake_sources(tmp_path)
     m = bbc.build(tmp_path / "out", vb, orel)
-    assert set(zip(m.source, m.match, m.split)) == {("volleyball", "4", "test"), ("volleyball", "1", "train"),
-                                                    ("orel", "match3", "test"), ("orel", "match8", "train")}  # beach left out
+    assert set(zip(m.source, m.match, m.split)) == {
+        ("volleyball", "4", "test"),
+        ("volleyball", "1", "train"),
+        ("orel", "match3", "test"),
+        ("orel", "match8", "train"),
+    }  # beach left out
     clip = tmp_path / "out" / m.loc[m.source == "orel", "folder"].iloc[0]
     assert len(list(clip.glob("*.jpg"))) == 4 and cv2.imread(str(clip / "00000.jpg")).shape == (288, 512, 3)
     lab = pd.read_csv(clip / "labels.csv")
@@ -51,13 +61,14 @@ def test_build_splits_by_match_and_writes_input_frames(tmp_path):
     assert (tmp_path / "out" / "manifest.csv").exists()
 
 
-
 def test_orel_without_the_data_folder_and_never_predictions(tmp_path):
     _, orel = fake_sources(tmp_path)
     flat = tmp_path / "flat"
     (orel / "data").rename(flat)  # Kaggle's copy: train/ and test/ at the top
     pred = flat / "train" / "match3" / "csv" / "a_predict_ball.csv"
     pred.write_text((flat / "train" / "match3" / "csv" / "a_ball.csv").read_text())
-    (flat / "train" / "match3" / "video" / "a_predict.mp4").write_bytes((flat / "train" / "match3" / "video" / "a.mp4").read_bytes())
+    (flat / "train" / "match3" / "video" / "a_predict.mp4").write_bytes(
+        (flat / "train" / "match3" / "video" / "a.mp4").read_bytes()
+    )
     clips = [c[1] for c in bbc.orel_clips(flat)]
     assert sorted(clips) == ["a", "b"]  # the beach match left out, the prediction file ignored

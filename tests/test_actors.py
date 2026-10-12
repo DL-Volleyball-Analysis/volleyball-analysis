@@ -41,17 +41,21 @@ def test_the_ball_turns_a_look_alike_into_no_action():
     # two players both look like setting; only the one at the ball keeps it
     scores = {1: np.eye(len(ACTIONS))[SET] * 0.7, 2: np.eye(len(ACTIONS))[SET] * 0.7}
     boxes = {1: np.array([0, 0, 10, 40]), 2: np.array([300, 0, 310, 40])}
+
     def weighted(ball, cfg=ActorConfig()):
         return {p: sc * ball_prior(boxes[p], ball, cfg) for p, sc in scores.items()}
+
     assert decide(weighted(np.array([5.0, -2.0]), ActorConfig(floor=0.3)), threshold=0.4) == {1: SET, 2: None}
     assert decide(weighted(None), threshold=0.4) == {1: SET, 2: SET}
 
 
 def test_per_frame_ball_weighting():
-    boxes = {0: {1: np.array([0, 0, 10, 40]), 2: np.array([300, 0, 310, 40])},
-             1: {1: np.array([0, 0, 10, 40]), 2: np.array([300, 0, 310, 40])}}
+    boxes = {
+        0: {1: np.array([0, 0, 10, 40]), 2: np.array([300, 0, 310, 40])},
+        1: {1: np.array([0, 0, 10, 40]), 2: np.array([300, 0, 310, 40])},
+    }
     det = {0: np.array([[SET, 0.8, 300, 0, 310, 40]]), 1: np.array([[SET, 0.8, 0, 0, 10, 40]])}
-    ball = {0: np.array([5.0, 5.0]), 1: None}   # frame 0: the ball is at player 1, not at the "setter" 2
+    ball = {0: np.array([5.0, 5.0]), 1: None}  # frame 0: the ball is at player 1, not at the "setter" 2
     s = player_scores(det, boxes, ActorConfig(floor=0.25), ball=ball)
     assert np.isclose(s[2][0, SET], 0.8 * 0.25, atol=1e-6) and np.isclose(s[1][1, SET], 0.8)
 
@@ -71,8 +75,8 @@ NAMES = ["blocking", "digging", "falling", "jumping", "moving", "setting", "spik
 def test_classifier_rows_keep_our_actions_weighted_by_the_ball():
     boxes = np.array([[0, 0, 10, 40], [300, 0, 310, 40], [500, 0, 510, 40]])
     probs = np.zeros((3, 9))
-    probs[0, NAMES.index("setting")] = 0.9    # the setter, at the ball
-    probs[1, NAMES.index("setting")] = 0.9    # looks like setting, far from the ball
+    probs[0, NAMES.index("setting")] = 0.9  # the setter, at the ball
+    probs[1, NAMES.index("setting")] = 0.9  # looks like setting, far from the ball
     probs[2, NAMES.index("standing")] = 0.95  # no action
     rows = classifier_rows(7, boxes, probs, NAMES, np.array([5.0, -2.0]), ActorConfig(k=1.0, floor=0.2), min_conf=0.25)
     assert [(r[0], r[1]) for r in rows] == [(7, "set")] and np.isclose(rows[0][2], 0.9, atol=0.02)

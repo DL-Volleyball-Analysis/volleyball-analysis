@@ -22,6 +22,7 @@ Metric: per player, F1 of each action class and their macro mean.
 The `classifier` command scores the per-player classifier (notebooks/train_person_actions.ipynb) on the same test
 players and classes, alone and with the ball prior (k and floor as chosen on validation by `evaluate`).
 """
+
 import argparse
 
 from vball.evaluation.actions_volleyball import classifier, detect, evaluate
@@ -48,7 +49,9 @@ def main():
     c.add_argument("--probs", required=True)
     c.add_argument("--k", type=float, default=2.0)
     c.add_argument("--floor", type=float, default=0.6)
-    c.add_argument("--ball-preds", nargs="*", help="detected balls (eval_ball_detection outputs) to compare with labelled ones")
+    c.add_argument(
+        "--ball-preds", nargs="*", help="detected balls (eval_ball_detection outputs) to compare with labelled ones"
+    )
     c.add_argument("--out", default="actions_volleyball_classifier.json")
     args = ap.parse_args()
     {"detect": detect, "evaluate": evaluate, "classifier": classifier}[args.cmd](args)

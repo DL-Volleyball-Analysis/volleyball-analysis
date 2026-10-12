@@ -16,6 +16,7 @@ from court.py (metres, x along the 18 m length, y across, z up).
 Statuses: "ok" (net points used), "floor_only" (floor points only: the focal length then rests on the
 centred-principal-point assumption alone), "unusable" (too few points or error above the gate).
 """
+
 from dataclasses import dataclass
 
 import cv2
@@ -32,14 +33,14 @@ from .court_keypoints import (
 )
 
 MAX_ERROR_FRACTION = 0.005  # default gate: median reprojection error <= 0.5% of the image width
-MAX_FOCAL_SD = 0.05         # default gate: focal length known to 5% (1 sd)
+MAX_FOCAL_SD = 0.05  # default gate: focal length known to 5% (1 sd)
 
 
 @dataclass
 class Camera:
-    focal: float                 # pixels
-    rvec: np.ndarray             # Rodrigues rotation, court -> camera
-    tvec: np.ndarray             # translation, court -> camera
+    focal: float  # pixels
+    rvec: np.ndarray  # Rodrigues rotation, court -> camera
+    tvec: np.ndarray  # translation, court -> camera
     image_size: tuple[int, int]  # (width, height)
 
     @property
@@ -73,10 +74,10 @@ class Camera:
 
 @dataclass
 class Calibration:
-    status: str                    # "ok" | "floor_only" | "unusable"
+    status: str  # "ok" | "floor_only" | "unusable"
     camera: Camera | None
     reprojection_px: float | None  # median over the visible keypoints
-    net_top: float | None          # net height used (None for floor_only / unusable)
+    net_top: float | None  # net height used (None for floor_only / unusable)
     reason: str = ""
     focal_sd: float | None = None  # relative sd of the focal length (from the Jacobian)
 
@@ -86,8 +87,9 @@ def _residuals(params: np.ndarray, obj: np.ndarray, img: np.ndarray, size: tuple
     return (cam.project(obj) - img).ravel()
 
 
-def _refine(f0: float, rvec: np.ndarray, tvec: np.ndarray, obj: np.ndarray, img: np.ndarray,
-            size: tuple[int, int]) -> tuple[Camera, float, float]:
+def _refine(
+    f0: float, rvec: np.ndarray, tvec: np.ndarray, obj: np.ndarray, img: np.ndarray, size: tuple[int, int]
+) -> tuple[Camera, float, float]:
     """Refined camera, median reprojection error (px), relative sd of the focal length.
 
     The focal sd comes from the Jacobian with a noise level of at least 1 px: a perfect fit can still
@@ -99,7 +101,7 @@ def _refine(f0: float, rvec: np.ndarray, tvec: np.ndarray, obj: np.ndarray, img:
     res = np.linalg.norm(cam.project(obj) - img, axis=1)
     err = float(np.median(res))
     sigma = max(1.0, 1.4826 * err)
-    cov = sigma ** 2 * np.linalg.pinv(sol.jac.T @ sol.jac)
+    cov = sigma**2 * np.linalg.pinv(sol.jac.T @ sol.jac)
     focal_sd = float(np.sqrt(max(cov[0, 0], 0.0)) / abs(cam.focal))
     return cam, err, focal_sd
 
@@ -134,8 +136,13 @@ def _focal_sweep_starts(obj: np.ndarray, img: np.ndarray, size: tuple[int, int])
     return starts
 
 
-def calibrate(image_points: np.ndarray, image_size: tuple[int, int], net_top: float | None = None,
-              max_error_px: float | None = None, max_focal_sd: float = MAX_FOCAL_SD) -> Calibration:
+def calibrate(
+    image_points: np.ndarray,
+    image_size: tuple[int, int],
+    net_top: float | None = None,
+    max_error_px: float | None = None,
+    max_focal_sd: float = MAX_FOCAL_SD,
+) -> Calibration:
     """Calibrate one view from the 14 k6y7r keypoints.
 
     image_points: (14, 2) pixels, NaN rows for keypoints that are not visible.
@@ -183,11 +190,11 @@ def calibrate(image_points: np.ndarray, image_size: tuple[int, int], net_top: fl
     if cam.focal <= 0 or cam.position[2] <= 0:
         return Calibration("unusable", None, err, height, "camera below the floor or negative focal length")
     if err > gate:
-        return Calibration("unusable", cam, err, height, f"reprojection error {err:.1f} px > {gate:.1f} px",
-                           focal_sd)
+        return Calibration("unusable", cam, err, height, f"reprojection error {err:.1f} px > {gate:.1f} px", focal_sd)
     if focal_sd > max_focal_sd:
-        return Calibration("unusable", cam, err, height,
-                           f"focal length poorly constrained (sd {100 * focal_sd:.0f}%)", focal_sd)
+        return Calibration(
+            "unusable", cam, err, height, f"focal length poorly constrained (sd {100 * focal_sd:.0f}%)", focal_sd
+        )
     return Calibration(status, cam, err, height, focal_sd=focal_sd)
 
 

@@ -8,6 +8,7 @@ the referee's call; measured in docs/results/rallies.md).
   .venv/bin/python scripts/label_rallies.py                      # data/datasets/watchdog/videos -> labels
   .venv/bin/python scripts/label_rallies.py --videos data/videos/fixed --out outputs/rallies/score_labels
 """
+
 import argparse
 import json
 from dataclasses import asdict
@@ -26,11 +27,16 @@ def label(video: Path) -> dict:
     cap.release()
     missed = []
     changes = scorebug.changes(readings, missed)
-    return {"video": video.name, "fps": fps, "duration_s": round(n / fps, 1),
-            "read_share": round(sum(s is not None for _, s in readings) / max(len(readings), 1), 3),
-            "missed_points": sum(n for _, n in missed),
-            "changes": [{"t": c.t, "team": c.team, "score": list(asdict(c.score).values()), "new_set": c.new_set}
-                        for c in changes]}
+    return {
+        "video": video.name,
+        "fps": fps,
+        "duration_s": round(n / fps, 1),
+        "read_share": round(sum(s is not None for _, s in readings) / max(len(readings), 1), 3),
+        "missed_points": sum(n for _, n in missed),
+        "changes": [
+            {"t": c.t, "team": c.team, "score": list(asdict(c.score).values()), "new_set": c.new_set} for c in changes
+        ],
+    }
 
 
 def main():
@@ -49,8 +55,11 @@ def main():
         lab = label(video)
         dst.write_text(json.dumps(lab, indent=1))
         sets = [c for c in lab["changes"] if c["new_set"]]
-        print(f"{video.stem}: {len(lab['changes'])} points ({lab['missed_points']} missed), {len(sets)} sets, "
-              f"read {lab['read_share']:.0%}", flush=True)
+        print(
+            f"{video.stem}: {len(lab['changes'])} points ({lab['missed_points']} missed), {len(sets)} sets, "
+            f"read {lab['read_share']:.0%}",
+            flush=True,
+        )
 
 
 if __name__ == "__main__":

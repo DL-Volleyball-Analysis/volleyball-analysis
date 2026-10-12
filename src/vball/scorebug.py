@@ -15,6 +15,7 @@ of the frame: rotation, sets won, points, points, sets won, rotation) say when e
 
 Tesseract is a local binary (brew install tesseract); `available()` says whether it is there.
 """
+
 import re
 import shutil
 import subprocess
@@ -41,10 +42,10 @@ class Score:
 
 @dataclass(frozen=True)
 class Change:
-    t: float        # seconds: when the new score was first read (counted once read twice in a row)
-    team: str       # "a" (left in the bug) or "b"
-    score: Score    # the score after the point
-    new_set: bool   # the point that won a set (the bug resets to 0-0)
+    t: float  # seconds: when the new score was first read (counted once read twice in a row)
+    team: str  # "a" (left in the bug) or "b"
+    score: Score  # the score after the point
+    new_set: bool  # the point that won a set (the bug resets to 0-0)
 
 
 def available() -> bool:
@@ -62,7 +63,7 @@ def parse(text: str) -> Score | None:
 def crop(frame: np.ndarray, bug: str = "watchdog", k: int = 0) -> np.ndarray:
     y0, y1, x0, x1 = SCOREBUGS[bug][k]
     h, w = frame.shape[:2]
-    return frame[int(y0 * h):max(int(y1 * h), int(y0 * h) + 1), int(x0 * w):int(x1 * w)]
+    return frame[int(y0 * h) : max(int(y1 * h), int(y0 * h) + 1), int(x0 * w) : int(x1 * w)]
 
 
 def _binarised(c: np.ndarray) -> list[np.ndarray]:
@@ -84,7 +85,7 @@ def _characters(mask: np.ndarray) -> np.ndarray:
     y, bh, bw = st[:, 1], st[:, 3], st[:, 2]
     keep = (bh >= 0.3 * h) & (bh <= 0.95 * h) & (bw <= 1.5 * bh) & (y > 0) & (y + bh < h)
     # parentheses and the hyphen: thin or short parts next to characters
-    keep |= ((bh >= 0.02 * h) & (bh < 0.3 * h) & (bw <= 0.5 * h) & (y > 0.2 * h) & (y + bh < 0.8 * h))
+    keep |= (bh >= 0.02 * h) & (bh < 0.3 * h) & (bw <= 0.5 * h) & (y > 0.2 * h) & (y + bh < 0.8 * h)
     keep[0] = False
     return np.where(keep[lab], 0, 255).astype(np.uint8)
 
@@ -93,8 +94,12 @@ def _tesseract(img: np.ndarray) -> str:
     ok, png = cv2.imencode(".png", img)
     if not ok:
         return ""
-    out = subprocess.run(["tesseract", "stdin", "stdout", "--psm", "7", "-c", "tessedit_char_whitelist=0123456789()-"],
-                         input=png.tobytes(), capture_output=True, check=False)
+    out = subprocess.run(
+        ["tesseract", "stdin", "stdout", "--psm", "7", "-c", "tessedit_char_whitelist=0123456789()-"],
+        input=png.tobytes(),
+        capture_output=True,
+        check=False,
+    )
     return out.stdout.decode(errors="ignore")
 
 
@@ -166,8 +171,9 @@ def changes(readings: list[tuple[float, Score | None]], missed: list | None = No
     return out
 
 
-def read_video(video: Path, every_s: float = 1.0, bug: str = "watchdog",
-               tick=lambda frac: None) -> list[tuple[float, Score | None]]:
+def read_video(
+    video: Path, every_s: float = 1.0, bug: str = "watchdog", tick=lambda frac: None
+) -> list[tuple[float, Score | None]]:
     """(time, score) once every `every_s` seconds, reading frames as a stream."""
     cap = cv2.VideoCapture(str(video))
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0

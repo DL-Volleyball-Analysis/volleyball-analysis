@@ -1,4 +1,5 @@
 """Rosters, coach tags and player statistics (vball.stats)."""
+
 from pathlib import Path
 from typing import Literal
 
@@ -40,19 +41,32 @@ def put_roster(vid: str, roster: Roster):
 def stat_rallies(vid: str) -> list[vstats.Rally]:
     rows = db.list_rallies(vid)
     eff = effective_winners(rows)
-    return [vstats.Rally(r["idx"], r["start_s"], r["end_s"], w, s.set_no)
-            for r, w, s in zip(rows, eff, running_score(eff))]
+    return [
+        vstats.Rally(r["idx"], r["start_s"], r["end_s"], w, s.set_no) for r, w, s in zip(rows, eff, running_score(eff))
+    ]
 
 
 def stat_tags(vid: str) -> list[vstats.Tag]:
-    return [vstats.Tag(t["id"], t["time_s"], t["kind"], t["team"], t["number"], t["outcome"])
-            for t in db.list_tags(vid)]
+    return [
+        vstats.Tag(t["id"], t["time_s"], t["kind"], t["team"], t["number"], t["outcome"]) for t in db.list_tags(vid)
+    ]
 
 
 def tags_out(vid: str) -> list[TagOut]:
-    return [TagOut(id=r.tag.id, time_s=r.tag.time_s, kind=r.tag.kind, team=r.tag.team, number=r.tag.number,
-                   outcome=r.tag.outcome, effective_outcome=r.outcome, inferred=r.inferred, rally_idx=r.rally)
-            for r in vstats.outcomes(stat_tags(vid), stat_rallies(vid))]
+    return [
+        TagOut(
+            id=r.tag.id,
+            time_s=r.tag.time_s,
+            kind=r.tag.kind,
+            team=r.tag.team,
+            number=r.tag.number,
+            outcome=r.tag.outcome,
+            effective_outcome=r.outcome,
+            inferred=r.inferred,
+            rally_idx=r.rally,
+        )
+        for r in vstats.outcomes(stat_tags(vid), stat_rallies(vid))
+    ]
 
 
 def valid_tag(kind: str, team: str, number: int, outcome: str | None) -> None:
@@ -104,8 +118,11 @@ def delete_tag(vid: str, tag_id: str):
     return tags_out(vid)
 
 
-@router.get("/videos/{vid}/stats", response_model=Stats,
-         responses={200: {"content": {"text/csv": {}}, "description": "JSON, or CSV with format=csv"}})
+@router.get(
+    "/videos/{vid}/stats",
+    response_model=Stats,
+    responses={200: {"content": {"text/csv": {}}, "description": "JSON, or CSV with format=csv"}},
+)
 def get_stats(vid: str, format: Literal["json", "csv"] = "json"):
     """Statistics from the tags and the current rallies (winner corrections included), computed on request."""
     v = video_or_404(vid)
@@ -116,11 +133,18 @@ def get_stats(vid: str, format: Literal["json", "csv"] = "json"):
     if format == "csv":
         import csv
         import io
+
         buf = io.StringIO()
         csv.writer(buf).writerows(vstats.csv_rows(lines, names))
         stem = Path(v["name"]).stem
-        return PlainTextResponse(buf.getvalue(), media_type="text/csv",
-                                 headers={"Content-Disposition": f'attachment; filename="{stem}-stats.csv"'})
-    return Stats(lines=[StatLine(**ln.as_dict(), name=names.get((ln.team, ln.number))) for ln in lines],
-                 rallies=len(rallies), tagged_rallies=len({r.rally for r in results if r.rally is not None}),
-                 outside=sum(r.rally is None for r in results))
+        return PlainTextResponse(
+            buf.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{stem}-stats.csv"'},
+        )
+    return Stats(
+        lines=[StatLine(**ln.as_dict(), name=names.get((ln.team, ln.number))) for ln in lines],
+        rallies=len(rallies),
+        tagged_rallies=len({r.rally for r in results if r.rally is not None}),
+        outside=sum(r.rally is None for r in results),
+    )

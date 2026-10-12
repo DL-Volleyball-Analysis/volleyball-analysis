@@ -7,6 +7,7 @@ to decide which tracks to drop, which the real filter (court mapping) cannot.
 
   .venv/bin/python scripts/analyze_tracking_errors.py yolo26s_960_botsort_10fps
 """
+
 import argparse
 import shutil
 
@@ -29,7 +30,11 @@ def player_tracks(pred: pd.DataFrame, gt: pd.DataFrame) -> set:
     matched = {}
     for frame, p in pred.groupby(0):
         g = gt[gt[0] == frame]
-        hit = (iou(p[[2, 3, 4, 5]].to_numpy(float), g[[2, 3, 4, 5]].to_numpy(float)).max(1) >= 0.5) if len(g) else np.zeros(len(p), bool)
+        hit = (
+            (iou(p[[2, 3, 4, 5]].to_numpy(float), g[[2, 3, 4, 5]].to_numpy(float)).max(1) >= 0.5)
+            if len(g)
+            else np.zeros(len(p), bool)
+        )
         for tid, h in zip(p[1], hit):
             n, k = matched.get(tid, (0, 0))
             matched[tid] = (n + 1, k + int(h))
@@ -54,8 +59,10 @@ def main():
         kept.to_csv(dst / f"{seq}.txt", header=False, index=False)
         kept_boxes, total_boxes = kept_boxes + len(kept), total_boxes + len(pred)
         kept_tracks, total_tracks = kept_tracks + len(keep), total_tracks + pred[1].nunique()
-    print(f"{label}: kept {kept_tracks}/{total_tracks} tracks, {kept_boxes}/{total_boxes} boxes "
-          f"(the rest never or rarely overlap a labelled player)")
+    print(
+        f"{label}: kept {kept_tracks}/{total_tracks} tracks, {kept_boxes}/{total_boxes} boxes "
+        f"(the rest never or rarely overlap a labelled player)"
+    )
     table = evaluate(seqs, out, None)
     print("UPPER BOUND with an ideal on-court filter (uses the labels):")
     print(table.loc[["COMBINED_SEQ"]].round(3).to_string())

@@ -3,6 +3,7 @@
 Writes outputs/ball/model_comparison/{metrics.csv, trajectories.jpg}.
 Usage: .venv/bin/python scripts/compare_ball_models.py [--models v4c fast_v1]
 """
+
 import argparse
 from pathlib import Path
 
@@ -49,9 +50,15 @@ def main():
         row_tiles = []
         for m in args.models:
             t = ball.track(video, m)
-            rows.append(dict(video=video.stem, model=m, frames=len(t),
-                             detection_rate=round(metrics.detection_rate(t), 3),
-                             jumps_per_100=round(metrics.jump_rate(t, width), 2)))
+            rows.append(
+                dict(
+                    video=video.stem,
+                    model=m,
+                    frames=len(t),
+                    detection_rate=round(metrics.detection_rate(t), 3),
+                    jumps_per_100=round(metrics.jump_rate(t, width), 2),
+                )
+            )
             row_tiles.append(overlay(frame, t, COLORS.get(m, (255, 255, 0)), f"{video.stem} | {m}"))
         tiles.append(np.hstack(row_tiles))
 

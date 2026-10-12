@@ -18,6 +18,7 @@ def data_dir(tmp_path_factory):
 @pytest.fixture(autouse=True)
 def empty_db(data_dir):
     from vball_app import deps
+
     with deps.db.connect() as c:
         tables = ("court_corrections", "dismissed_suggestions", "tags", "rosters", "rallies", "jobs", "videos")
         c.executescript("".join(f"DELETE FROM {t};" for t in tables))
@@ -45,8 +46,15 @@ def fake_ball(monkeypatch):
         n = pipeline.decode.video_meta(Path(video))["frames"]
         f = np.arange(n)
         vis = (f % 2 == 0).astype(int)
-        return pd.DataFrame({"frame": f, "visible": vis, "x": np.where(vis, 10.0 + f, np.nan),
-                             "y": np.where(vis, 90.0, np.nan), "radius": 5})
+        return pd.DataFrame(
+            {
+                "frame": f,
+                "visible": vis,
+                "x": np.where(vis, 10.0 + f, np.nan),
+                "y": np.where(vis, 90.0, np.nan),
+                "radius": 5,
+            }
+        )
 
     monkeypatch.setattr("vball.ball.track", track)
 
@@ -55,6 +63,7 @@ def fake_ball(monkeypatch):
 def client():
     from fastapi.testclient import TestClient
     from vball_app import main
+
     return TestClient(main.app)
 
 
@@ -77,6 +86,7 @@ def fake_players(monkeypatch):
 def no_action_models(monkeypatch, tmp_path):
     """The real action and digit weights may be in models/; tests run without them unless they install fakes."""
     from vball import pipeline
+
     monkeypatch.setattr(pipeline.config, "ACTION_MODEL", tmp_path / "missing_action.pt")
     monkeypatch.setattr(pipeline.config, "JERSEY_MODEL", tmp_path / "missing_digits.pt")
     monkeypatch.setattr(pipeline.config, "PERSON_MODEL", tmp_path / "missing_person.pt")

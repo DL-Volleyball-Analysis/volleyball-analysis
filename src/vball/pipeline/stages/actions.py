@@ -1,4 +1,5 @@
 """Actions: action events and shirt numbers per player track."""
+
 import json
 from pathlib import Path
 
@@ -66,8 +67,17 @@ def run(video: Path, out: Path, prev: dict, tick) -> dict:
                     if keep:
                         names, classify = person
                         probs = classify([crops[k] for k in keep])
-                        rows.extend(actors.classifier_rows(i, boxes[keep], probs, names, balls.get(i), config.BALL_PRIOR,
-                                                           min_conf=actions.ActionConfig().min_conf))
+                        rows.extend(
+                            actors.classifier_rows(
+                                i,
+                                boxes[keep],
+                                probs,
+                                names,
+                                balls.get(i),
+                                config.BALL_PRIOR,
+                                min_conf=actions.ActionConfig().min_conf,
+                            )
+                        )
             if read is not None and i % j_step == 0:
                 for row in by_frame.get(i, pd.DataFrame()).itertuples():
                     crop = player_crop(frame, row)
@@ -79,28 +89,50 @@ def run(video: Path, out: Path, prev: dict, tick) -> dict:
     cap.release()
     evs = actions.events(pd.DataFrame(rows, columns=actions.DETECTION_COLUMNS), tracks, a_step)
     if serves:  # merged on their own sampling step, so the sparser samples are not split into separate events
-        evs = sorted(evs + actions.events(pd.DataFrame(serves, columns=actions.DETECTION_COLUMNS), tracks, d_step),
-                     key=lambda e: e.start_frame)
+        evs = sorted(
+            evs + actions.events(pd.DataFrame(serves, columns=actions.DETECTION_COLUMNS), tracks, d_step),
+            key=lambda e: e.start_frame,
+        )
     numbers = {tid: jersey.vote([x for _, x in r]) for tid, r in readings.items()}
     # time-local numbers: a label follows a tracker identity switch instead of keeping the old number
     window = int(round(fps))  # +-1 s of readings
     segs = {tid: jersey.segments([f for f, _ in r], [x for _, x in r], window) for tid, r in readings.items()}
     data = {
-        "events": [{"action": e.action, "track_id": e.track_id, "start_frame": e.start_frame, "end_frame": e.end_frame,
-                    "start_s": round(e.start_frame / fps, 3), "end_s": round(e.end_frame / fps, 3),
-                    "peak_conf": round(e.peak_conf, 3), "samples": e.samples} for e in evs],
-        "numbers": {str(tid): {"number": v.number, "share": round(v.share, 3), "readings": v.readings}
-                    for tid, v in sorted(numbers.items())},
+        "events": [
+            {
+                "action": e.action,
+                "track_id": e.track_id,
+                "start_frame": e.start_frame,
+                "end_frame": e.end_frame,
+                "start_s": round(e.start_frame / fps, 3),
+                "end_s": round(e.end_frame / fps, 3),
+                "peak_conf": round(e.peak_conf, 3),
+                "samples": e.samples,
+            }
+            for e in evs
+        ],
+        "numbers": {
+            str(tid): {"number": v.number, "share": round(v.share, 3), "readings": v.readings}
+            for tid, v in sorted(numbers.items())
+        },
         "segments": {str(tid): [list(s) for s in sg] for tid, sg in sorted(segs.items())},
         "reach": j_step,  # a segment covers its reading frames plus this many frames on each side
     }
     (out / "action_events.json").write_text(json.dumps(data))  # actions.json is the stage result
     by_action = {a: sum(e.action == a for e in evs) for a in actions.ACTIONS}
-    res = {"status": "done", "models": {"actions": config.ACTION_MODEL.name if detect else None,
-                                        "person": config.PERSON_MODEL.name if person else None,
-                                        "digits": config.JERSEY_MODEL.name if read else None},
-           "events": len(evs), "by_action": by_action,
-           "numbered_tracks": sum(any(n is not None for _, _, n in sg) for sg in segs.values())}
+    res = {
+        "status": "done",
+        "models": {
+            "actions": config.ACTION_MODEL.name if detect else None,
+            "person": config.PERSON_MODEL.name if person else None,
+            "digits": config.JERSEY_MODEL.name if read else None,
+        },
+        "events": len(evs),
+        "by_action": by_action,
+        "numbered_tracks": sum(any(n is not None for _, _, n in sg) for sg in segs.values()),
+    }
     if read is None:
-        res["message"] = "Shirt numbers are not read yet: the digit model is being retrained. Players are shown by tracking id."
+        res["message"] = (
+            "Shirt numbers are not read yet: the digit model is being retrained. Players are shown by tracking id."
+        )
     return res

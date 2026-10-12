@@ -4,6 +4,7 @@ A rally is a list of touch points (court metres) and flight durations; each flig
 touches is the ballistic path that joins them in that time. The generator projects every frame
 through the camera, then adds detection noise and occlusions.
 """
+
 from dataclasses import dataclass
 
 import numpy as np
@@ -15,8 +16,8 @@ from . import BALL_RADIUS, Flight, G
 @dataclass
 class SyntheticRally:
     positions: np.ndarray  # (N, 3) true 3D centre per frame
-    uv: np.ndarray         # (N, 2) detections, NaN where occluded
-    touches: list[int]     # frame index of each touch (flight boundaries), first and last included
+    uv: np.ndarray  # (N, 2) detections, NaN where occluded
+    touches: list[int]  # frame index of each touch (flight boundaries), first and last included
     fps: float
 
 
@@ -26,7 +27,7 @@ def rally(touch_points, durations, fps: float = 50.0):
     positions, touches = [], [0]
     for a, b, T in zip(pts, pts[1:], durations):
         n = int(round(T * fps))
-        v0 = (b - a - 0.5 * G * T ** 2) / T
+        v0 = (b - a - 0.5 * G * T**2) / T
         t = np.arange(n) / fps
         positions.append(a + np.outer(t, v0) + 0.5 * np.outer(t * t, G))
         touches.append(touches[-1] + n)
@@ -34,8 +35,9 @@ def rally(touch_points, durations, fps: float = 50.0):
     return np.vstack(positions), touches
 
 
-def render(cam: Camera, touch_points, durations, fps: float = 50.0, noise_px: float = 0.0,
-           occluded=(), seed: int = 0) -> SyntheticRally:
+def render(
+    cam: Camera, touch_points, durations, fps: float = 50.0, noise_px: float = 0.0, occluded=(), seed: int = 0
+) -> SyntheticRally:
     """Project a rally; `occluded` lists frame indices with no detection."""
     positions, touches = rally(touch_points, durations, fps)
     uv = cam.project(positions)
@@ -44,8 +46,15 @@ def render(cam: Camera, touch_points, durations, fps: float = 50.0, noise_px: fl
     return SyntheticRally(positions, uv, touches, fps)
 
 
-def corrupt(uv: np.ndarray, image_size: tuple[int, int], miss: float = 0.0, false: float = 0.0,
-            noise_px: float = 0.0, burst: int = 4, seed: int = 0) -> np.ndarray:
+def corrupt(
+    uv: np.ndarray,
+    image_size: tuple[int, int],
+    miss: float = 0.0,
+    false: float = 0.0,
+    noise_px: float = 0.0,
+    burst: int = 4,
+    seed: int = 0,
+) -> np.ndarray:
     """Detection errors as seen on real tracks: a `miss` share of frames lost in bursts of about `burst` frames
     (occlusions), a `false` share of the remaining detections replaced by uniform points in the image (other
     round things, heads), and Gaussian noise on the rest."""
@@ -57,7 +66,7 @@ def corrupt(uv: np.ndarray, image_size: tuple[int, int], miss: float = 0.0, fals
     target, lost = int(round(miss * n)), np.zeros(n, bool)
     while lost.sum() < target:
         a = int(rng.integers(0, n))
-        lost[a:a + max(1, int(rng.poisson(burst)))] = True
+        lost[a : a + max(1, int(rng.poisson(burst)))] = True
     lost[np.flatnonzero(lost)[target:]] = False  # trim the last burst to the exact share
     out[lost] = np.nan
     seen = np.flatnonzero(~np.isnan(out).any(axis=1))

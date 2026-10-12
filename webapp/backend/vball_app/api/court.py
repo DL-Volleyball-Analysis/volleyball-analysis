@@ -1,4 +1,5 @@
 """Court per camera shot and the user's court corrections."""
+
 from fastapi import APIRouter, HTTPException
 
 from vball import court_registration, pipeline
@@ -17,12 +18,21 @@ def court_out(vid: str) -> CourtOut:
         return CourtOut(status="pending")
     dec = pipeline.load_stage(RESULTS / vid, "decode")
     court = pipeline.corrected_court(res, dec, db.court_corrections(vid), RESULTS / vid)
-    shots = [CourtShot(shot=k, start_frame=s["start_frame"], end_frame=s["end_frame"], status=s["status"],
-                       model=s.get("model"), corrected=bool(s.get("corrected")),
-                       samples=[CourtSample(frame=x["frame"], corners_px=x["corners_px"]) for x in s.get("samples", [])])
-             for k, s in enumerate(court.get("shots", []))]
-    return CourtOut(status=court.get("status", "done"), message=court.get("message"),
-                    fps=(dec or {}).get("fps"), shots=shots)
+    shots = [
+        CourtShot(
+            shot=k,
+            start_frame=s["start_frame"],
+            end_frame=s["end_frame"],
+            status=s["status"],
+            model=s.get("model"),
+            corrected=bool(s.get("corrected")),
+            samples=[CourtSample(frame=x["frame"], corners_px=x["corners_px"]) for x in s.get("samples", [])],
+        )
+        for k, s in enumerate(court.get("shots", []))
+    ]
+    return CourtOut(
+        status=court.get("status", "done"), message=court.get("message"), fps=(dec or {}).get("fps"), shots=shots
+    )
 
 
 def requeue_fromplayers_table(vid: str) -> bool:

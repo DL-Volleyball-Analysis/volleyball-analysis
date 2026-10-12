@@ -7,6 +7,7 @@ duplicates, which makes a test score optimistic for unseen matches. The overlap 
   .venv/bin/python scripts/eval_actions.py [--model models/action_yolo11m.pt]
       [--data data/datasets/volleyball_actions_capstone] [--train-zip <capstone zip with the train split>]
 """
+
 import argparse
 import re
 import tempfile
@@ -38,16 +39,25 @@ def label_stats(label_texts: list[str], n_classes: int) -> dict:
             boxes[c] += 1
         for c in set(cls):
             images[c] += 1
-    return {"images": len(label_texts), "empty": empty, "boxes": boxes, "images_with": images,
-            "max_per_image": max(per_image) if per_image else 0}
+    return {
+        "images": len(label_texts),
+        "empty": empty,
+        "boxes": boxes,
+        "images_with": images,
+        "max_per_image": max(per_image) if per_image else 0,
+    }
 
 
 def print_distribution(split: str, st: dict, names: list[str]) -> None:
     total = sum(st["boxes"])
-    print(f"{split:6s} {st['images']:6d} images, {total:6d} boxes, {st['empty']} images without a box "
-          f"({st['empty'] / max(1, st['images']):.1%}), up to {st['max_per_image']} boxes in one image")
+    print(
+        f"{split:6s} {st['images']:6d} images, {total:6d} boxes, {st['empty']} images without a box "
+        f"({st['empty'] / max(1, st['images']):.1%}), up to {st['max_per_image']} boxes in one image"
+    )
     for c, name in enumerate(names):
-        print(f"    {name:8s} {st['boxes'][c]:6d} boxes ({st['boxes'][c] / max(1, total):5.1%}) in {st['images_with'][c]:6d} images")
+        print(
+            f"    {name:8s} {st['boxes'][c]:6d} boxes ({st['boxes'][c] / max(1, total):5.1%}) in {st['images_with'][c]:6d} images"
+        )
 
 
 def main():
@@ -72,22 +82,29 @@ def main():
     test = sorted((root / "test" / "images").glob("*.jpg")) + sorted((root / "test" / "images").glob("*.png"))
     print(f"test split: {len(test)} images")
     if args.train_zip:
-        train = [n for n in zipfile.ZipFile(args.train_zip).namelist() if n.startswith(args.prefix) and not n.endswith("/")]
+        train = [
+            n for n in zipfile.ZipFile(args.train_zip).namelist() if n.startswith(args.prefix) and not n.endswith("/")
+        ]
         train_videos = Counter(source(n) for n in train)
         test_src = [source(p.name) for p in test]
         named = [s for s in test_src if s]
         shared = sum(1 for s in named if s in train_videos)
         print(f"training split: {len(train)} images from {len(train_videos)} named sources")
-        print(f"test images with a source video name: {len(named)}; of those, from a video also in training: "
-              f"{shared} ({shared / max(1, len(named)):.0%})")
+        print(
+            f"test images with a source video name: {len(named)}; of those, from a video also in training: "
+            f"{shared} ({shared / max(1, len(named)):.0%})"
+        )
 
     from ultralytics import YOLO
+
     cfg = yaml.safe_load((root / "data.yaml").read_text())
     cfg.update({"path": str(root.resolve()), "test": "test/images", "val": "test/images", "train": "test/images"})
     with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
         yaml.safe_dump(cfg, f)
     m = YOLO(args.model).val(data=f.name, split="test", imgsz=640, batch=8, plots=False, verbose=False)
-    print(f"\ntest mAP@0.5 {m.box.map50:.3f}, mAP@0.5:0.95 {m.box.map:.3f}, precision {m.box.mp:.3f}, recall {m.box.mr:.3f}")
+    print(
+        f"\ntest mAP@0.5 {m.box.map50:.3f}, mAP@0.5:0.95 {m.box.map:.3f}, precision {m.box.mp:.3f}, recall {m.box.mr:.3f}"
+    )
     for i, c in enumerate(m.box.ap_class_index):
         print(f"  {names[int(c)]:8s} AP@0.5 {m.box.ap50[i]:.3f}  AP@0.5:0.95 {m.box.ap[i]:.3f}")
 

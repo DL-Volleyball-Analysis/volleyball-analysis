@@ -32,10 +32,10 @@ def test_smooth_keeps_the_level_at_the_edges():
 def test_segment_hysteresis_merging_and_minimum_length():
     t = np.arange(0, 60, 0.2)
     p = np.zeros_like(t)
-    p[(t >= 5) & (t < 15)] = 0.9          # a rally
-    p[(t >= 9) & (t < 10)] = 0.5          # a dip between p_off and p_on: not split
-    p[(t >= 15.4) & (t < 20)] = 0.9       # after a 0.4 s gap: merged
-    p[(t >= 30) & (t < 31)] = 0.9         # 1 s of play: too short
+    p[(t >= 5) & (t < 15)] = 0.9  # a rally
+    p[(t >= 9) & (t < 10)] = 0.5  # a dip between p_off and p_on: not split
+    p[(t >= 15.4) & (t < 20)] = 0.9  # after a 0.4 s gap: merged
+    p[(t >= 30) & (t < 31)] = 0.9  # 1 s of play: too short
     p[(t >= 40) & (t < 50)] = 0.8
     r = segment(t, p, RallyConfig(smooth_s=0.2, min_gap_s=1.0, min_rally_s=3.0))
     assert [(round(a, 1), round(b, 1)) for a, b, _ in r] == [(5.0, 19.8), (40.0, 49.8)]
@@ -56,6 +56,7 @@ def test_evaluate_matches_by_iou_one_to_one():
 
 def test_player_motion_in_box_heights():
     import vball.rally_cues as m
+
     prev = np.array([[0, 0, 10, 100], [200, 0, 210, 100.0]])
     cur = np.array([[50, 0, 60, 100], [200, 0, 210, 100.0]])  # one moved 50 px (half a box height), one stood still
     assert np.isclose(m.player_motion(prev, cur), 0.25)
@@ -64,6 +65,7 @@ def test_player_motion_in_box_heights():
 
 def test_ball_summary_share_and_speed():
     import vball.rally_cues as m
+
     seen, speed = m.ball_summary([(0, 0), (19.2, 0), None, (38.4, 0)], fps=25.0, width=1920)
     assert seen == 0.75 and np.isclose(speed, 0.25)  # 19.2 px per frame = 1% of the width, 25 frames / s
     assert m.ball_summary([], 25.0, 1920) == (0.0, 0.0)
@@ -74,6 +76,7 @@ def test_saved_model_detects_rallies(tmp_path):
     from sklearn.ensemble import HistGradientBoostingClassifier
 
     from vball.rallies import CUES, RallyConfig, detect, features, load_model, save_model
+
     t = np.arange(0, 60, 0.2)
     play = ((t > 10) & (t < 20)) | ((t > 35) & (t < 45))
     cues = pd.DataFrame({"t": t, **{c: np.where(play, 1.0, 0.0) for c in CUES}})
@@ -87,11 +90,11 @@ def test_saved_model_detects_rallies(tmp_path):
     assert detect(m, cues.iloc[:0]) == []
 
 
-
 def test_cues_outside_training_are_reported():
     import pandas as pd
 
     from vball.rallies import outside_training
+
     broadcast = pd.DataFrame({"court_ok": [1, 1, 0, 1], "players": [12, 11, 13, 12]})
     end_line = pd.DataFrame({"court_ok": [0, 0, 0, 1, 0, 0], "players": [12] * 6})
     gym = pd.DataFrame({"court_ok": [1] * 4, "players": [3, 2, 4, 3]})
@@ -101,6 +104,7 @@ def test_cues_outside_training_are_reported():
 
 def test_fixed_camera_weak_labels_and_end_matching():
     from vball.evaluation import fixed_rallies as tfr
+
     t = np.arange(0, 60, 1.0)
     y = tfr.weak_labels(t, [24.0, 50.0])  # rallies end at 20 s and 46 s
     assert (y[14:21] == 1).all() and (y[22:39] == 0).all() and y[39] == -1 and (y[40:47] == 1).all()

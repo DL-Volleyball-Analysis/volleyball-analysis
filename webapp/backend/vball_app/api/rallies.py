@@ -1,4 +1,5 @@
 """Rallies with running scores and the user's winner corrections."""
+
 from fastapi import APIRouter, HTTPException
 
 from vball.scoring import running_score
@@ -12,8 +13,7 @@ router = APIRouter()
 def rallies_out(vid: str) -> list[Rally]:
     rows = db.list_rallies(vid)
     eff = effective_winners(rows)
-    return [Rally(**r, effective_winner=w, score=Score(**s.__dict__))
-            for r, w, s in zip(rows, eff, running_score(eff))]
+    return [Rally(**r, effective_winner=w, score=Score(**s.__dict__)) for r, w, s in zip(rows, eff, running_score(eff))]
 
 
 @router.get("/videos/{vid}/rallies", response_model=list[Rally])

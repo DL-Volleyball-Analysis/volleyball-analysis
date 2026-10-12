@@ -10,16 +10,28 @@ Licence: SportsMOT is CC BY-NC 4.0 (research use, not redistributed). Runs where
 
   python scripts/build_sportsmot_detection.py --src <dir with train/<seq>/...> --out <dir> [--every 3]
 """
+
 import configparser
 import shutil
 from pathlib import Path
 
 # SportsMOT train.txt ∩ volleyball.txt (dataset/splits_txt in the SportsMOT release)
 VOLLEYBALL_TRAIN = [
-    "v_1LwtoLPw2TU_c006", "v_1LwtoLPw2TU_c012", "v_1LwtoLPw2TU_c014", "v_1LwtoLPw2TU_c016",
-    "v_ApPxnw_Jffg_c001", "v_ApPxnw_Jffg_c002", "v_ApPxnw_Jffg_c009", "v_ApPxnw_Jffg_c015", "v_ApPxnw_Jffg_c016",
-    "v_CW0mQbgYIF4_c004", "v_CW0mQbgYIF4_c005", "v_CW0mQbgYIF4_c006",
-    "v_dChHNGIfm4Y_c003", "v_Dk3EpDDa3o0_c002", "v_Dk3EpDDa3o0_c007",
+    "v_1LwtoLPw2TU_c006",
+    "v_1LwtoLPw2TU_c012",
+    "v_1LwtoLPw2TU_c014",
+    "v_1LwtoLPw2TU_c016",
+    "v_ApPxnw_Jffg_c001",
+    "v_ApPxnw_Jffg_c002",
+    "v_ApPxnw_Jffg_c009",
+    "v_ApPxnw_Jffg_c015",
+    "v_ApPxnw_Jffg_c016",
+    "v_CW0mQbgYIF4_c004",
+    "v_CW0mQbgYIF4_c005",
+    "v_CW0mQbgYIF4_c006",
+    "v_dChHNGIfm4Y_c003",
+    "v_Dk3EpDDa3o0_c002",
+    "v_Dk3EpDDa3o0_c007",
 ]
 VALID_VIDEOS = {"v_Dk3EpDDa3o0"}  # whole match video held out for model selection
 
@@ -37,8 +49,10 @@ def mot_to_yolo(rows: list[tuple[float, float, float, float]], width: int, heigh
         x2, y2 = min(float(width), x + w), min(float(height), y + h)
         if x2 <= x1 or y2 <= y1:
             continue
-        out.append(f"0 {(x1 + x2) / 2 / width:.6f} {(y1 + y2) / 2 / height:.6f} "
-                   f"{(x2 - x1) / width:.6f} {(y2 - y1) / height:.6f}")
+        out.append(
+            f"0 {(x1 + x2) / 2 / width:.6f} {(y1 + y2) / 2 / height:.6f} "
+            f"{(x2 - x1) / width:.6f} {(y2 - y1) / height:.6f}"
+        )
     return "\n".join(out) + ("\n" if out else "")
 
 
@@ -71,5 +85,7 @@ def build(src: Path, out: Path, seqs: list[str], every: int = 3) -> dict[str, in
             shutil.copy2(d / "img1" / f"{frame:06d}{ext}", out / split / "images" / f"{name}{ext}")
             (out / split / "labels" / f"{name}.txt").write_text(mot_to_yolo(gt.get(frame, []), w, h))
             counts[split] += 1
-    (out / "data.yaml").write_text(f"path: {out.resolve()}\ntrain: train/images\nval: valid/images\nnc: 1\nnames: [player]\n")
+    (out / "data.yaml").write_text(
+        f"path: {out.resolve()}\ntrain: train/images\nval: valid/images\nnc: 1\nnames: [player]\n"
+    )
     return counts

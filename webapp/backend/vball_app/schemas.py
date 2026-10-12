@@ -1,4 +1,5 @@
 """Request and response models of the API (the frontend's types are generated from them: npm run gen:api)."""
+
 from typing import Literal
 
 from pydantic import BaseModel
@@ -21,6 +22,7 @@ class Job(BaseModel):
 
 class ScoreSummary(BaseModel):
     """Score after the last rally, for the library list."""
+
     set_no: int
     a: int
     b: int
@@ -53,7 +55,7 @@ class StageInfo(BaseModel):
 
 class CourtSample(BaseModel):
     frame: int
-    corners_px: list[list[float]]   # far left, far right, near right, near left
+    corners_px: list[list[float]]  # far left, far right, near right, near left
 
 
 class CourtShot(BaseModel):
@@ -63,11 +65,11 @@ class CourtShot(BaseModel):
     status: Literal["ok", "needs_review", "failed"]
     model: str | None = None
     corrected: bool = False
-    samples: list[CourtSample]        # the frontend interpolates corners between samples
+    samples: list[CourtSample]  # the frontend interpolates corners between samples
 
 
 class CourtOut(BaseModel):
-    status: str                       # the court stage status (pending, done, unavailable, ...)
+    status: str  # the court stage status (pending, done, unavailable, ...)
     message: str | None = None
     fps: float | None = None
     shots: list[CourtShot] = []
@@ -75,13 +77,13 @@ class CourtOut(BaseModel):
 
 class CourtCorrection(BaseModel):
     frame: int
-    points_px: list[list[float]]      # four image points, in the preset's order
+    points_px: list[list[float]]  # four image points, in the preset's order
     preset: Literal["corners", "near_half"] = "corners"  # vball.court_registration.CORRECTION_PRESETS
 
 
 class CourtCorrected(BaseModel):
     court: CourtOut
-    queued: bool                      # a re-analysis from the players stage was queued
+    queued: bool  # a re-analysis from the players stage was queued
 
 
 class Score(BaseModel):
@@ -111,13 +113,13 @@ class Rally(BaseModel):
 class BallWindow(BaseModel):
     fps: float
     frame: list[int]
-    x: list[float | None]   # image pixels, None when the ball is not detected
+    x: list[float | None]  # image pixels, None when the ball is not detected
     y: list[float | None]
 
 
 class BallCoverage(BaseModel):
     duration_s: float
-    coverage: list[float]   # fraction of frames with a detection, per equal time bin
+    coverage: list[float]  # fraction of frames with a detection, per equal time bin
 
 
 class PlayerBox(BaseModel):
@@ -128,25 +130,25 @@ class PlayerBox(BaseModel):
     x2: float
     y2: float
     interpolated: bool
-    court_x: float | None   # metres; None without a court mapping
+    court_x: float | None  # metres; None without a court mapping
     court_y: float | None
     side: Literal["a", "b"] | None
-    team: Literal["a", "b"] | None = None             # by shirt colour; None when not trusted
-    role: Literal["player", "other"] = "player"       # other: officials, staff, spectators (shown, not counted)
+    team: Literal["a", "b"] | None = None  # by shirt colour; None when not trusted
+    role: Literal["player", "other"] = "player"  # other: officials, staff, spectators (shown, not counted)
 
 
 class PlayerWindow(BaseModel):
     fps: float
-    placed: bool            # positions and the on-court filter were applied
+    placed: bool  # positions and the on-court filter were applied
     boxes: list[PlayerBox]
 
 
 class FlightSample(BaseModel):
-    t: float               # seconds in the video
-    x: float               # court metres (vball.court frame, z up)
+    t: float  # seconds in the video
+    x: float  # court metres (vball.court frame, z up)
     y: float
     z: float
-    observed: bool         # the ball was detected in this frame (else the position comes from the fit)
+    observed: bool  # the ball was detected in this frame (else the position comes from the fit)
 
 
 class NetCrossing(BaseModel):
@@ -172,7 +174,7 @@ class Flight(BaseModel):
     landing: Landing | None
     samples: list[FlightSample]
     anchors: list[Literal["start", "end"]] = []  # touches pulled toward a player's court position
-    dropped: int = 0                              # detections left out as inconsistent with the flight
+    dropped: int = 0  # detections left out as inconsistent with the flight
 
 
 class ImportRequest(BaseModel):
@@ -213,6 +215,7 @@ class TagIn(BaseModel):
 
 class TagPatch(BaseModel):
     """Fields to change; `outcome: null` clears the user's outcome (back to inferred)."""
+
     time_s: float | None = None
     team: Team | None = None
     number: int | None = None
@@ -225,21 +228,21 @@ class TagOut(BaseModel):
     kind: TagKind
     team: Team
     number: int
-    outcome: Outcome | None                 # set by the user
+    outcome: Outcome | None  # set by the user
     effective_outcome: Literal["kill", "ace", "error", "in_play", "unknown", "outside"]
-    inferred: bool                          # effective outcome comes from the rally winner / position
-    rally_idx: int | None                   # rally the tag counts in; None outside rallies
+    inferred: bool  # effective outcome comes from the rally winner / position
+    rally_idx: int | None  # rally the tag counts in; None outside rallies
 
 
 class StatLine(BaseModel):
     team: Team
-    number: int | None                      # None: team total
+    number: int | None  # None: team total
     name: str | None
-    set_no: int | None                      # None: whole match
+    set_no: int | None  # None: whole match
     attempts: int
     kills: int
     attack_errors: int
-    efficiency: float | None                # (kills - errors) / decided attempts
+    efficiency: float | None  # (kills - errors) / decided attempts
     kill_rate: float | None
     serves: int
     aces: int
@@ -251,8 +254,8 @@ class StatLine(BaseModel):
 class Stats(BaseModel):
     lines: list[StatLine]
     rallies: int
-    tagged_rallies: int                     # rallies with at least one tag
-    outside: int                            # tags not in any rally (not counted)
+    tagged_rallies: int  # rallies with at least one tag
+    outside: int  # tags not in any rally (not counted)
 
 
 class ActionEvent(BaseModel):
@@ -261,30 +264,32 @@ class ActionEvent(BaseModel):
     start_s: float
     end_s: float
     peak_conf: float
-    number: int | None        # the track's shirt number when the vote is clear
-    team: Team | None         # by shirt colour, else the side of the net
+    number: int | None  # the track's shirt number when the vote is clear
+    team: Team | None  # by shirt colour, else the side of the net
 
 
 class ShirtNumber(BaseModel):
     track_id: int
-    number: int | None        # None: no clear vote (shown by tracking id)
+    number: int | None  # None: no clear vote (shown by tracking id)
     share: float
     readings: int
 
 
 class Suggestion(BaseModel):
     """A tag proposed from an action event; never counted until the coach posts it as a tag."""
+
     id: str
     kind: TagKind
     time_s: float
     team: Team | None
-    number: int | None        # None: the coach has to give it
+    number: int | None  # None: the coach has to give it
     track_id: int | None
     status: Literal["open", "accepted", "dismissed"]
 
 
 class NumberSegment(BaseModel):
     """A stretch of a track with one shirt number (time-local vote); outside segments: the tracking id."""
+
     track_id: int
     start_s: float
     end_s: float
@@ -296,4 +301,3 @@ class ActionsOut(BaseModel):
     numbers: list[ShirtNumber]
     segments: list[NumberSegment] = []
     suggestions: list[Suggestion]
-

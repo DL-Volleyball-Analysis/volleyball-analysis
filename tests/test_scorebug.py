@@ -25,8 +25,18 @@ def test_a_step_is_one_point_or_a_new_set():
 
 def test_changes_need_two_equal_readings_and_drop_misreads():
     S = Score
-    readings = [(0, S(1, 6, 4, 0)), (1, S(1, 6, 4, 0)), (2, S(1, 8, 4, 0)), (3, S(1, 6, 4, 0)), (4, None),
-                (5, S(1, 7, 4, 0)), (6, S(1, 7, 4, 0)), (7, S(1, 7, 4, 0)), (8, S(1, 7, 5, 0)), (9, S(1, 7, 5, 0))]
+    readings = [
+        (0, S(1, 6, 4, 0)),
+        (1, S(1, 6, 4, 0)),
+        (2, S(1, 8, 4, 0)),
+        (3, S(1, 6, 4, 0)),
+        (4, None),
+        (5, S(1, 7, 4, 0)),
+        (6, S(1, 7, 4, 0)),
+        (7, S(1, 7, 4, 0)),
+        (8, S(1, 7, 5, 0)),
+        (9, S(1, 7, 5, 0)),
+    ]
     out = changes(readings)
     assert [(c.t, c.team, c.score) for c in out] == [(5, "a", S(1, 7, 4, 0)), (8, "b", S(1, 7, 5, 0))]  # first read
 
@@ -46,9 +56,17 @@ def test_reading_a_drawn_score_bug():
 
 def test_unreadable_stretches_re_anchor_without_inventing_points():
     S = Score
-    readings = [(0, S(1, 5, 0, 0)), (1, S(1, 5, 0, 0)), (30, S(1, 7, 9, 0)), (31, S(1, 7, 9, 0)),  # a short misread
-                *[(70 + k, S(1, 9, 6, 0)) for k in range(5)],
-                (80, S(1, 10, 6, 0)), (85, S(1, 10, 6, 0)), (90, S(0, 3, 3, 1)), (91, S(0, 3, 3, 1))]
+    readings = [
+        (0, S(1, 5, 0, 0)),
+        (1, S(1, 5, 0, 0)),
+        (30, S(1, 7, 9, 0)),
+        (31, S(1, 7, 9, 0)),  # a short misread
+        *[(70 + k, S(1, 9, 6, 0)) for k in range(5)],
+        (80, S(1, 10, 6, 0)),
+        (85, S(1, 10, 6, 0)),
+        (90, S(0, 3, 3, 1)),
+        (91, S(0, 3, 3, 1)),
+    ]
     missed = []
     out = changes(readings, missed)
     assert [(c.t, c.team) for c in out] == [(80, "a")]  # the backwards reading at 90 s is dropped

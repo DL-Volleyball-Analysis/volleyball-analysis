@@ -87,7 +87,7 @@ def test_derived_values_match_the_analytic_ones():
     assert d["apex"]["height_m"] == pytest.approx(p0[2] + v0[2] ** 2 / (2 * 9.81))
     assert d["apex"]["t"] == pytest.approx(t_apex)
     t_net = (9.0 - p0[0]) / v0[0]
-    assert d["net_crossing"]["height_m"] == pytest.approx(p0[2] + v0[2] * t_net + 0.5 * G[2] * t_net ** 2)
+    assert d["net_crossing"]["height_m"] == pytest.approx(p0[2] + v0[2] * t_net + 0.5 * G[2] * t_net**2)
     assert d["net_crossing"]["y_m"] == pytest.approx(p0[1] + v0[1] * t_net)
     assert d["start_speed_mps"] == pytest.approx(np.linalg.norm(v0))
     # floor contact: z(t) = BALL_RADIUS, later root
@@ -102,9 +102,9 @@ def test_no_landing_when_the_flight_ends_in_the_air():
     assert f.derived()["landing"] is None
 
 
-
 def test_physically_impossible_flights_are_dropped_with_the_reason():
     from vball.trajectory import implausible
+
     frames = np.arange(0, 20)
     fast = FlightFit(0, 19, np.array([2.0, 4.0, 2.5]), np.array([60.0, 0.0, 2.0]), FPS, 1.0, 0.1)
     assert "start speed" in implausible(fast, fast.at(frames))
@@ -123,19 +123,21 @@ def test_physically_impossible_flights_are_dropped_with_the_reason():
 
 def test_corrupt_respects_the_error_rates():
     from vball.trajectory.synthetic import corrupt
+
     r = render(CAM, TOUCHES, DURATIONS, FPS)
     uv = corrupt(r.uv, SIZE, miss=0.3, false=0.1, noise_px=2.0, seed=3)
     lost = np.isnan(uv).any(axis=1)
     assert abs(lost.mean() - 0.3) < 0.01
     err = np.linalg.norm(uv[~lost] - r.uv[~lost], axis=1)
     assert abs((err > 30).mean() - 0.1) < 0.03  # replaced by points elsewhere
-    assert np.median(err[err < 30]) < 3          # the rest carry only noise
+    assert np.median(err[err < 30]) < 3  # the rest carry only noise
     runs = np.diff(np.flatnonzero(np.diff(np.r_[0, lost.astype(int), 0])))[::2]
-    assert np.mean(runs) > 1.5                   # misses come in bursts
+    assert np.mean(runs) > 1.5  # misses come in bursts
 
 
 def test_touch_players_stand_near_the_touches():
     from vball.trajectory.synthetic import touch_players
+
     players = touch_players(TOUCHES, seed=1)
     assert players[-1] is None
     assert all(np.linalg.norm(p - np.array(t[:2])) < 1.5 for p, t in zip(players[:-1], TOUCHES[:-1]))
@@ -143,6 +145,7 @@ def test_touch_players_stand_near_the_touches():
 
 def test_false_detections_inside_a_serve_are_dropped():
     from vball.trajectory.synthetic import corrupt
+
     errors, dropped = [], 0
     for seed in range(5):
         r = render(CAM, TOUCHES[:2], DURATIONS[:1], FPS)
@@ -169,6 +172,7 @@ def test_a_path_in_front_of_the_camera_is_never_drawn_there():
 
 def test_player_anchors_halve_the_error_of_short_attacks():
     from vball.trajectory.synthetic import corrupt, touch_players
+
     plain, anchored = [], []
     for seed in range(10):
         r = render(CAM, TOUCHES, DURATIONS, FPS)

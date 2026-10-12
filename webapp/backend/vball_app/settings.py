@@ -1,4 +1,5 @@
 """Paths shared by the API and the worker (override with VBALL_WEBAPP_DATA)."""
+
 import os
 from pathlib import Path
 

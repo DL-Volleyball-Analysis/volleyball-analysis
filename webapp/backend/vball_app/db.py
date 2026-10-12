@@ -5,6 +5,7 @@ of in API memory. Rallies keep the model's winner and the user's correction side
 corrections double as labels for measuring scoring accuracy. Rosters and tags are user data: re-analysis
 never touches them, and tags are keyed by video time, not by rally (see vball.stats).
 """
+
 import json
 import sqlite3
 import uuid
@@ -114,8 +115,7 @@ class Database:
         with self.connect() as c:
             c.execute(
                 "INSERT INTO videos VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (vid, name, path, meta.get("fps"), meta.get("frames"), meta.get("width"),
-                 meta.get("height"), now()),
+                (vid, name, path, meta.get("fps"), meta.get("frames"), meta.get("width"), meta.get("height"), now()),
             )
         return self.get_video(vid)
 
@@ -192,8 +192,7 @@ class Database:
 
     # rallies
     def replace_rallies(self, video_id: str, rallies: list[dict]) -> None:
-        cols = ("idx", "start_s", "end_s", "winner", "reason", "confidence",
-                "landing_x", "landing_y", "source")
+        cols = ("idx", "start_s", "end_s", "winner", "reason", "confidence", "landing_x", "landing_y", "source")
         with self.connect() as c:
             c.execute("DELETE FROM rallies WHERE video_id = ?", (video_id,))
             c.executemany(
@@ -210,9 +209,21 @@ class Database:
             inter = max(0.0, min(a[1], b[1]) - max(a[0], b[0]))
             union = max(a[1], b[1]) - min(a[0], b[0])
             return inter / union if union > 0 else 0.0
-        rows = [{"idx": k, "start_s": r["start_s"], "end_s": r["end_s"], "winner": None, "reason": None,
-                 "confidence": r.get("confidence"), "landing_x": None, "landing_y": None, "source": "model"}
-                for k, r in enumerate(found)]
+
+        rows = [
+            {
+                "idx": k,
+                "start_s": r["start_s"],
+                "end_s": r["end_s"],
+                "winner": None,
+                "reason": None,
+                "confidence": r.get("confidence"),
+                "landing_x": None,
+                "landing_y": None,
+                "source": "model",
+            }
+            for k, r in enumerate(found)
+        ]
         self.replace_rallies(video_id, rows)
         for o in old:
             if not o.get("winner_override"):
@@ -223,9 +234,7 @@ class Database:
 
     def list_rallies(self, video_id: str) -> list[dict]:
         with self.connect() as c:
-            rows = c.execute(
-                "SELECT * FROM rallies WHERE video_id = ? ORDER BY idx", (video_id,)
-            ).fetchall()
+            rows = c.execute("SELECT * FROM rallies WHERE video_id = ? ORDER BY idx", (video_id,)).fetchall()
         return [dict(r) for r in rows]
 
     def set_rally_override(self, video_id: str, idx: int, winner: str | None) -> bool:
@@ -254,17 +263,28 @@ class Database:
 
     def ensure_on_roster(self, video_id: str, team: str, number: int) -> None:
         with self.connect() as c:
-            c.execute("INSERT OR IGNORE INTO rosters (video_id, team, number) VALUES (?, ?, ?)",
-                      (video_id, team, number))
+            c.execute(
+                "INSERT OR IGNORE INTO rosters (video_id, team, number) VALUES (?, ?, ?)", (video_id, team, number)
+            )
 
     # tags
-    def add_tag(self, video_id: str, time_s: float, kind: str, team: str, number: int,
-                outcome: str | None) -> dict:
-        tag = {"id": uuid.uuid4().hex[:12], "video_id": video_id, "time_s": time_s, "kind": kind,
-               "team": team, "number": number, "outcome": outcome, "created_at": now()}
+    def add_tag(self, video_id: str, time_s: float, kind: str, team: str, number: int, outcome: str | None) -> dict:
+        tag = {
+            "id": uuid.uuid4().hex[:12],
+            "video_id": video_id,
+            "time_s": time_s,
+            "kind": kind,
+            "team": team,
+            "number": number,
+            "outcome": outcome,
+            "created_at": now(),
+        }
         with self.connect() as c:
-            c.execute("INSERT INTO tags (id, video_id, time_s, kind, team, number, outcome, created_at) "
-                      "VALUES (:id, :video_id, :time_s, :kind, :team, :number, :outcome, :created_at)", tag)
+            c.execute(
+                "INSERT INTO tags (id, video_id, time_s, kind, team, number, outcome, created_at) "
+                "VALUES (:id, :video_id, :time_s, :kind, :team, :number, :outcome, :created_at)",
+                tag,
+            )
         return tag
 
     def list_tags(self, video_id: str) -> list[dict]:
@@ -298,16 +318,30 @@ class Database:
     # court corrections (overlaid on court.json when read: vball.court_registration.apply_corrections)
     def court_corrections(self, video_id: str) -> list[dict]:
         with self.connect() as c:
-            rows = c.execute("SELECT shot, frame, points_px, ids FROM court_corrections WHERE video_id = ? ORDER BY shot",
-                             (video_id,))
-            return [{"shot": r["shot"], "frame": r["frame"], "points_px": json.loads(r["points_px"]), "ids": json.loads(r["ids"])}
-                    for r in rows]
+            rows = c.execute(
+                "SELECT shot, frame, points_px, ids FROM court_corrections WHERE video_id = ? ORDER BY shot",
+                (video_id,),
+            )
+            return [
+                {
+                    "shot": r["shot"],
+                    "frame": r["frame"],
+                    "points_px": json.loads(r["points_px"]),
+                    "ids": json.loads(r["ids"]),
+                }
+                for r in rows
+            ]
 
     def set_court_correction(self, video_id: str, shot: int, frame: int, points_px: list, ids: list[int]) -> None:
         with self.connect() as c:
-            c.execute("INSERT OR REPLACE INTO court_corrections VALUES (?, ?, ?, ?, ?, ?)",
-                      (video_id, shot, frame, json.dumps(points_px), json.dumps(ids), now()))
+            c.execute(
+                "INSERT OR REPLACE INTO court_corrections VALUES (?, ?, ?, ?, ?, ?)",
+                (video_id, shot, frame, json.dumps(points_px), json.dumps(ids), now()),
+            )
 
     def clear_court_correction(self, video_id: str, shot: int) -> bool:
         with self.connect() as c:
-            return c.execute("DELETE FROM court_corrections WHERE video_id = ? AND shot = ?", (video_id, shot)).rowcount > 0
+            return (
+                c.execute("DELETE FROM court_corrections WHERE video_id = ? AND shot = ?", (video_id, shot)).rowcount
+                > 0
+            )

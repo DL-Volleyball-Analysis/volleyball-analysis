@@ -12,6 +12,7 @@ def upload(client, clip):
 
 def run_worker_once():
     from vball_app import deps, worker
+
     job = deps.db.claim_next_job()
     assert job is not None
     worker.process(deps.db, job)
@@ -33,6 +34,7 @@ def test_rejects_non_video(client):
 
 def test_pipeline_stages_and_ball_window(client, clip, fake_ball, monkeypatch, tmp_path):
     from vball import pipeline
+
     monkeypatch.setattr(pipeline.config, "COURT_MODELS", {"gym": tmp_path / "missing.pt"})  # independent of models/
     v = upload(client, clip)
     job = run_worker_once()
@@ -53,6 +55,7 @@ def test_pipeline_stages_and_ball_window(client, clip, fake_ball, monkeypatch, t
 
 def test_rerun_reuses_earlier_stages(client, clip, fake_ball, monkeypatch):
     from vball import pipeline
+
     v = upload(client, clip)
     run_worker_once()
     calls = []
@@ -79,11 +82,15 @@ def test_video_file_supports_seeking(client, clip):
 @pytest.fixture
 def rallies(client, clip):
     from vball_app import deps
+
     v = upload(client, clip)
-    deps.db.replace_rallies(v["id"], [
-        {"idx": i, "start_s": i, "end_s": i + 0.5, "winner": w, "source": "demo"}
-        for i, w in enumerate(["a", "b", None])
-    ])
+    deps.db.replace_rallies(
+        v["id"],
+        [
+            {"idx": i, "start_s": i, "end_s": i + 0.5, "winner": w, "source": "demo"}
+            for i, w in enumerate(["a", "b", None])
+        ],
+    )
     return v["id"]
 
 
@@ -104,6 +111,7 @@ def test_delete_removes_upload(client, clip):
     from pathlib import Path
 
     from vball_app import deps
+
     v = upload(client, clip)
     path = Path(deps.db.get_video(v["id"])["path"])
     assert client.delete(f"/videos/{v['id']}").status_code == 204
@@ -118,11 +126,13 @@ def test_score_summary_absent_without_rallies(client, clip):
 
 def test_score_summary_after_last_rally(client, clip):
     from vball_app import deps
+
     v = upload(client, clip)
     winners = ["a"] * 25 + ["b"] * 10 + ["a"] * 12  # set 1 to A 25-0, set 2 at 12-10
-    deps.db.replace_rallies(v["id"], [
-        {"idx": i, "start_s": i, "end_s": i + 0.5, "winner": w, "source": "model"} for i, w in enumerate(winners)
-    ])
+    deps.db.replace_rallies(
+        v["id"],
+        [{"idx": i, "start_s": i, "end_s": i + 0.5, "winner": w, "source": "model"} for i, w in enumerate(winners)],
+    )
     client.patch(f"/videos/{v['id']}/rallies/0", json={"winner": "a"})
     s = next(x for x in client.get("/videos").json() if x["id"] == v["id"])["score"]
     assert (s["sets_a"], s["sets_b"], s["set_no"], s["a"], s["b"]) == (1, 0, 2, 12, 10)
@@ -139,6 +149,7 @@ def test_stage_is_visible_while_it_runs(client, clip, monkeypatch):
     from vball_app import deps
 
     from vball import pipeline
+
     v = upload(client, clip)
     seen = {}
 
@@ -168,8 +179,12 @@ def test_ball_coverage_first_half_only(client, clip, monkeypatch):
 
     n = 50
     f = np.arange(n)
-    monkeypatch.setattr("vball.ball.track", lambda *a, **k: pd.DataFrame(
-        {"frame": f, "visible": (f < n // 2).astype(int), "x": 1.0, "y": 1.0, "radius": 5}))
+    monkeypatch.setattr(
+        "vball.ball.track",
+        lambda *a, **k: pd.DataFrame(
+            {"frame": f, "visible": (f < n // 2).astype(int), "x": 1.0, "y": 1.0, "radius": 5}
+        ),
+    )
     v = upload(client, clip)
     run_worker_once()
     cov = client.get(f"/videos/{v['id']}/ball/coverage", params={"bins": 10}).json()["coverage"]

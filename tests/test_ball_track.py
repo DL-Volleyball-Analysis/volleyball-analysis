@@ -33,9 +33,9 @@ def scene(n=30, pan=4):
     for i in range(n):
         f = np.ascontiguousarray(np.roll(bg, -pan * i, axis=1)[:, :600])
         dash_x = 300 - pan * i
-        f[200:204, dash_x:dash_x + 8] = 255
+        f[200:204, dash_x : dash_x + 8] = 255
         bx, by = 50 + 15 * i, 100 + 2 * i
-        f[by - 5:by + 6, bx - 5:bx + 6] = 255  # an 11 px ball
+        f[by - 5 : by + 6, bx - 5 : bx + 6] = 255  # an 11 px ball
         frames.append(f)
         ball.append((bx, by, dash_x + 4))
     return frames, ball
@@ -58,8 +58,8 @@ def test_fixed_objects_are_dropped_and_the_ball_kept():
 def test_link_prefers_a_consistent_path_over_a_stronger_jump():
     cfg = TrackConfig()
     cands = [[Candidate(100 + 10 * i, 200, 0.7)] for i in range(10)]
-    cands[5].append(Candidate(900, 50, 0.95))   # a confident detection far away (crowd, ad board)
-    cands[7] = []                               # one missed frame
+    cands[5].append(Candidate(900, 50, 0.95))  # a confident detection far away (crowd, ad board)
+    cands[7] = []  # one missed frame
     path = link(cands, width=1920, cfg=cfg)
     assert path[5].x == 150 and path[7] is None and path[9].x == 190
 
@@ -73,11 +73,13 @@ def test_link_allows_a_new_ball_after_a_long_gap():
 def test_fill_gaps_follows_a_parabola_and_leaves_long_gaps():
     t = np.arange(20, dtype=float)
     xy = np.stack([10 * t, 0.5 * (t - 10) ** 2], axis=1)
-    xy[8:11] = np.nan       # short gap: filled
-    xy[14:20] = np.nan      # trailing: not a gap between detections
+    xy[8:11] = np.nan  # short gap: filled
+    xy[14:20] = np.nan  # trailing: not a gap between detections
     out, filled = fill_gaps(xy)
     assert filled[8:11].all() and not filled[14:].any()
-    assert np.allclose(out[8:11, 0], 10 * t[8:11], atol=1e-6) and np.allclose(out[8:11, 1], 0.5 * (t[8:11] - 10) ** 2, atol=1e-6)
+    assert np.allclose(out[8:11, 0], 10 * t[8:11], atol=1e-6) and np.allclose(
+        out[8:11, 1], 0.5 * (t[8:11] - 10) ** 2, atol=1e-6
+    )
     long = np.stack([t, t], 1)
     long[3:12] = np.nan
     assert not fill_gaps(long)[1].any()
@@ -85,6 +87,7 @@ def test_fill_gaps_follows_a_parabola_and_leaves_long_gaps():
 
 def test_unknown_detector_is_rejected():
     import pytest
+
     with pytest.raises(ValueError):
         load("tracknet9")
 

@@ -10,6 +10,7 @@ Licence: SportsMOT is CC BY-NC 4.0 (research use, not redistributed). Runs where
 
   python scripts/build_sportsmot_detection.py --src <dir with train/<seq>/...> --out <dir> [--every 3]
 """
+
 import argparse
 from pathlib import Path
 

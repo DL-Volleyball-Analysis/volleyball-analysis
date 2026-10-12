@@ -13,6 +13,7 @@
 
 Usage: .venv/bin/python scripts/build_court_dataset.py [--no-drive]
 """
+
 import argparse
 import shutil
 from pathlib import Path
@@ -61,7 +62,7 @@ def copy_split(src: Path, dst: Path) -> int:
             v = line.split()
             if not v:
                 continue
-            rows.append(label_row(v[0], np.array(v[5:5 + 3 * K], float).reshape(K, 3)))
+            rows.append(label_row(v[0], np.array(v[5 : 5 + 3 * K], float).reshape(K, 3)))
         (dst / "labels" / label.name).write_text("\n".join(rows) + "\n")
     return len(list((dst / "images").iterdir()))
 
@@ -116,8 +117,14 @@ def main():
     counts["train (VNL clips one-three)"] = add_vnl(OUT / "train", VNL_TRAIN_CLIPS, VNL_TRAIN_EVERY)
     counts["test_vnl (clips four-five)"] = add_vnl(OUT / "test_vnl", VNL_TEST_CLIPS, 1)
     cfg = {
-        "path": ".", "train": "train/images", "val": "valid/images", "test": "test/images",
-        "kpt_shape": [K, 3], "flip_idx": K6Y7R_FLIP_IDX, "nc": 1, "names": ["volleyball-court"],
+        "path": ".",
+        "train": "train/images",
+        "val": "valid/images",
+        "test": "test/images",
+        "kpt_shape": [K, 3],
+        "flip_idx": K6Y7R_FLIP_IDX,
+        "nc": 1,
+        "names": ["volleyball-court"],
     }
     (OUT / "data.yaml").write_text(yaml.safe_dump(cfg, sort_keys=False))
     shutil.copy2(K6Y7R / "README.roboflow.txt", OUT / "LICENSE_k6y7r.txt")

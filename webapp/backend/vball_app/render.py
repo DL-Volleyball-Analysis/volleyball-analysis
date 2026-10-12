@@ -7,6 +7,7 @@ overlay is and why something is missing. Doubtful courts are named, never drawn.
 
   python -m vball_app.render broadcast_side_high_men [--out path.mp4]
 """
+
 import argparse
 import json
 import shutil
@@ -37,7 +38,9 @@ def load(vid: str) -> dict:
     out["ball_df"] = pd.read_csv(res / "ball.csv") if (res / "ball.csv").exists() else None
     out["players_df"] = pd.read_csv(res / "players.csv.gz") if (res / "players.csv.gz").exists() else None
     out["flights"] = json.loads((res / "flights.json").read_text()) if (res / "flights.json").exists() else []
-    out["actions"] = json.loads((res / "action_events.json").read_text()) if (res / "action_events.json").exists() else {}
+    out["actions"] = (
+        json.loads((res / "action_events.json").read_text()) if (res / "action_events.json").exists() else {}
+    )
     out["court"] = pipeline.corrected_court(out["court"], out["decode"], Database(DB_PATH).court_corrections(vid), res)
     return out
 
@@ -79,8 +82,16 @@ class CourtMap:
             cv2.circle(img, self.px(x, y), max(3, int(self.s * 0.35)), TEAM.get(side, WHITE), -1, cv2.LINE_AA)
         if ball is not None:
             cv2.circle(img, self.px(ball[0], ball[1]), max(3, int(self.s * 0.3)), BALL, -1, cv2.LINE_AA)
-            cv2.putText(img, f"{ball[2]:.1f} m{' ?' if ball_quality == 'low' else ''}", self.px(ball[0] + 0.5, ball[1] + 0.5),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (30, 30, 30), 1, cv2.LINE_AA)
+            cv2.putText(
+                img,
+                f"{ball[2]:.1f} m{' ?' if ball_quality == 'low' else ''}",
+                self.px(ball[0] + 0.5, ball[1] + 0.5),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.4,
+                (30, 30, 30),
+                1,
+                cv2.LINE_AA,
+            )
         cv2.rectangle(img, (0, 0), (self.w - 1, self.h - 1), (120, 120, 120), 1)
         return img
 
@@ -104,6 +115,7 @@ class Court3D:
 
     def __init__(self, width: int):
         from vball.calibration import look_at
+
         self.w, self.h = width, int(width * 0.62)
         self.cam = look_at([-7.0, -9.0, 9.0], [9.0, 4.5, 0.5], 0.95 * width, (self.w, self.h))
 
@@ -134,10 +146,24 @@ class Court3D:
             cv2.circle(img, tuple(self.px([p])[0]), max(4, self.w // 70), BALL, -1, cv2.LINE_AA)
             cv2.circle(img, tuple(self.px([p])[0]), max(4, self.w // 70), EDGE, 1, cv2.LINE_AA)
             low = " (low quality)" if flight.get("quality") == "low" else ""
-            cv2.putText(img, f"ball {p[2]:.1f} m high{low}", (8, self.h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.45,
-                        (30, 30, 30), 1, cv2.LINE_AA)
-        net = self.px([[9, -0.5, self.NET_TOP - self.NET_BAND], [9, 9.5, self.NET_TOP - self.NET_BAND],
-                       [9, 9.5, self.NET_TOP], [9, -0.5, self.NET_TOP]])
+            cv2.putText(
+                img,
+                f"ball {p[2]:.1f} m high{low}",
+                (8, self.h - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.45,
+                (30, 30, 30),
+                1,
+                cv2.LINE_AA,
+            )
+        net = self.px(
+            [
+                [9, -0.5, self.NET_TOP - self.NET_BAND],
+                [9, 9.5, self.NET_TOP - self.NET_BAND],
+                [9, 9.5, self.NET_TOP],
+                [9, -0.5, self.NET_TOP],
+            ]
+        )
         band = img.copy()
         cv2.fillPoly(band, [net], (60, 60, 60))
         img = cv2.addWeighted(band, 0.25, img, 0.75, 0)
@@ -169,9 +195,13 @@ def render(vid: str, path: Path, out: Path) -> Path:
     cmap = CourtMap(int(w * 0.24))
     c3d = Court3D(int(w * 0.26))
     traj = r.get("trajectory") or {}
-    no_3d = ("no 3D flight at this moment" if r["flights"] else
-             "no 3D: " + (traj.get("message") or "no flights").split(",")[0][:60])
+    no_3d = (
+        "no 3D flight at this moment"
+        if r["flights"]
+        else "no 3D: " + (traj.get("message") or "no flights").split(",")[0][:60]
+    )
     from vball import jersey
+
     segs = {int(t): [tuple(x) for x in sg] for t, sg in (r["actions"].get("segments") or {}).items()}
     reach = int(r["actions"].get("reach", 0))
     doing: dict[tuple[int, int], str] = {}  # (track, frame) -> action, for the frames of each event
@@ -200,7 +230,7 @@ def render(vid: str, path: Path, out: Path) -> Path:
 
         people = []
         others = []
-        for row in (by_frame.get(i).itertuples() if i in by_frame else []):
+        for row in by_frame.get(i).itertuples() if i in by_frame else []:
             p1, p2 = (int(row.x1), int(row.y1)), (int(row.x2), int(row.y2))
             if getattr(row, "role", "player") == "other":  # officials, staff, spectators: faint, unlabelled
                 others.append((p1, p2))
@@ -223,7 +253,7 @@ def render(vid: str, path: Path, out: Path) -> Path:
                 cv2.rectangle(faint, p1, p2, (150, 150, 150), max(1, int(1.5 * scale)))
             img = cv2.addWeighted(faint, 0.4, img, 0.6, 0)
 
-        pts = [(int(x), int(y)) for x, y in uv[max(0, i - trail):i + 1] if not np.isnan(x)]
+        pts = [(int(x), int(y)) for x, y in uv[max(0, i - trail) : i + 1] if not np.isnan(x)]
         for k in range(1, len(pts)):
             if np.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]) > JUMP * w:
                 continue
@@ -235,23 +265,43 @@ def render(vid: str, path: Path, out: Path) -> Path:
         ground, quality = flight_ground(r["flights"], i, fps)
         mini = cmap.draw(people, ground, quality)
         x0, y0 = w - cmap.w - int(16 * scale), h - cmap.h - int(16 * scale)
-        img[y0:y0 + cmap.h, x0:x0 + cmap.w] = mini
+        img[y0 : y0 + cmap.h, x0 : x0 + cmap.w] = mini
         view = c3d.draw(people, flight_at(r["flights"], i), i, fps, no_3d)
         x1, y1 = int(16 * scale), h - c3d.h - int(16 * scale)
-        img[y1:y1 + c3d.h, x1:x1 + c3d.w] = view
+        img[y1 : y1 + c3d.h, x1 : x1 + c3d.w] = view
 
         bar = np.zeros((int(44 * scale), w, 3), np.uint8)
-        img[:bar.shape[0]] = (img[:bar.shape[0]] * 0.35).astype(np.uint8)
+        img[: bar.shape[0]] = (img[: bar.shape[0]] * 0.35).astype(np.uint8)
         court_txt = COURT_STATUS.get(status, "no court model") if court else "court: not available"
         placed = "positions on the map" if people else "no court positions (court not usable)"
-        text(img, f"{i / fps:5.1f} s   ball: VballNet V4c   players: YOLO26s + BoT-SORT (#n shirt, ID n tracking id), {placed}   {court_txt}",
-             (int(14 * scale), int(29 * scale)), 0.62 * scale)
+        text(
+            img,
+            f"{i / fps:5.1f} s   ball: VballNet V4c   players: YOLO26s + BoT-SORT (#n shirt, ID n tracking id), {placed}   {court_txt}",
+            (int(14 * scale), int(29 * scale)),
+            0.62 * scale,
+        )
         writer.write(img)
     cap.release()
     writer.release()
     if shutil.which("ffmpeg"):  # H.264 plays in browsers and on phones; OpenCV's mp4v often does not
-        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(tmp), "-c:v", "libx264", "-pix_fmt", "yuv420p",
-                        "-crf", "22", str(out)], check=True)
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-loglevel",
+                "error",
+                "-i",
+                str(tmp),
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-crf",
+                "22",
+                str(out),
+            ],
+            check=True,
+        )
         tmp.unlink()
     else:
         tmp.rename(out)

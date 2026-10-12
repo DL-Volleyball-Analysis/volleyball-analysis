@@ -1,4 +1,5 @@
 """Rallies: play / no play from the system's cues with the trained rally model."""
+
 from pathlib import Path
 
 from vball import rallies as vrallies
@@ -18,9 +19,11 @@ def run(video: Path, out: Path, prev: dict, tick) -> dict:
         cues = models.rally_cues(video, tick)
         why = vrallies.outside_training(cues) if cues is not None else None
     if why:
-        return {"status": "unavailable",
-                "message": f"Rallies cannot be told on this footage: {why}. The rally model was trained on broadcast "
-                           "views with the court in view."}
+        return {
+            "status": "unavailable",
+            "message": f"Rallies cannot be told on this footage: {why}. The rally model was trained on broadcast "
+            "views with the court in view.",
+        }
     found = vrallies.detect(vrallies.load_model(config.RALLY_MODEL), cues)
     rows = [{"start_s": round(a, 2), "end_s": round(b, 2), "confidence": round(c, 3)} for a, b, c in found]
     res = {"status": "done", "model": config.RALLY_MODEL.name, "count": len(rows), "rallies": rows}

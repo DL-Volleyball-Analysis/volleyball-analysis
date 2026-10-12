@@ -20,6 +20,7 @@ Verified on the labels: floor points map to 0 / 6 / 9 / 12 / 18 m within ~0.05 m
 homography from the corners); net points sit on the vertical through points 2 / 7 and come out
 at ~1.42 m and ~2.40 m (net top is 2.43 m men / 2.24 m women, bottom band 1 m lower).
 """
+
 import cv2
 import numpy as np
 
@@ -29,10 +30,20 @@ NET_TOP_MEN, NET_TOP_WOMEN = 2.43, 2.24
 NET_BAND_HEIGHT = 1.0
 
 _A, _B = NET_X - ATTACK_LINE_OFFSET, NET_X + ATTACK_LINE_OFFSET
-K6Y7R_FLOOR = np.float32([
-    [0, WIDTH], [_A, WIDTH], [NET_X, WIDTH], [_B, WIDTH], [LENGTH, WIDTH],
-    [LENGTH, 0], [_B, 0], [NET_X, 0], [_A, 0], [0, 0],
-])
+K6Y7R_FLOOR = np.float32(
+    [
+        [0, WIDTH],
+        [_A, WIDTH],
+        [NET_X, WIDTH],
+        [_B, WIDTH],
+        [LENGTH, WIDTH],
+        [LENGTH, 0],
+        [_B, 0],
+        [NET_X, 0],
+        [_A, 0],
+        [0, 0],
+    ]
+)
 K6Y7R_FLOOR_IDS = list(range(10))
 K6Y7R_NET_IDS = [10, 11, 12, 13]
 # Index permutation for a horizontal image flip. The numbering is image-based, so a mirror keeps
@@ -77,8 +88,9 @@ def focal_from_homography(H: np.ndarray, image_size: tuple[int, int]) -> float |
     return float(np.sqrt(f2)) if f2 > 0 else None
 
 
-def net_points_from_floor(floor_img: np.ndarray, image_size: tuple[int, int],
-                          net_top: float = NET_TOP_MEN) -> np.ndarray | None:
+def net_points_from_floor(
+    floor_img: np.ndarray, image_size: tuple[int, int], net_top: float = NET_TOP_MEN
+) -> np.ndarray | None:
     """Image positions of the 4 net-band points (ids 10-13) from the 10 floor points of one frame:
     focal length from the floor homography, camera pose from the floor points, then projection."""
     H, _ = cv2.findHomography(K6Y7R_FLOOR.astype(np.float64), np.float64(floor_img), 0)
@@ -113,8 +125,9 @@ def detect(model, frame: np.ndarray, imgsz: int | None = None) -> np.ndarray:
 
 def corners_from_homography(H: np.ndarray) -> np.ndarray:
     """Image positions (4 x 2) of the court corners, in CORNER_IDS order."""
-    return cv2.perspectiveTransform(K6Y7R_FLOOR[CORNER_IDS].reshape(-1, 1, 2).astype(np.float64),
-                                    np.asarray(H, np.float64)).reshape(-1, 2)
+    return cv2.perspectiveTransform(
+        K6Y7R_FLOOR[CORNER_IDS].reshape(-1, 1, 2).astype(np.float64), np.asarray(H, np.float64)
+    ).reshape(-1, 2)
 
 
 def court_is_plausible(corners: np.ndarray, image_size: tuple[int, int]) -> bool:
@@ -133,8 +146,9 @@ def court_is_plausible(corners: np.ndarray, image_size: tuple[int, int]) -> bool
     return area >= MIN_AREA_FRACTION * w * h
 
 
-def fit_homography(keypoints: np.ndarray, image_size: tuple[int, int],
-                   min_conf: float = MIN_CONF) -> tuple[np.ndarray, float] | None:
+def fit_homography(
+    keypoints: np.ndarray, image_size: tuple[int, int], min_conf: float = MIN_CONF
+) -> tuple[np.ndarray, float] | None:
     """Court -> image homography from the confident floor keypoints (RANSAC), with its error: the median
     reprojection error of all confident floor points over the image diagonal. (Not the inliers' RMS: with
     very noisy points RANSAC can keep exactly four, which a homography always fits perfectly, so the

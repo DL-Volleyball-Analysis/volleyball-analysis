@@ -1,4 +1,5 @@
 """Shared by the routers: the database, the video lookup and cached result tables."""
+
 from functools import lru_cache
 
 import pandas as pd

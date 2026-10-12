@@ -1,4 +1,5 @@
 """Video library: upload, import, list, delete, the video file."""
+
 import shutil
 import uuid
 from pathlib import Path
@@ -21,9 +22,16 @@ def score_summary(vid: str) -> ScoreSummary | None:
     if not rows:
         return None
     last = running_score(effective_winners(rows))[-1]
-    return ScoreSummary(set_no=last.set_no, a=last.a, b=last.b, sets_a=last.sets_a, sets_b=last.sets_b,
-                        rallies=len(rows), corrected=sum(r["winner_override"] is not None for r in rows),
-                        demo=any(r["source"] == "demo" for r in rows))
+    return ScoreSummary(
+        set_no=last.set_no,
+        a=last.a,
+        b=last.b,
+        sets_a=last.sets_a,
+        sets_b=last.sets_b,
+        rallies=len(rows),
+        corrected=sum(r["winner_override"] is not None for r in rows),
+        demo=any(r["source"] == "demo" for r in rows),
+    )
 
 
 def video_out(v: dict) -> Video:

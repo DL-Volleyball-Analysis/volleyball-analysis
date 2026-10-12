@@ -6,6 +6,7 @@ reprojection error (pixels and % of image width), and the recovered camera heigh
 
   .venv/bin/python scripts/eval_calibration.py [--model models/court_kpt.pt] [--split test]
 """
+
 import argparse
 from pathlib import Path
 
@@ -21,7 +22,7 @@ K = 14
 
 def labelled_points(label: Path, w: int, h: int) -> np.ndarray:
     row = [float(x) for x in label.read_text().split()]
-    kp = np.array(row[5:5 + 3 * K]).reshape(K, 3)
+    kp = np.array(row[5 : 5 + 3 * K]).reshape(K, 3)
     pts = kp[:, :2] * [w, h]
     pts[kp[:, 2] <= 0] = np.nan
     return pts
@@ -50,19 +51,30 @@ def summarise(name: str, cals: list, widths: list[int]) -> None:
     rel = np.array([100 * c.reprojection_px / w for c, w in used])
     height = np.array([c.camera.position[2] for c, _ in used])
     fov = np.array([np.degrees(2 * np.arctan(w / 2 / c.camera.focal)) for c, w in used])
-    print(f"  reprojection error: median {np.median(err):.2f} px ({np.median(rel):.2f}% of width), "
-          f"p90 {np.quantile(err, 0.9):.2f} px")
-    print(f"  camera height: median {np.median(height):.1f} m; horizontal field of view: median {np.median(fov):.0f} deg")
+    print(
+        f"  reprojection error: median {np.median(err):.2f} px ({np.median(rel):.2f}% of width), "
+        f"p90 {np.quantile(err, 0.9):.2f} px"
+    )
+    print(
+        f"  camera height: median {np.median(height):.1f} m; horizontal field of view: median {np.median(fov):.0f} deg"
+    )
     nets = [c.net_top for c, _ in used if c.net_top is not None]
     if nets:
         print(f"  net height chosen: 2.43 m in {nets.count(2.43)}, 2.24 m in {nets.count(2.24)}")
+
     def kind(reason: str) -> str:
-        for key, label in (("floor keypoints", "fewer than 4 floor keypoints"), ("one line", "floor points on one line"),
-                           ("focal length", "focal length poorly constrained"), ("reprojection", "reprojection error above the gate"),
-                           ("below the floor", "camera below the floor"), ("pose", "no pose")):
+        for key, label in (
+            ("floor keypoints", "fewer than 4 floor keypoints"),
+            ("one line", "floor points on one line"),
+            ("focal length", "focal length poorly constrained"),
+            ("reprojection", "reprojection error above the gate"),
+            ("below the floor", "camera below the floor"),
+            ("pose", "no pose"),
+        ):
             if key in reason:
                 return label
         return reason
+
     kinds = [kind(c.reason) for c in cals if c.status == "unusable"]
     for k in sorted(set(kinds), key=kinds.count, reverse=True):
         print(f"  unusable: {k}: {kinds.count(k)}")
@@ -76,6 +88,7 @@ def main():
 
     images = sorted((DATASET / args.split / "images").glob("*.jpg"))
     from ultralytics import YOLO
+
     model = YOLO(args.model)
     labelled, predicted, widths = [], [], []
     for img_path in images:

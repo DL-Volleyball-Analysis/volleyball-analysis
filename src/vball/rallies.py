@@ -10,6 +10,7 @@ than `min_gap_s` are merged and rallies shorter than `min_rally_s` dropped. A ra
 probability. Evaluation matches detected and labelled rallies one to one by temporal IoU (at least `min_iou`,
 greedy from the best pair).
 """
+
 import xml.etree.ElementTree as ET
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -55,7 +56,9 @@ def smooth(p: np.ndarray, n: int) -> np.ndarray:
     return num / den
 
 
-def segment(times: np.ndarray, p_play: np.ndarray, cfg: RallyConfig = RallyConfig()) -> list[tuple[float, float, float]]:
+def segment(
+    times: np.ndarray, p_play: np.ndarray, cfg: RallyConfig = RallyConfig()
+) -> list[tuple[float, float, float]]:
     """Rallies (start s, end s, confidence) from samples at `times` (seconds, increasing) with P(play)."""
     t, p = np.asarray(times, float), np.asarray(p_play, float)
     if len(t) == 0:
@@ -77,8 +80,9 @@ def segment(times: np.ndarray, p_play: np.ndarray, cfg: RallyConfig = RallyConfi
             merged[-1][1] = r[1]
         else:
             merged.append(r)
-    return [(float(t[a]), float(t[b]), float(ps[a:b + 1].mean())) for a, b in merged
-            if t[b] - t[a] >= cfg.min_rally_s]
+    return [
+        (float(t[a]), float(t[b]), float(ps[a : b + 1].mean())) for a, b in merged if t[b] - t[a] >= cfg.min_rally_s
+    ]
 
 
 def iou(a: tuple[float, float], b: tuple[float, float]) -> float:
@@ -89,7 +93,9 @@ def iou(a: tuple[float, float], b: tuple[float, float]) -> float:
 
 def match(detected, labelled, min_iou: float = 0.5) -> list[tuple]:
     """One-to-one (detected, labelled) pairs with temporal IoU >= min_iou, greedy from the best pair."""
-    pairs = sorted(((iou(d[:2], g[:2]), i, j) for i, d in enumerate(detected) for j, g in enumerate(labelled)), reverse=True)
+    pairs = sorted(
+        ((iou(d[:2], g[:2]), i, j) for i, d in enumerate(detected) for j, g in enumerate(labelled)), reverse=True
+    )
     used_d, used_g, out = set(), set(), []
     for v, i, j in pairs:
         if v < min_iou:
@@ -109,11 +115,17 @@ def evaluate(detected, labelled, min_iou: float = 0.5) -> dict:
     de = np.array([abs(d[1] - g[1]) for d, g in matches])
     nd, ng = len(detected), len(labelled)
     p, r = len(matches) / max(nd, 1), len(matches) / max(ng, 1)
-    return {"detected": nd, "labelled": ng, "matched": len(matches), "precision": p, "recall": r,
-            "f1": 2 * p * r / max(p + r, 1e-9),
-            "start_err_median_s": float(np.median(ds)) if len(ds) else None,
-            "end_err_median_s": float(np.median(de)) if len(de) else None,
-            "within_1s": float(np.mean(np.concatenate([ds, de]) <= 1.0)) if len(ds) else None}
+    return {
+        "detected": nd,
+        "labelled": ng,
+        "matched": len(matches),
+        "precision": p,
+        "recall": r,
+        "f1": 2 * p * r / max(p + r, 1e-9),
+        "start_err_median_s": float(np.median(ds)) if len(ds) else None,
+        "end_err_median_s": float(np.median(de)) if len(de) else None,
+        "within_1s": float(np.mean(np.concatenate([ds, de]) <= 1.0)) if len(ds) else None,
+    }
 
 
 # --- classifier on rally cues (vball.rally_cues) -------------------------------------------------------------------
@@ -133,12 +145,15 @@ def features(cues: pd.DataFrame, rate: float, columns: list[str] = CUES) -> pd.D
 
 def save_model(path: Path, classifier, cfg: RallyConfig, rate: float, info: dict, columns: list[str] = CUES) -> None:
     import joblib
-    joblib.dump({"classifier": classifier, "config": asdict(cfg), "rate": rate, "info": info, "columns": list(columns)},
-                path)
+
+    joblib.dump(
+        {"classifier": classifier, "config": asdict(cfg), "rate": rate, "info": info, "columns": list(columns)}, path
+    )
 
 
 def load_model(path: Path) -> dict:
     import joblib
+
     m = joblib.load(path)
     m["config"] = RallyConfig(**m["config"])
     return m

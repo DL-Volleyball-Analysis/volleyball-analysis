@@ -1,4 +1,5 @@
 """vball.evaluation: the evaluation drivers on small synthetic inputs (the real data stays local)."""
+
 import json
 import pickle
 import types
@@ -74,8 +75,13 @@ def write_annotations(path, monkeypatch):
     mod.BoxInfo = BoxInfo
     BoxInfo.__module__, BoxInfo.__qualname__ = "boxinfo", "BoxInfo"
     monkeypatch.setitem(__import__("sys").modules, "boxinfo", mod)
-    frames = {f: [BoxInfo(player_ID=0, box=(10, 10, 50, 90), category="setting", frame_ID=f),
-                  BoxInfo(player_ID=1, box=(100, 10, 140, 90), category="standing", frame_ID=f)] for f in range(96, 105)}
+    frames = {
+        f: [
+            BoxInfo(player_ID=0, box=(10, 10, 50, 90), category="setting", frame_ID=f),
+            BoxInfo(player_ID=1, box=(100, 10, 140, 90), category="standing", frame_ID=f),
+        ]
+        for f in range(96, 105)
+    }
     path.write_bytes(pickle.dumps({"4": {"100": {"category": "r_set", "frame_boxes_dct": frames}}}))
 
 
@@ -121,8 +127,9 @@ def test_ball_positions_from_labels_and_from_a_detector(tmp_path):
     np.savetxt(tmp_path / "4" / "100.txt", xy)
     balls = av.ball_at(tmp_path, 4, 100)
     assert balls[80] is None and np.allclose(balls[100], (30, 40))
-    pd.DataFrame({"match": 4, "clip": 100, "x": np.arange(41.0), "y": 5.0, "visible": [i % 2 for i in range(41)]}).to_csv(
-        tmp_path / "pred.csv", index=False)
+    pd.DataFrame(
+        {"match": 4, "clip": 100, "x": np.arange(41.0), "y": 5.0, "visible": [i % 2 for i in range(41)]}
+    ).to_csv(tmp_path / "pred.csv", index=False)
     det = av.detected_ball(tmp_path / "pred.csv")[(4, 100)]
     assert det[80] is None and np.allclose(det[81], (1, 5))
 
@@ -157,6 +164,7 @@ def test_ground_truth_as_tracker_is_cut_to_max_frames(sportsmot):
 
 def test_tracker_output_in_mot_format(sportsmot, monkeypatch):
     import cv2
+
     for f in range(1, 4):
         cv2.imwrite(str(sportsmot / "val" / "v_a_c001" / "img1" / f"{f:06d}.jpg"), np.zeros((8, 8, 3), np.uint8))
     monkeypatch.setattr(pt, "ultralytics_step", lambda cfg: lambda image: [])
@@ -178,23 +186,45 @@ def test_evaluate_and_classifier_reports(tmp_path, monkeypatch):
     monkeypatch.setattr(av, "VAL_MATCHES", [4])
     monkeypatch.setattr(av, "TEST_MATCHES", [4])
     set_id = av.ACTIONS.index("set")
-    (tmp_path / "dets.json").write_text(json.dumps({f"4/100/{f}": [[set_id, 0.9, 10, 10, 50, 90]] for f in range(96, 105)}))
+    (tmp_path / "dets.json").write_text(
+        json.dumps({f"4/100/{f}": [[set_id, 0.9, 10, 10, 50, 90]] for f in range(96, 105)})
+    )
     (tmp_path / "ann" / "4").mkdir(parents=True)
     xy = np.zeros((41, 2))
     xy[16:25] = (30, 50)  # the ball at the setter's hands
     np.savetxt(tmp_path / "ann" / "4" / "100.txt", xy)
-    pd.DataFrame({"match": 4, "clip": 100, "x": 30.0, "y": 50.0, "visible": 1}, index=range(41)).to_csv(tmp_path / "balls.csv", index=False)
-    args = types.SimpleNamespace(pkl=p, dets=tmp_path / "dets.json", ann=tmp_path / "ann", ball_preds=tmp_path / "balls.csv",
-                                 out=tmp_path / "eval.json")
+    pd.DataFrame({"match": 4, "clip": 100, "x": 30.0, "y": 50.0, "visible": 1}, index=range(41)).to_csv(
+        tmp_path / "balls.csv", index=False
+    )
+    args = types.SimpleNamespace(
+        pkl=p,
+        dets=tmp_path / "dets.json",
+        ann=tmp_path / "ann",
+        ball_preds=tmp_path / "balls.csv",
+        out=tmp_path / "eval.json",
+    )
     av.evaluate(args)
     out = json.loads((tmp_path / "eval.json").read_text())
     assert set(out) == {"key frame", "9 frames", "+ ball (labelled)", "+ ball (detected)"}
     assert out["key frame"]["test"]["set"]["f1"] == 1.0
 
-    pd.DataFrame({"crop": ["4_100_100_0", "4_100_100_1"], "label": ["setting", "standing"],
-                  "setting": [0.8, 0.3], "standing": [0.2, 0.7]}).to_csv(tmp_path / "probs.csv", index=False)
-    args = types.SimpleNamespace(pkl=p, probs=tmp_path / "probs.csv", ann=tmp_path / "ann", k=2.0, floor=0.6,
-                                 ball_preds=[tmp_path / "balls.csv"], out=tmp_path / "cls.json")
+    pd.DataFrame(
+        {
+            "crop": ["4_100_100_0", "4_100_100_1"],
+            "label": ["setting", "standing"],
+            "setting": [0.8, 0.3],
+            "standing": [0.2, 0.7],
+        }
+    ).to_csv(tmp_path / "probs.csv", index=False)
+    args = types.SimpleNamespace(
+        pkl=p,
+        probs=tmp_path / "probs.csv",
+        ann=tmp_path / "ann",
+        k=2.0,
+        floor=0.6,
+        ball_preds=[tmp_path / "balls.csv"],
+        out=tmp_path / "cls.json",
+    )
     av.classifier(args)
     cls = json.loads((tmp_path / "cls.json").read_text())
     assert cls["classifier"]["set"]["f1"] == 1.0 and len(cls) == 3

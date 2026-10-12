@@ -1,4 +1,5 @@
 """Action events, shirt numbers and the tags they suggest (change add-player-actions)."""
+
 import json
 
 from fastapi import APIRouter, HTTPException
@@ -36,6 +37,7 @@ def actions(vid: str):
         if tid in segs:
             return jersey.number_at(segs[tid], frame, reach)
         return (numbers.get(tid) or {}).get("number")
+
     team_of: dict[int, str] = {}
     csv = RESULTS / vid / "players.csv.gz"
     if csv.exists():
@@ -46,10 +48,18 @@ def actions(vid: str):
                     vals = vals[vals.astype(str).isin(["a", "b"])]
                     if len(vals):
                         team_of[int(tid)] = str(vals.mode().iloc[0])
-    events = [ActionEvent(action=e["action"], track_id=e["track_id"], start_s=e["start_s"], end_s=e["end_s"],
-                          peak_conf=e["peak_conf"], number=number_at(e["track_id"], e["start_frame"]),
-                          team=team_of.get(e["track_id"]) if e["track_id"] is not None else None)
-              for e in data.get("events", [])]
+    events = [
+        ActionEvent(
+            action=e["action"],
+            track_id=e["track_id"],
+            start_s=e["start_s"],
+            end_s=e["end_s"],
+            peak_conf=e["peak_conf"],
+            number=number_at(e["track_id"], e["start_frame"]),
+            team=team_of.get(e["track_id"]) if e["track_id"] is not None else None,
+        )
+        for e in data.get("events", [])
+    ]
     detected = [(r["start_s"], r["end_s"]) for r in db.list_rallies(vid) if r["source"] == "model"]
     if detected:  # with detected rallies, actions outside play (warm-up, time-outs, replays) are left out
         keep = [any(a - RALLY_MARGIN_S <= e.start_s <= b + RALLY_MARGIN_S for a, b in detected) for e in events]
@@ -64,12 +74,31 @@ def actions(vid: str):
         sid = f"{kind}-{raw['start_frame']}-{e.track_id if e.track_id is not None else 'x'}"
         accepted = any(t["kind"] == kind and abs(t["time_s"] - e.start_s) <= ACCEPT_WINDOW_S for t in tags)
         status = "accepted" if accepted else "dismissed" if sid in dismissed else "open"
-        suggestions.append(Suggestion(id=sid, kind=kind, time_s=round(e.start_s, 3), team=e.team, number=e.number,
-                                      track_id=e.track_id, status=status))
-    segments = [NumberSegment(track_id=t, start_s=round(max(0, a - reach) / fps, 3), end_s=round((b + reach) / fps, 3), number=n)
-                for t, sg in sorted(segs.items()) for a, b, n in sg if n is not None]
-    return ActionsOut(events=events, suggestions=suggestions, segments=segments,
-                      numbers=[ShirtNumber(track_id=t, **n) for t, n in sorted(numbers.items())])
+        suggestions.append(
+            Suggestion(
+                id=sid,
+                kind=kind,
+                time_s=round(e.start_s, 3),
+                team=e.team,
+                number=e.number,
+                track_id=e.track_id,
+                status=status,
+            )
+        )
+    segments = [
+        NumberSegment(
+            track_id=t, start_s=round(max(0, a - reach) / fps, 3), end_s=round((b + reach) / fps, 3), number=n
+        )
+        for t, sg in sorted(segs.items())
+        for a, b, n in sg
+        if n is not None
+    ]
+    return ActionsOut(
+        events=events,
+        suggestions=suggestions,
+        segments=segments,
+        numbers=[ShirtNumber(track_id=t, **n) for t, n in sorted(numbers.items())],
+    )
 
 
 @router.post("/videos/{vid}/actions/suggestions/{sid}/dismiss", status_code=204)

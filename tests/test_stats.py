@@ -4,19 +4,22 @@ from vball.stats import Rally, Tag, csv_rows, outcomes, rally_of, summarise
 
 # fixture match, hand-calculated below: set 1 = rallies 0-3, set 2 = rally 4
 RALLIES = [
-    Rally(0, 0, 10, "a", 1), Rally(1, 12, 20, "b", 1), Rally(2, 22, 30, "a", 1),
-    Rally(3, 32, 40, None, 1), Rally(4, 50, 60, "b", 2),
+    Rally(0, 0, 10, "a", 1),
+    Rally(1, 12, 20, "b", 1),
+    Rally(2, 22, 30, "a", 1),
+    Rally(3, 32, 40, None, 1),
+    Rally(4, 50, 60, "b", 2),
 ]
 TAGS = [
-    Tag("t1", 1.0, "serve", "a", 7),                    # r0, not last -> in play
-    Tag("t2", 8.0, "attack", "a", 10),                  # r0 last, A won -> kill
-    Tag("t3", 12.5, "serve", "b", 3),                   # r1, not last -> in play
-    Tag("t4", 15.0, "attack", "a", 10),                 # r1 last, B won -> error
+    Tag("t1", 1.0, "serve", "a", 7),  # r0, not last -> in play
+    Tag("t2", 8.0, "attack", "a", 10),  # r0 last, A won -> kill
+    Tag("t3", 12.5, "serve", "b", 3),  # r1, not last -> in play
+    Tag("t4", 15.0, "attack", "a", 10),  # r1 last, B won -> error
     Tag("t5", 25.0, "attack", "a", 10, outcome="error"),  # r2, set by the user
-    Tag("t6", 28.0, "attack", "a", 4),                  # r2 last, A won -> kill
-    Tag("t7", 35.0, "attack", "a", 10),                 # r3 last, no winner -> unknown
-    Tag("t8", 50.5, "serve", "b", 3),                   # r4 last, B won -> ace
-    Tag("t9", 45.0, "attack", "a", 4),                  # 5 s from any rally -> outside
+    Tag("t6", 28.0, "attack", "a", 4),  # r2 last, A won -> kill
+    Tag("t7", 35.0, "attack", "a", 10),  # r3 last, no winner -> unknown
+    Tag("t8", 50.5, "serve", "b", 3),  # r4 last, B won -> ace
+    Tag("t9", 45.0, "attack", "a", 4),  # 5 s from any rally -> outside
 ]
 
 
@@ -31,8 +34,16 @@ def lines():
 def test_outcomes_follow_the_rules():
     res = results()
     assert {k: v.outcome for k, v in res.items()} == {
-        "t1": "in_play", "t2": "kill", "t3": "in_play", "t4": "error", "t5": "error", "t6": "kill",
-        "t7": "unknown", "t8": "ace", "t9": "outside"}
+        "t1": "in_play",
+        "t2": "kill",
+        "t3": "in_play",
+        "t4": "error",
+        "t5": "error",
+        "t6": "kill",
+        "t7": "unknown",
+        "t8": "ace",
+        "t9": "outside",
+    }
     assert res["t5"].inferred is False and res["t2"].inferred is True
     assert res["t9"].rally is None
 

@@ -1,4 +1,5 @@
 """Change verify-court-by-lines: still shots are decided by the painted lines of their background plate."""
+
 import cv2
 import numpy as np
 import pytest
@@ -34,16 +35,21 @@ def end_line_clip(tmp_path_factory):
 
 def test_lines_replace_a_squeezed_keypoint_court(client, end_line_clip, fake_ball, monkeypatch, tmp_path):
     from vball import pipeline
+
     weights = tmp_path / "court_kpt.pt"
     weights.write_bytes(b"")
     monkeypatch.setattr(pipeline.config, "COURT_MODELS", {"gym": weights})
     squeezed = k6y7r_points_3d()
     squeezed[:, 0] *= 0.5  # the whole court in the near half, as the keypoint models do on end-line views
-    monkeypatch.setattr(pipeline.models, "court_detector",
-                        lambda w: (lambda frame: np.column_stack([CAM.project(squeezed), np.full(14, 0.9)])))
+    monkeypatch.setattr(
+        pipeline.models,
+        "court_detector",
+        lambda w: lambda frame: np.column_stack([CAM.project(squeezed), np.full(14, 0.9)]),
+    )
     v = upload(client, end_line_clip)
     assert run_worker_once()["status"] == "done"
     from vball_app import settings
+
     court = pipeline.load_stage(settings.RESULTS / v["id"], "court")
     shot = court["shots"][0]
     assert shot["source"] == "lines" and shot["status"] == "ok" and shot["lines"]["good_lines"] >= 5

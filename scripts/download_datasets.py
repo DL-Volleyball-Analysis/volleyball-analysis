@@ -7,6 +7,7 @@ The roboflow SDK download hung on a large zip, so this asks the REST API for the
 link and fetches it with curl (resumable, retried). URLs are never printed: the API
 request carries the key.
 """
+
 import argparse
 import json
 import os
@@ -20,7 +21,7 @@ from vball.paths import DATASETS
 API = "https://api.roboflow.com"
 EXPORT_FORMAT = "yolov8"  # YOLO pose txt labels + data.yaml with kpt_shape / flip_idx
 COURT_KEYPOINT_SETS = [
-    ("volleyballcourt", "volleyball-court-keypoints-k6y7r"),           # 495 images
+    ("volleyballcourt", "volleyball-court-keypoints-k6y7r"),  # 495 images
     ("primaryws", "volleyball_court_key_points_regression_dataset"),  # 862 images (used by Volleyball-Metrics)
 ]
 
@@ -48,8 +49,24 @@ def export_link(key: str, workspace: str, project: str, version: int) -> str:
 
 def download(url: str, zip_path: Path) -> None:
     subprocess.run(
-        ["curl", "-sS", "-L", "--fail", "-C", "-", "--retry", "5", "--retry-all-errors",
-         "--speed-limit", "10000", "--speed-time", "60", "-o", str(zip_path), url],
+        [
+            "curl",
+            "-sS",
+            "-L",
+            "--fail",
+            "-C",
+            "-",
+            "--retry",
+            "5",
+            "--retry-all-errors",
+            "--speed-limit",
+            "10000",
+            "--speed-time",
+            "60",
+            "-o",
+            str(zip_path),
+            url,
+        ],
         check=True,
     )
 

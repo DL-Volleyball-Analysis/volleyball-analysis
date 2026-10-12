@@ -9,6 +9,7 @@ Usage:
   .venv/bin/python scripts/eval_player_tracking.py --gt-as-tracker      # sanity check: must score 1.0
   options: --seqs N (first N volleyball sequences), --max-frames N (per sequence, for quick runs)
 """
+
 import argparse
 
 import numpy as np

@@ -47,6 +47,7 @@ def test_label_shows_the_number_or_the_tracking_id():
 
 def test_a_label_follows_an_identity_switch():
     from vball.jersey import number_at, segments
+
     # a track reads 27 for 4 s, then the tracker jumps to a player whose number is not visible (no readings), then 14
     frames = list(range(0, 100, 12)) + list(range(150, 230, 12))
     readings = ["27"] * len(range(0, 100, 12)) + [None, None, None] + ["14"] * (len(range(150, 230, 12)) - 3)

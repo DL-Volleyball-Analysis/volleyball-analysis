@@ -6,6 +6,7 @@ Two methods, same output columns:
                                  over time, short gaps filled (vball.ball_track)
     -> DataFrame[frame, visible, x, y, radius]
 """
+
 import subprocess
 import sys
 from pathlib import Path
@@ -25,10 +26,21 @@ def track(video: Path, model: str = "v4c", out_dir: Path | None = None, force: b
     if force or not csv.exists():
         out_dir.mkdir(parents=True, exist_ok=True)
         subprocess.run(
-            [sys.executable, "inference_onnx_seq_gray_v2.py",
-             "--video_path", str(video.resolve()), "--model_path", str(Path(model_path).resolve()),
-             "--output_dir", str(out_dir.resolve()), "--only_csv"],
-            cwd=VBALLNET_SRC, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            [
+                sys.executable,
+                "inference_onnx_seq_gray_v2.py",
+                "--video_path",
+                str(video.resolve()),
+                "--model_path",
+                str(Path(model_path).resolve()),
+                "--output_dir",
+                str(out_dir.resolve()),
+                "--only_csv",
+            ],
+            cwd=VBALLNET_SRC,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
     return load(csv)
 
@@ -61,5 +73,6 @@ def track_refined(video: Path, detector: str = "ravel012", cfg=None) -> pd.DataF
     from . import ball_detect
     from .ball_track import TrackConfig
     from .ball_track import track as link_track
+
     frames = read_frames(Path(video))
     return link_track(frames, ball_detect.load(detector).candidates(frames), cfg or TrackConfig())

@@ -1,4 +1,5 @@
 """Trajectory: 3D ball flights per camera shot."""
+
 import json
 from pathlib import Path
 
@@ -49,11 +50,17 @@ def run(video: Path, out: Path, prev: dict, tick) -> dict:
     meta = prev["decode"]
     n, fps, size = meta.get("frames") or 0, meta.get("fps") or 30.0, (meta.get("width"), meta.get("height"))
     court_result = prev.get("court") or {}
-    shots = [s for s in court_result.get("shots", []) if s.get("status") in court_registration.USABLE and s.get("samples")]
+    shots = [
+        s for s in court_result.get("shots", []) if s.get("status") in court_registration.USABLE and s.get("samples")
+    ]
     if not shots:
         (out / "flights.json").write_text("[]")
-        return {"status": "done", "flights": 0, "calibrated_shots": 0,
-                "message": "The camera could not be calibrated because the court was not found, so there are no 3D flights."}
+        return {
+            "status": "done",
+            "flights": 0,
+            "calibrated_shots": 0,
+            "message": "The camera could not be calibrated because the court was not found, so there are no 3D flights.",
+        }
     uv = results.ball_uv(out, n)
     motion = results.motion_of(out)
     # players placed on court, per frame: anchors for the touches (change constrain-3d-flights)
@@ -67,7 +74,7 @@ def run(video: Path, out: Path, prev: dict, tick) -> dict:
     for k, shot in enumerate(shots):
         tick(k / len(shots))
         a, b = shot["start_frame"], shot["end_frame"]
-        track = uv[a:b + 1]
+        track = uv[a : b + 1]
         found, reason = trajectory.segment(to_frame(motion, track, a, range(len(track)), a)), None
         cams = {}
         # one camera for the whole shot without motion or with a still camera (speed-up-analysis); else per flight
@@ -81,30 +88,57 @@ def run(video: Path, out: Path, prev: dict, tick) -> dict:
             if cal is None:
                 uncalibrated, reason = uncalibrated + 1, why
                 continue
-            rec = trajectory.reconstruct_flight(cal.camera, to_frame(motion, track, a, range(fl.start, fl.end + 1), ref),
-                                                fl, fps, rejected=rejected, players_at=lambda f, a=a: placed.get(a + f))
+            rec = trajectory.reconstruct_flight(
+                cal.camera,
+                to_frame(motion, track, a, range(fl.start, fl.end + 1), ref),
+                fl,
+                fps,
+                rejected=rejected,
+                players_at=lambda f, a=a: placed.get(a + f),
+            )
             if rec is None:
                 continue
             f = rec["fit"]
-            flights.append({"start_frame": a + f.start, "end_frame": a + f.end, "p0": f.p0.tolist(), "v0": f.v0.tolist(),
-                            "fit_px": f.fit_px, "depth_sd_m": f.depth_sd_m, "quality": f.quality, "reasons": f.reasons,
-                            "derived": rec["derived"], "calibration": cal.status, "dropped": f.dropped,
-                            "anchors": f.anchors, "camera_frame": ref})
+            flights.append(
+                {
+                    "start_frame": a + f.start,
+                    "end_frame": a + f.end,
+                    "p0": f.p0.tolist(),
+                    "v0": f.v0.tolist(),
+                    "fit_px": f.fit_px,
+                    "depth_sd_m": f.depth_sd_m,
+                    "quality": f.quality,
+                    "reasons": f.reasons,
+                    "derived": rec["derived"],
+                    "calibration": cal.status,
+                    "dropped": f.dropped,
+                    "anchors": f.anchors,
+                    "camera_frame": ref,
+                }
+            )
         if any(c for c, _ in cams.values()):
             calibrated += 1
         elif found:
             unusable.append(reason)
     (out / "flights.json").write_text(json.dumps(flights))
-    res = {"status": "done", "flights": len(flights), "calibrated_shots": calibrated,
-           "low_quality": sum(f["quality"] == "low" for f in flights), "rejected": len(rejected),
-           "anchored": sum(bool(f["anchors"]) for f in flights), "uncalibrated": uncalibrated,
-           "motion": motion is not None}
+    res = {
+        "status": "done",
+        "flights": len(flights),
+        "calibrated_shots": calibrated,
+        "low_quality": sum(f["quality"] == "low" for f in flights),
+        "rejected": len(rejected),
+        "anchored": sum(bool(f["anchors"]) for f in flights),
+        "uncalibrated": uncalibrated,
+        "motion": motion is not None,
+    }
     notes = []
     if unusable:
         notes.append(f"{len(unusable)} of {len(shots)} camera shots could not be calibrated ({unusable[0]}).")
     if rejected:
-        notes.append(f"{len(rejected)} flights were left out as physically impossible ({rejected[0][2]}), "
-                     "a sign that the camera calibration is off.")
+        notes.append(
+            f"{len(rejected)} flights were left out as physically impossible ({rejected[0][2]}), "
+            "a sign that the camera calibration is off."
+        )
     if notes:
         res["message"] = " ".join(notes)
     return res

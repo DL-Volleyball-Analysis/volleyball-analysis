@@ -14,6 +14,7 @@ Sources and splits (by match, so no match is in two splits):
 
   python scripts/build_ball_clips.py --out <dir> [--volleyball-videos <dir> --volleyball-ann <dir>] [--orel <dir>]
 """
+
 import argparse
 from pathlib import Path
 
@@ -29,7 +30,9 @@ def main():
     args = ap.parse_args()
     vb = (Path(args.volleyball_videos), Path(args.volleyball_ann)) if args.volleyball_videos else None
     m = build(Path(args.out), vb, Path(args.orel) if args.orel else None)
-    print(m.groupby(["source", "split"])[["frames", "visible"]].sum().assign(clips=m.groupby(["source", "split"]).size()))
+    print(
+        m.groupby(["source", "split"])[["frames", "visible"]].sum().assign(clips=m.groupby(["source", "split"]).size())
+    )
 
 
 if __name__ == "__main__":

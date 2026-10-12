@@ -13,6 +13,7 @@ Two detector families, both from asigatchov/fast-volleyball-tracking-inference (
     det = load("ravel012")                       # or "v4c", "v4c-tiles", "ravel011"
     cands = det.candidates(bgr_frames)           # per frame: [Candidate(x, y, score), ...]
 """
+
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -27,13 +28,14 @@ SEQ = 9
 
 @dataclass(frozen=True)
 class Candidate:
-    x: float      # original image pixels
+    x: float  # original image pixels
     y: float
     score: float  # detector confidence (peak heatmap value / grid confidence)
 
 
 def _session(path: Path):
     import onnxruntime as ort
+
     providers = [p for p in ("CUDAExecutionProvider", "CPUExecutionProvider") if p in ort.get_available_providers()]
     return ort.InferenceSession(str(path), providers=providers)
 
@@ -47,7 +49,9 @@ def _pad(xs: list) -> list:
     return xs + [xs[-1]] * (SEQ - len(xs))
 
 
-def views(width: int, height: int, grid: tuple[int, int] | None, overlap: float = 0.15) -> list[tuple[int, int, int, int]]:
+def views(
+    width: int, height: int, grid: tuple[int, int] | None, overlap: float = 0.15
+) -> list[tuple[int, int, int, int]]:
     """(x, y, w, h) rectangles: the whole frame, plus a rows x cols grid of tiles overlapping by `overlap`."""
     out = [(0, 0, width, height)]
     if grid:
@@ -79,16 +83,20 @@ def merge(cands: list[Candidate], radius: float) -> list[Candidate]:
 class VballNet:
     IN_W, IN_H = 512, 288
 
-    def __init__(self, path: str | Path, grid: tuple[int, int] | None = None, threshold: float = 0.5,
-                 merge_px: float = 12.0):
+    def __init__(
+        self, path: str | Path, grid: tuple[int, int] | None = None, threshold: float = 0.5, merge_px: float = 12.0
+    ):
         self.session = _session(path)
         self.input = self.session.get_inputs()[0].name
         self.grid, self.threshold, self.merge_px = grid, threshold, merge_px
 
     def heatmaps(self, crops: list[np.ndarray]) -> np.ndarray:
         """Up to 9 grey crops of one view -> (len(crops), 288, 512) heatmaps."""
-        x = [cv2.resize(c, (self.IN_W, self.IN_H), interpolation=cv2.INTER_AREA).astype(np.float32) / 255.0 for c in crops]
-        return self.session.run(None, {self.input: np.stack(_pad(x))[None]})[0][0, :len(crops)]
+        x = [
+            cv2.resize(c, (self.IN_W, self.IN_H), interpolation=cv2.INTER_AREA).astype(np.float32) / 255.0
+            for c in crops
+        ]
+        return self.session.run(None, {self.input: np.stack(_pad(x))[None]})[0][0, : len(crops)]
 
     def candidates(self, frames: list[np.ndarray]) -> list[list[Candidate]]:
         if not frames:
@@ -97,10 +105,12 @@ class VballNet:
         h, w = grey[0].shape
         raw: list[list[Candidate]] = [[] for _ in grey]
         for s, e in _windows(len(grey)):
-            for (x0, y0, vw, vh) in views(w, h, self.grid):
-                for i, m in enumerate(self.heatmaps([g[y0:y0 + vh, x0:x0 + vw] for g in grey[s:e]])):
-                    raw[s + i] += [Candidate(x0 + bx * vw / self.IN_W, y0 + by * vh / self.IN_H, p)
-                                   for bx, by, p in blobs(m, self.threshold)]
+            for x0, y0, vw, vh in views(w, h, self.grid):
+                for i, m in enumerate(self.heatmaps([g[y0 : y0 + vh, x0 : x0 + vw] for g in grey[s:e]])):
+                    raw[s + i] += [
+                        Candidate(x0 + bx * vw / self.IN_W, y0 + by * vh / self.IN_H, p)
+                        for bx, by, p in blobs(m, self.threshold)
+                    ]
         return [merge(c, self.merge_px) for c in raw]
 
 
@@ -118,7 +128,11 @@ class Ravel:
             f = cv2.cvtColor(f, cv2.COLOR_GRAY2BGR)
         shrink = self.w <= f.shape[1] and self.h <= f.shape[0]
         r = cv2.resize(f, (self.w, self.h), interpolation=cv2.INTER_AREA if shrink else cv2.INTER_LINEAR)
-        x = cv2.cvtColor(r, cv2.COLOR_BGR2GRAY)[None] if self.channels == 1 else cv2.cvtColor(r, cv2.COLOR_BGR2RGB).transpose(2, 0, 1)
+        x = (
+            cv2.cvtColor(r, cv2.COLOR_BGR2GRAY)[None]
+            if self.channels == 1
+            else cv2.cvtColor(r, cv2.COLOR_BGR2RGB).transpose(2, 0, 1)
+        )
         return x.astype(np.float32) / 255.0
 
     def candidates(self, frames: list[np.ndarray]) -> list[list[Candidate]]:
@@ -130,13 +144,17 @@ class Ravel:
             x = np.stack(_pad([self.prep(f) for f in frames[s:e]]))[None]
             names = [o.name for o in self.session.get_outputs()]
             grid = dict(zip(names, self.session.run(None, {"frames": x})))["ball_grid"][0]
-            for g in grid[:e - s]:
+            for g in grid[: e - s]:
                 conf = g[0]
                 peaks = (conf == cv2.dilate(conf, np.ones((3, 3), np.float32))) & (conf >= self.threshold)
                 rows, cols = np.nonzero(peaks)
-                cs = [Candidate((c + g[1, r, c]) / conf.shape[1] * fw, (r + g[2, r, c]) / conf.shape[0] * fh, float(conf[r, c]))
-                      for r, c in zip(rows, cols)]
-                out.append(sorted(cs, key=lambda c: -c.score)[:self.top_k])
+                cs = [
+                    Candidate(
+                        (c + g[1, r, c]) / conf.shape[1] * fw, (r + g[2, r, c]) / conf.shape[0] * fh, float(conf[r, c])
+                    )
+                    for r, c in zip(rows, cols)
+                ]
+                out.append(sorted(cs, key=lambda c: -c.score)[: self.top_k])
         return out
 
 
@@ -152,7 +170,7 @@ def letterbox_image(f: np.ndarray, out_w: int, out_h: int) -> np.ndarray:
     s, x0, y0 = letterbox(w, h, out_w, out_h)
     canvas = np.zeros((out_h, out_w) + f.shape[2:], f.dtype)
     nw, nh = round(w * s), round(h * s)
-    canvas[y0:y0 + nh, x0:x0 + nw] = cv2.resize(f, (nw, nh), interpolation=cv2.INTER_LINEAR)
+    canvas[y0 : y0 + nh, x0 : x0 + nw] = cv2.resize(f, (nw, nh), interpolation=cv2.INTER_LINEAR)
     return canvas
 
 
@@ -180,13 +198,17 @@ class Wasb:
         s, x0, y0 = letterbox(w, h, self.W, self.H)
         out: list[list[Candidate]] = []
         for st in range(0, len(frames), self.FRAMES):
-            win = frames[st:st + self.FRAMES]
+            win = frames[st : st + self.FRAMES]
             x = [self.prep(f) for f in win]
             x = x + [x[-1]] * (self.FRAMES - len(x))
             hm = self.session.run(None, {self.input: np.concatenate(x)[None].astype(np.float32)})[0][0]
-            for m in hm[:len(win)]:
-                out.append(merge([Candidate((bx - x0) / s, (by - y0) / s, p) for bx, by, p in blobs(m, self.threshold)],
-                                 self.merge_px))
+            for m in hm[: len(win)]:
+                out.append(
+                    merge(
+                        [Candidate((bx - x0) / s, (by - y0) / s, p) for bx, by, p in blobs(m, self.threshold)],
+                        self.merge_px,
+                    )
+                )
         return out
 
 

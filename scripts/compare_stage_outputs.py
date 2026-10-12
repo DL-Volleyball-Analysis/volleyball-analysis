@@ -7,6 +7,7 @@ A refactor must not change what the stages produce. Run the pipeline on the same
 Each video folder is compared file by file: JSON by value (numbers within --tol), CSV / CSV.GZ cell by cell, NPZ
 array by array, anything else byte for byte. Exit status 1 when anything differs or a file exists on one side only.
 """
+
 import argparse
 import sys
 from pathlib import Path

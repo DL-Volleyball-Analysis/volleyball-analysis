@@ -13,6 +13,7 @@ datasets and ignored class names, so balls, whole players and whole-number boxes
 
 Usage: .venv/bin/python scripts/build_jersey_dataset.py [--no-drive]
 """
+
 import re
 import shutil
 from collections import Counter
@@ -22,14 +23,20 @@ import yaml
 
 from vball.paths import DATASETS
 
-SOURCES = (DATASETS / "jersey-number-detection-s01j4-v1", DATASETS / "jersey-fxmll-v1", DATASETS / "jersey-number-cogss-v1")
+SOURCES = (
+    DATASETS / "jersey-number-detection-s01j4-v1",
+    DATASETS / "jersey-fxmll-v1",
+    DATASETS / "jersey-number-cogss-v1",
+)
 TRAIN_ONLY = {"jersey-number-cogss-v1"}  # other sports: never in valid or test
 OUT = DATASETS / "jersey_digits"
 DRIVE_RELPATH = "volleyball/datasets/jersey_digits.zip"  # Colab: /content/drive/MyDrive/<this>
 # Whole matches per split; every other match is training data. Test teams (Japan, Poland, Thailand) appear in no
 # training match; valid needs two matches to contain every digit (one match has only its roster's numbers).
-SPLIT = {"test": {"japan_poland", "thailand_warmup", "poland_italy"},
-         "valid": {"usa_brazil_fem_brazilside", "usm_usach_1"}}
+SPLIT = {
+    "test": {"japan_poland", "thailand_warmup", "poland_italy"},
+    "valid": {"usa_brazil_fem_brazilside", "usm_usach_1"},
+}
 DIGITS = [str(d) for d in range(10)]
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png"}
 
@@ -90,8 +97,14 @@ def build(out: Path) -> dict[str, Counter]:
             (out / split / "labels" / f"{Path(name).stem}.txt").write_text(text)
             images[split] += 1
             boxes[split].update(int(line.split()[0]) for line in text.splitlines())
-    cfg = {"path": ".", "train": "train/images", "val": "valid/images", "test": "test/images",
-           "nc": 10, "names": DIGITS}
+    cfg = {
+        "path": ".",
+        "train": "train/images",
+        "val": "valid/images",
+        "test": "test/images",
+        "nc": 10,
+        "names": DIGITS,
+    }
     (out / "data.yaml").write_text(yaml.safe_dump(cfg, sort_keys=False))
     for src in SOURCES:
         shutil.copy2(src / "README.roboflow.txt", out / f"LICENSE_{src.name}.txt")

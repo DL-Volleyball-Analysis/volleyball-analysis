@@ -16,6 +16,7 @@ plate (change verify-court-by-lines, design):
 `line_score` is also how a court found another way (the keypoint model) is compared with the line fit on the same
 plate. All work happens at WORK_WIDTH; homographies are returned in the input image's pixels (court metres -> image).
 """
+
 import itertools
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,25 +30,25 @@ from .court_keypoints import corners_from_homography, court_is_plausible
 WORK_WIDTH = 1280
 CROSS_X = (0.0, 6.0, 9.0, 12.0, 18.0)  # end, attack, centre, attack, end line
 SIDE_Y = (0.0, 9.0)
-MIN_AREA = 0.08          # of the image
-MIN_ANGLE_DEG = 25.0     # every interior angle of the projected court
-MIN_SIDE = 0.10          # every side, of the image width
-MAX_VANISHING = 20.0     # a floor seen from above: some court direction vanishes within this many image widths
+MIN_AREA = 0.08  # of the image
+MIN_ANGLE_DEG = 25.0  # every interior angle of the projected court
+MIN_SIDE = 0.10  # every side, of the image width
+MAX_VANISHING = 20.0  # a floor seen from above: some court direction vanishes within this many image widths
 MAX_HORIZON_TILT = 30.0  # degrees from horizontal for the floor's horizon (camera roll)
-SUPPORT_PX = 3.0         # a line sample within this of a line pixel is supported (at WORK_WIDTH)
-STEP_PX = 6.0            # line sampling step (at WORK_WIDTH)
-FLAT_DEG = 25.0          # line families: within this of horizontal, or steeper
+SUPPORT_PX = 3.0  # a line sample within this of a line pixel is supported (at WORK_WIDTH)
+STEP_PX = 6.0  # line sampling step (at WORK_WIDTH)
+FLAT_DEG = 25.0  # line families: within this of horizontal, or steeper
 MAX_SIDES, MAX_CROSS = 12, 14  # longest candidates tried per family
 
 
 @dataclass
 class Fit:
-    H: np.ndarray        # court metres -> input image pixels
+    H: np.ndarray  # court metres -> input image pixels
     score: float
-    supported: int       # line samples on painted lines
+    supported: int  # line samples on painted lines
     samples: int
-    good_lines: int      # court lines with at least half their samples supported
-    dark: bool           # fitted to dark lines
+    good_lines: int  # court lines with at least half their samples supported
+    dark: bool  # fitted to dark lines
 
     @property
     def support(self) -> float:
@@ -203,8 +204,12 @@ def _search(mask: np.ndarray) -> tuple[float, np.ndarray | None, tuple]:
                         if H is None:
                             continue
                         cc = corners_from_homography(H)
-                        if (not court_is_plausible(cc, (w, h)) or _area(cc) < MIN_AREA * w * h
-                                or not well_shaped(cc, w) or not seen_from_a_camera(H, (w, h))):
+                        if (
+                            not court_is_plausible(cc, (w, h))
+                            or _area(cc) < MIN_AREA * w * h
+                            or not well_shaped(cc, w)
+                            or not seen_from_a_camera(H, (w, h))
+                        ):
                             continue
                         sc = line_score(H, dist)
                         if sc[0] > best[0]:
@@ -263,7 +268,9 @@ def project(H: np.ndarray, focal: float, size: tuple[int, int], points: np.ndarr
     return p[:, :2] / p[:, 2:3]
 
 
-def focal_from_net(img: np.ndarray, H: np.ndarray, heights=NET_TOPS, min_band_px: float = 8.0) -> tuple[float, float, float] | None:
+def focal_from_net(
+    img: np.ndarray, H: np.ndarray, heights=NET_TOPS, min_band_px: float = 8.0
+) -> tuple[float, float, float] | None:
     """(focal px, net height m, support) from the net tape: the white band along the top of the net, above the centre
     line. Its image position depends on the focal length, which the floor alone leaves undetermined in a symmetric
     end-line view. Searches focal lengths (0.3-5 image widths) and both net heights for the most samples of the net's

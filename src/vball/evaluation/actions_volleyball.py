@@ -22,6 +22,7 @@ Metric: per player, F1 of each action class and their macro mean.
 The `classifier` command scores the per-player classifier (notebooks/train_person_actions.ipynb) on the same test
 players and classes, alone and with the ball prior (k and floor as chosen on validation by `evaluate`).
 """
+
 import itertools
 import json
 import pickle
@@ -60,8 +61,10 @@ def load_annotations(path: Path) -> dict:
     out = {}
     for m, clips in raw.items():
         for c, d in clips.items():
-            frames = {int(f): {b.player_ID: (np.array(b.box, float), b.category) for b in bs}
-                      for f, bs in d["frame_boxes_dct"].items()}
+            frames = {
+                int(f): {b.player_ID: (np.array(b.box, float), b.category) for b in bs}
+                for f, bs in d["frame_boxes_dct"].items()
+            }
             out.setdefault(int(m), {})[int(c)] = {"category": d["category"], "frames": frames}
     return out
 
@@ -69,6 +72,7 @@ def load_annotations(path: Path) -> dict:
 def detect(args):
     import cv2
     from ultralytics import YOLO
+
     model = YOLO(args.model)
     ann = load_annotations(Path(args.pkl))
     out = {}
@@ -79,8 +83,10 @@ def detect(args):
                 if img is None:
                     continue
                 r = model(img, imgsz=640, conf=0.1, verbose=False)[0]
-                out[f"{m}/{c}/{f}"] = [[int(a), round(float(p), 4), *[round(float(v), 1) for v in b]]
-                                       for a, p, b in zip(r.boxes.cls.tolist(), r.boxes.conf.tolist(), r.boxes.xyxy.tolist())]
+                out[f"{m}/{c}/{f}"] = [
+                    [int(a), round(float(p), 4), *[round(float(v), 1) for v in b]]
+                    for a, p, b in zip(r.boxes.cls.tolist(), r.boxes.conf.tolist(), r.boxes.xyxy.tolist())
+                ]
         print("match", m, "done", flush=True)
     Path(args.out).write_text(json.dumps(out))
 
@@ -94,12 +100,14 @@ def ball_at(ann_dir: Path, m: int, c: int) -> dict[int, np.ndarray | None]:
 def detected_ball(path: Path) -> dict[tuple[int, int], dict[int, np.ndarray | None]]:
     """(match, clip) -> frame -> (x, y) or None, from a ball evaluation output (41 rows per clip, in order)."""
     import pandas as pd
+
     df = pd.read_csv(path)
     out = {}
     for (m, c), g in df.groupby(["match", "clip"], sort=False):
         c = int(c)
-        out[(int(m), c)] = {c - 20 + i: (np.array([r.x, r.y]) if r.visible else None)
-                            for i, r in enumerate(g.itertuples())}
+        out[(int(m), c)] = {
+            c - 20 + i: (np.array([r.x, r.y]) if r.visible else None) for i, r in enumerate(g.itertuples())
+        }
     return out
 
 
@@ -135,8 +143,12 @@ def f1s(pairs) -> dict:
 
 def tune(ann, dets, key_only, balls=None, use_ball=False):
     """Best ActorConfig on the validation matches by macro F1."""
-    grid = {"top_n": [1] if key_only else [1, 2, 3, 5, 9], "threshold": [0.2, 0.3, 0.4, 0.5, 0.6, 0.7],
-            "k": [0.5, 1.0, 2.0] if use_ball else [1.0], "floor": [0.0, 0.2, 0.4, 0.6] if use_ball else [1.0]}
+    grid = {
+        "top_n": [1] if key_only else [1, 2, 3, 5, 9],
+        "threshold": [0.2, 0.3, 0.4, 0.5, 0.6, 0.7],
+        "k": [0.5, 1.0, 2.0] if use_ball else [1.0],
+        "floor": [0.0, 0.2, 0.4, 0.6] if use_ball else [1.0],
+    }
     best = None
     for vals in itertools.product(*grid.values()):
         cfg = ActorConfig(**dict(zip(grid, vals)))
@@ -152,7 +164,11 @@ def evaluate(args):
     ann_dir = Path(args.ann)
     gt_ball = lambda m, c: ball_at(ann_dir, m, c)  # noqa: E731
     rows = []
-    for name, key_only, use_ball in (("key frame", True, False), ("9 frames", False, False), ("+ ball (labelled)", False, True)):
+    for name, key_only, use_ball in (
+        ("key frame", True, False),
+        ("9 frames", False, False),
+        ("+ ball (labelled)", False, True),
+    ):
         val, cfg = tune(ann, dets, key_only, gt_ball, use_ball)
         test = f1s(predictions(ann, dets, TEST_MATCHES, cfg, key_only, gt_ball if use_ball else None))
         rows.append((name, cfg, val, test))
@@ -161,10 +177,17 @@ def evaluate(args):
         cfg = rows[-1][1]  # the labelled-ball setting, chosen on validation; detected balls exist for test only
         test = f1s(predictions(ann, dets, TEST_MATCHES, cfg, False, lambda m, c: det_ball.get((m, c), {})))
         rows.append(("+ ball (detected)", cfg, float("nan"), test))
-    print(f"{'method':20s} {'val macro F1':>12s} {'test macro F1':>13s}  " + "  ".join(f"{a:>7s}" for a in SCORED) + "  config")
+    print(
+        f"{'method':20s} {'val macro F1':>12s} {'test macro F1':>13s}  "
+        + "  ".join(f"{a:>7s}" for a in SCORED)
+        + "  config"
+    )
     for name, cfg, val, test in rows:
-        print(f"{name:20s} {val:12.3f} {test['macro_f1']:13.3f}  " + "  ".join(f"{test[a]['f1']:7.3f}" for a in SCORED)
-              + f"  top_n={cfg.top_n} thr={cfg.threshold} k={cfg.k} floor={cfg.floor}")
+        print(
+            f"{name:20s} {val:12.3f} {test['macro_f1']:13.3f}  "
+            + "  ".join(f"{test[a]['f1']:7.3f}" for a in SCORED)
+            + f"  top_n={cfg.top_n} thr={cfg.threshold} k={cfg.k} floor={cfg.floor}"
+        )
     out = {name: {"config": cfg.__dict__, "val_macro_f1": val, "test": test} for name, cfg, val, test in rows}
     Path(args.out).write_text(json.dumps(out, indent=2))
     print("support (test players):", {a: rows[0][3][a]["support"] for a in SCORED})
@@ -174,6 +197,7 @@ def classifier(args):
     import pandas as pd
 
     from vball.actors import ball_prior
+
     ann = load_annotations(Path(args.pkl))
     df = pd.read_csv(args.probs)
     classes = [c for c in df.columns if c not in ("crop", "label")]
@@ -198,6 +222,11 @@ def classifier(args):
     for name, P in variants.items():
         pairs = [(t, LABEL_MAP.get(classes[k])) for t, k in zip(truth, P.argmax(axis=1))]
         out[name] = f1s(pairs)
-        print(f"{name:40s} macro F1 {out[name]['macro_f1']:.3f}  " + "  ".join(
-            f"{a} P {out[name][a]['precision']:.3f} R {out[name][a]['recall']:.3f} F1 {out[name][a]['f1']:.3f}" for a in SCORED))
+        print(
+            f"{name:40s} macro F1 {out[name]['macro_f1']:.3f}  "
+            + "  ".join(
+                f"{a} P {out[name][a]['precision']:.3f} R {out[name][a]['recall']:.3f} F1 {out[name][a]['f1']:.3f}"
+                for a in SCORED
+            )
+        )
     Path(args.out).write_text(json.dumps(out, indent=2))

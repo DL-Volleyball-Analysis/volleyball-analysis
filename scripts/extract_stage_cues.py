@@ -8,6 +8,7 @@ themselves keeps the training cues identical to what the rallies stage computes.
 
   .venv/bin/python scripts/extract_stage_cues.py              # data/datasets/watchdog/videos -> .../cues/<stem>.csv
 """
+
 import argparse
 import json
 from pathlib import Path
@@ -26,6 +27,7 @@ PEOPLE_FPS = 2.0
 def detect_people(video: Path, fps: float, n: int, every: int) -> pd.DataFrame:
     """Person boxes on every `every`-th frame with the pipeline's general detector and settings."""
     from ultralytics import YOLO
+
     model = YOLO(str(pipeline.config.GENERAL_PLAYER_MODEL))
     cap, rows, i = cv2.VideoCapture(str(video)), [], 0
     while i < n:
@@ -37,7 +39,13 @@ def detect_people(video: Path, fps: float, n: int, every: int) -> pd.DataFrame:
         ok, frame = cap.read()
         if not ok:
             break
-        r = model(frame, imgsz=pipeline.config.PLAYER_CFG.imgsz, conf=pipeline.config.PLAYER_CFG.conf, classes=[0], verbose=False)[0]
+        r = model(
+            frame,
+            imgsz=pipeline.config.PLAYER_CFG.imgsz,
+            conf=pipeline.config.PLAYER_CFG.conf,
+            classes=[0],
+            verbose=False,
+        )[0]
         for b in r.boxes.xyxy.cpu().numpy():
             rows.append((i, *b))
         i += 1
@@ -93,7 +101,9 @@ def main():
             continue
         cues = match_cues(video, args.results / video.stem)
         cues.to_csv(dst, index=False)
-        print(f"{video.stem}: {len(cues)} samples over {cues['shot'].nunique() if len(cues) else 0} ok shots", flush=True)
+        print(
+            f"{video.stem}: {len(cues)} samples over {cues['shot'].nunique() if len(cues) else 0} ok shots", flush=True
+        )
 
 
 if __name__ == "__main__":

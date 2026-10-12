@@ -1,4 +1,5 @@
 """Ball and player tracks, 3D flights and ball coverage over time windows."""
+
 import json
 
 import numpy as np
@@ -46,12 +47,25 @@ def player_window(vid: str, start: float = Query(0, ge=0), end: float | None = Q
     def num(x):
         return None if pd.isna(x) else round(float(x), 2)
 
-    boxes = [PlayerBox(frame=int(r.frame), track_id=int(r.track_id), x1=num(r.x1), y1=num(r.y1), x2=num(r.x2),
-                       y2=num(r.y2), interpolated=bool(r.interpolated), court_x=num(r.court_x),
-                       court_y=num(r.court_y), side=(r.side if isinstance(r.side, str) and r.side else None),
-                       team=(getattr(r, "team", "") if isinstance(getattr(r, "team", ""), str) and getattr(r, "team", "") else None),
-                       role=getattr(r, "role", "player") if isinstance(getattr(r, "role", None), str) else "player")
-             for r in w.itertuples(index=False)]
+    boxes = [
+        PlayerBox(
+            frame=int(r.frame),
+            track_id=int(r.track_id),
+            x1=num(r.x1),
+            y1=num(r.y1),
+            x2=num(r.x2),
+            y2=num(r.y2),
+            interpolated=bool(r.interpolated),
+            court_x=num(r.court_x),
+            court_y=num(r.court_y),
+            side=(r.side if isinstance(r.side, str) and r.side else None),
+            team=(
+                getattr(r, "team", "") if isinstance(getattr(r, "team", ""), str) and getattr(r, "team", "") else None
+            ),
+            role=getattr(r, "role", "player") if isinstance(getattr(r, "role", None), str) else "player",
+        )
+        for r in w.itertuples(index=False)
+    ]
     return PlayerWindow(fps=fps, placed=bool(df["placed"].any()) if len(df) else False, boxes=boxes)
 
 
@@ -62,15 +76,36 @@ def flight_out(f: dict, fps: float, seen: np.ndarray, source: str) -> Flight:
     pos = p0 + np.outer(t, v0) + 0.5 * np.outer(t * t, [0, 0, -9.81])
     d = f["derived"]
     obs = [bool(seen[i]) if 0 <= i < len(seen) else False for i in frames]
-    return Flight(start_s=frames[0] / fps, end_s=frames[-1] / fps, source=source, quality=f["quality"],
-                  reasons=f["reasons"], fit_px=f.get("fit_px"), start_speed_mps=round(d["start_speed_mps"], 2),
-                  apex_m=round(d["apex"]["height_m"], 2) if d.get("apex") else None,
-                  net_crossing=NetCrossing(height_m=round(d["net_crossing"]["height_m"], 2), y_m=round(d["net_crossing"]["y_m"], 2))
-                  if d.get("net_crossing") else None,
-                  landing=Landing(x_m=round(d["landing"]["x_m"], 2), y_m=round(d["landing"]["y_m"], 2)) if d.get("landing") else None,
-                  samples=[FlightSample(t=round(float(fr / fps), 3), x=round(float(p[0]), 3), y=round(float(p[1]), 3),
-                                        z=round(float(p[2]), 3), observed=o) for fr, p, o in zip(frames, pos, obs)],
-                  anchors=f.get("anchors", []), dropped=f.get("dropped", 0))
+    return Flight(
+        start_s=frames[0] / fps,
+        end_s=frames[-1] / fps,
+        source=source,
+        quality=f["quality"],
+        reasons=f["reasons"],
+        fit_px=f.get("fit_px"),
+        start_speed_mps=round(d["start_speed_mps"], 2),
+        apex_m=round(d["apex"]["height_m"], 2) if d.get("apex") else None,
+        net_crossing=NetCrossing(
+            height_m=round(d["net_crossing"]["height_m"], 2), y_m=round(d["net_crossing"]["y_m"], 2)
+        )
+        if d.get("net_crossing")
+        else None,
+        landing=Landing(x_m=round(d["landing"]["x_m"], 2), y_m=round(d["landing"]["y_m"], 2))
+        if d.get("landing")
+        else None,
+        samples=[
+            FlightSample(
+                t=round(float(fr / fps), 3),
+                x=round(float(p[0]), 3),
+                y=round(float(p[1]), 3),
+                z=round(float(p[2]), 3),
+                observed=o,
+            )
+            for fr, p, o in zip(frames, pos, obs)
+        ],
+        anchors=f.get("anchors", []),
+        dropped=f.get("dropped", 0),
+    )
 
 
 @router.get("/videos/{vid}/flights", response_model=list[Flight])
@@ -78,6 +113,7 @@ def flights(vid: str, start: float = Query(0, ge=0), end: float | None = Query(N
     """3D ball flights overlapping [start, end] seconds, with a court position for every frame.
     Videos with demo rallies get demo flights built from those rallies (source 'demo')."""
     from .. import demo
+
     v = video_or_404(vid)
     fps = v["fps"] or 30.0
     path = RESULTS / vid / "flights.json"

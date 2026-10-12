@@ -30,10 +30,12 @@ def test_detector_runs_on_sampled_frames_only():
 
 
 def test_boxes_are_interpolated_between_samples_and_ids_kept():
-    step, _ = fake_step({
-        0: [(7, 0, 0, 10, 10, 0.9)],
-        3: [(7, 30, 0, 40, 10, 0.6)],
-    })
+    step, _ = fake_step(
+        {
+            0: [(7, 0, 0, 10, 10, 0.9)],
+            3: [(7, 30, 0, 40, 10, 0.6)],
+        }
+    )
     df = track_frames(frames(4), src_fps=30, cfg=TrackerConfig(det_fps=10), step=step)
     assert df["frame"].tolist() == [0, 1, 2, 3]
     assert set(df["track_id"]) == {7}
@@ -43,11 +45,14 @@ def test_boxes_are_interpolated_between_samples_and_ids_kept():
 
 
 def test_no_extrapolation_and_long_gaps_stay_empty():
-    df = pd.DataFrame([
-        (2, 1, 0, 0, 1, 1, 0.9, False),
-        (4, 1, 2, 0, 3, 1, 0.9, False),
-        (20, 1, 18, 0, 19, 1, 0.9, False),
-    ], columns=["frame", "track_id", "x1", "y1", "x2", "y2", "conf", "interpolated"])
+    df = pd.DataFrame(
+        [
+            (2, 1, 0, 0, 1, 1, 0.9, False),
+            (4, 1, 2, 0, 3, 1, 0.9, False),
+            (20, 1, 18, 0, 19, 1, 0.9, False),
+        ],
+        columns=["frame", "track_id", "x1", "y1", "x2", "y2", "conf", "interpolated"],
+    )
     out = interpolate_tracks(df, n_frames=30, max_gap=5)
     assert out["frame"].tolist() == [2, 3, 4, 20]  # nothing before 2 or after 20; 4 -> 20 too long
 
@@ -70,18 +75,28 @@ H_SYN = np.array([[50.0, 0, 100], [0, -50.0, 600], [0, 0, 1]])
 def box_at(frame, tid, x_m, y_m):
     """A 40 x 90 px box whose bottom-centre stands at court (x_m, y_m)."""
     u, v = 100 + 50 * x_m, 600 - 50 * y_m
-    return {"frame": frame, "track_id": tid, "x1": u - 20, "y1": v - 90, "x2": u + 20, "y2": v,
-            "conf": 0.9, "interpolated": False}
+    return {
+        "frame": frame,
+        "track_id": tid,
+        "x1": u - 20,
+        "y1": v - 90,
+        "x2": u + 20,
+        "y2": v,
+        "conf": 0.9,
+        "interpolated": False,
+    }
 
 
 def test_referee_outside_the_margins_is_dropped_and_server_behind_the_end_line_kept():
-    df = pd.DataFrame([
-        box_at(0, 1, 4.5, 4.5),    # player on side A
-        box_at(0, 2, 13.0, 2.0),   # player on side B
-        box_at(0, 3, -6.0, 4.0),   # server 6 m behind the end line: kept
-        box_at(0, 4, 9.0, -4.5),   # first referee beside the post, 4.5 m outside the sideline: dropped
-        box_at(0, 5, 9.0, 16.0),   # crowd: dropped
-    ])
+    df = pd.DataFrame(
+        [
+            box_at(0, 1, 4.5, 4.5),  # player on side A
+            box_at(0, 2, 13.0, 2.0),  # player on side B
+            box_at(0, 3, -6.0, 4.0),  # server 6 m behind the end line: kept
+            box_at(0, 4, 9.0, -4.5),  # first referee beside the post, 4.5 m outside the sideline: dropped
+            box_at(0, 5, 9.0, 16.0),  # crowd: dropped
+        ]
+    )
     out = place_on_court(df, lambda f: H_SYN)
     assert sorted(out["track_id"]) == [1, 2, 3]
     pos = out.set_index("track_id")
@@ -104,25 +119,26 @@ def test_frames_without_a_court_mapping_are_kept_unplaced():
     assert out[out["frame"] == 0]["placed"].all()
 
 
-
 def test_track_frames_does_not_bridge_a_long_gap():
     # detected at sampled frames 0 and 3, lost, then the same id again at frame 30 (sampling every 3 frames)
     seen = {0: [(1, 0, 0, 10, 10, 0.9)], 3: [(1, 3, 0, 13, 10, 0.9)], 30: [(1, 30, 0, 40, 10, 0.9)]}
     frames = [None] * 31
     calls = iter(sorted(range(0, 31, 3)))
+
     def step(image):
         return seen.get(next(calls), [])
+
     cfg = TrackerConfig(det_fps=10)
     df = track_frames(frames, 30.0, cfg, step)
     got = sorted(df["frame"].tolist())
-    assert got[:4] == [0, 1, 2, 3]       # the short gap is filled
-    assert 15 not in got and 30 in got   # the long gap (27 frames > 3 x 3) is not
-
+    assert got[:4] == [0, 1, 2, 3]  # the short gap is filled
+    assert 15 not in got and 30 in got  # the long gap (27 frames > 3 x 3) is not
 
 
 def test_general_detector_only_when_the_player_detector_misses_players():
     from vball.players import prefer_generalist
-    assert prefer_generalist([2, 3, 2, 2], [12, 16, 13, 14])          # amateur gym: player-only finds 2-3 of ~13
+
+    assert prefer_generalist([2, 3, 2, 2], [12, 16, 13, 14])  # amateur gym: player-only finds 2-3 of ~13
     assert not prefer_generalist([11, 12, 12, 10], [16, 18, 15, 17])  # broadcast: it finds the players, not the crowd
-    assert not prefer_generalist([0, 1], [2, 3])                      # an empty scene is not evidence
-    assert not prefer_generalist([12, 13, 12], [25, 26, 25])          # end-line broadcast: the crowd inflates the general count
+    assert not prefer_generalist([0, 1], [2, 3])  # an empty scene is not evidence
+    assert not prefer_generalist([12, 13, 12], [25, 26, 25])  # end-line broadcast: the crowd inflates the general count

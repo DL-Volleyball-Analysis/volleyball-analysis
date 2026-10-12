@@ -11,6 +11,7 @@ def install(monkeypatch, tmp_path, digits=True):
     """Fake action and digit models: track 1 (box 130,60-170,100 in the fake players) spikes in frames 6-15,
     and its crop reads 1 then 0 side by side."""
     from vball import pipeline
+
     for name, path in (("ACTION_MODEL", "action.pt"), ("JERSEY_MODEL", "digits.pt")):
         if name == "JERSEY_MODEL" and not digits:
             continue
@@ -23,6 +24,7 @@ def install(monkeypatch, tmp_path, digits=True):
             calls["frames"] += 1
             k = calls["frames"] - 1  # sample index; 10 fps of a 25 fps clip -> every 2nd or 3rd frame
             return [("spike", 0.9, 132.0, 58.0, 172.0, 100.0)] if 2 <= k <= 5 else []
+
         return detect
 
     def digit_detector():
@@ -41,6 +43,7 @@ def test_actions_stage_reports_events_and_numbers(client, clip, fake_ball, monke
     assert a["status"] == "done" and a["summary"]["events"] == 1 and a["summary"]["by_action"]["spike"] == 1
     assert a["summary"]["numbered_tracks"] == 1 and a["message"] is None
     from vball_app.settings import RESULTS
+
     data = json.loads((RESULTS / v["id"] / "action_events.json").read_text())
     (ev,) = data["events"]
     assert ev["action"] == "spike" and ev["track_id"] == 1 and ev["samples"] == 4
@@ -85,7 +88,9 @@ def test_accepting_posts_an_ordinary_tag_and_dismissing_is_remembered(client, cl
     run_worker_once()
     sug = client.get(f"/videos/{v['id']}/actions").json()["suggestions"][0]
     assert client.get(f"/videos/{v['id']}/stats").json()["lines"] == []  # a suggestion never counts
-    r = client.post(f"/videos/{v['id']}/tags", json={"time_s": sug["time_s"], "kind": "attack", "team": "a", "number": 10})
+    r = client.post(
+        f"/videos/{v['id']}/tags", json={"time_s": sug["time_s"], "kind": "attack", "team": "a", "number": 10}
+    )
     assert r.status_code == 201
     assert client.get(f"/videos/{v['id']}/actions").json()["suggestions"][0]["status"] == "accepted"
     tag_id = r.json()[0]["id"]
@@ -105,6 +110,7 @@ def test_person_classifier_with_the_ball_and_serves_from_the_detector(client, cl
     import numpy as np
 
     from vball import pipeline
+
     calls = install(monkeypatch, tmp_path, digits=False)
     (tmp_path / "person.pt").write_bytes(b"")
     monkeypatch.setattr(pipeline.config, "PERSON_MODEL", tmp_path / "person.pt")
@@ -116,13 +122,16 @@ def test_person_classifier_with_the_ball_and_serves_from_the_detector(client, cl
             for k, c in enumerate(crops):  # crops are square: the larger one is track 1
                 out[k, names.index("setting" if c.shape[0] > 30 else "spiking")] = 0.95
             return out
+
         return names, classify
 
     def action_detector():
         def detect(frame):
             calls["frames"] += 1
             return [("spike", 0.9, 132.0, 58.0, 172.0, 100.0), ("serve", 0.9, 280.0, 0.0, 320.0, 20.0)]
+
         return detect
+
     monkeypatch.setattr(pipeline.models, "person_classifier", person_classifier)
     monkeypatch.setattr(pipeline.models, "action_detector", action_detector)
     v = upload(client, clip)
@@ -133,5 +142,6 @@ def test_person_classifier_with_the_ball_and_serves_from_the_detector(client, cl
     # set by track 1 (near the ball); track 2's spike falls below the event peak (far from the ball); no detector spike
     assert by["set"] >= 1 and by["spike"] == 0 and by["serve"] >= 1
     from vball_app.settings import RESULTS
+
     data = json.loads((RESULTS / v["id"] / "action_events.json").read_text())
     assert {e["track_id"] for e in data["events"] if e["action"] == "set"} == {1}

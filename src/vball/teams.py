@@ -10,6 +10,7 @@ not clearly apart compared with the spread inside the teams, the split is not tr
 `other` from colour alone. A track the court mapping places on the court most of the time stays a player whatever
 its colour (the libero wears a different shirt).
 """
+
 from dataclasses import dataclass
 
 import cv2
@@ -21,18 +22,18 @@ H_BINS, S_BINS, V_BINS = 12, 4, 4
 @dataclass(frozen=True)
 class TeamConfig:
     fit_min_coverage: float = 0.3  # tracks seen in at least this share of frames define the teams
-    outlier_mads: float = 2.0     # distance to the nearest team centre, in scaled MADs above the median
+    outlier_mads: float = 2.0  # distance to the nearest team centre, in scaled MADs above the median
     min_outlier_dist: float = 0.25  # ... and at least this (histograms sum to 1 per part)
-    min_separation: float = 2.0   # centre distance / median within-team distance needed to trust the split
-    min_tracks: int = 4           # fewer tracks: no clustering
-    on_court_share: float = 0.5   # tracks on the court at least this often stay players
-    court_margin_m: float = 0.5   # 'on the court' = inside the lines plus this margin
+    min_separation: float = 2.0  # centre distance / median within-team distance needed to trust the split
+    min_tracks: int = 4  # fewer tracks: no clustering
+    on_court_share: float = 0.5  # tracks on the court at least this often stay players
+    court_margin_m: float = 0.5  # 'on the court' = inside the lines plus this margin
 
 
 @dataclass
 class Assignment:
     team: str | None  # "a" / "b", None when the split is not trusted or the track is other
-    other: bool       # far from both teams by appearance
+    other: bool  # far from both teams by appearance
 
 
 def torso_crop(frame: np.ndarray, box) -> np.ndarray | None:
@@ -56,8 +57,9 @@ def colour_hist(crop: np.ndarray) -> np.ndarray:
     return np.concatenate([hs / max(hs.sum(), 1), v / max(v.sum(), 1)])
 
 
-def assign(track_hists: dict[int, np.ndarray], coverage: dict[int, float] | None = None,
-           cfg: TeamConfig = TeamConfig()) -> dict[int, Assignment]:
+def assign(
+    track_hists: dict[int, np.ndarray], coverage: dict[int, float] | None = None, cfg: TeamConfig = TeamConfig()
+) -> dict[int, Assignment]:
     """track_hists: track id -> (n, d) histograms of its boxes; coverage: track id -> share of the frames it is
     seen in (None: every track shapes the teams). Team and other flag per track."""
     ids = [t for t, h in track_hists.items() if len(h)]
@@ -92,9 +94,12 @@ def assign(track_hists: dict[int, np.ndarray], coverage: dict[int, float] | None
 def on_court_share(court_xy: np.ndarray, margin_m: float = TeamConfig().court_margin_m) -> float:
     """Share of a track's court positions inside the lines plus margin (NaN positions count as unknown)."""
     from .court import LENGTH, WIDTH
+
     p = np.asarray(court_xy, float).reshape(-1, 2)
     p = p[~np.isnan(p).any(axis=1)]
     if not len(p):
         return 0.0
-    inside = (p[:, 0] >= -margin_m) & (p[:, 0] <= LENGTH + margin_m) & (p[:, 1] >= -margin_m) & (p[:, 1] <= WIDTH + margin_m)
+    inside = (
+        (p[:, 0] >= -margin_m) & (p[:, 0] <= LENGTH + margin_m) & (p[:, 1] >= -margin_m) & (p[:, 1] <= WIDTH + margin_m)
+    )
     return float(inside.mean())

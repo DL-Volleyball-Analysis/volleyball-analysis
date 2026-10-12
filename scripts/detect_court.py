@@ -7,6 +7,7 @@ Writes outputs/court/detection/<clip>.jpg and <clip>.json.
 
   .venv/bin/python scripts/detect_court.py [--at 0.5]
 """
+
 import argparse
 import json
 from pathlib import Path
@@ -32,8 +33,10 @@ def register_frame(models: dict, frame) -> dict:
     """The best one-frame registration over the models, as the pipeline picks per shot."""
     size = (frame.shape[1], frame.shape[0])
     one_frame = {**court_registration.CONFIG, "min_valid_samples": 1}  # a shot of one sample
-    cands = {name: [court_registration.register_shot(0, 0, 1.0, size, lambda f, m=m: detect(m, frame), one_frame)]
-             for name, m in models.items()}
+    cands = {
+        name: [court_registration.register_shot(0, 0, 1.0, size, lambda f, m=m: detect(m, frame), one_frame)]
+        for name, m in models.items()
+    }
     return court_registration.pick(cands)[0]
 
 
@@ -42,6 +45,7 @@ def main():
     ap.add_argument("--at", type=float, default=0.5, help="position in the clip (0-1)")
     args = ap.parse_args()
     from ultralytics import YOLO
+
     models = {name: YOLO(str(p)) for name, p in COURT_MODELS.items() if p.exists()}
     if not models:
         raise SystemExit(f"no court model in {MODELS}")
@@ -56,11 +60,21 @@ def main():
         H = court_registration.mapping_at({"shots": [shot]}, 0, size)
         img = court.draw(frame, H) if H is not None else frame.copy()
         cv2.putText(img, f"{shot['status']} ({shot['model']})", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 0), 5)
-        cv2.putText(img, f"{shot['status']} ({shot['model']})", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 2)
+        cv2.putText(
+            img, f"{shot['status']} ({shot['model']})", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 2
+        )
         cv2.imwrite(str(out / f"{video.stem}.jpg"), img)
-        json.dump({"status": shot["status"], "model": shot["model"], "error": shot["error"],
-                   "consistency": shot["consistency"], "H_court_to_image": None if H is None else H.tolist()},
-                  open(out / f"{video.stem}.json", "w"), indent=1)
+        json.dump(
+            {
+                "status": shot["status"],
+                "model": shot["model"],
+                "error": shot["error"],
+                "consistency": shot["consistency"],
+                "H_court_to_image": None if H is None else H.tolist(),
+            },
+            open(out / f"{video.stem}.json", "w"),
+            indent=1,
+        )
         print(f"{video.stem:32} {shot['status']:13} model={shot['model']}")
 
 
