@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from . import backup
 from .api import actions, court, jobs, rallies, stats, tracks, videos
 from .settings import SETTINGS, configure_logging
 from .startup import check_models
@@ -19,6 +20,7 @@ from .startup import check_models
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging()
     check_models()
+    backup.back_up()
     yield
 
 

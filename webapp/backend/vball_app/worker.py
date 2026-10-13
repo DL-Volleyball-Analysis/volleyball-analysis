@@ -10,6 +10,7 @@ from typing import Any
 
 from vball import pipeline
 
+from . import backup
 from .db import Database
 from .settings import DB_PATH, RESULTS, configure_logging
 from .startup import check_models
@@ -44,6 +45,7 @@ def process(db: Database, job: dict) -> None:
         if r.get("status") == "done":  # detected rallies replace demo or earlier ones; corrections move along
             db.replace_detected_rallies(video["id"], r.get("rallies", []))
         db.update_job(job["id"], status="done", stage=None, progress=1.0)
+        backup.back_up_if_due()
     except Exception as e:
         log.exception("job %s failed", job["id"])
         db.update_job(job["id"], status="failed", error=f"{type(e).__name__}: {e}"[:500])
@@ -53,6 +55,7 @@ def main():
     configure_logging()
     check_models()
     db = Database(DB_PATH)
+    backup.back_up()
     if n := db.requeue_running():
         log.info("requeued %d interrupted job(s)", n)
     log.info("worker ready")

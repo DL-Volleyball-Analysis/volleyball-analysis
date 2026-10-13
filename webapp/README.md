@@ -61,6 +61,15 @@ cd frontend && npm install && npm run dev                     # UI on http://loc
 After changing backend models, regenerate the frontend types with the API running:
 `cd frontend && npm run gen:api`.
 
+## Backups
+The API and the worker back up `data/webapp.db` when they start, and the worker again after a finished job when the
+newest backup is over an hour old; the newest 10 are kept in `data/backups/`. The database is the only copy of what
+you enter (court corrections, tags, rosters, winner corrections).
+```bash
+../.venv/bin/python -m vball_app.backup --list
+../.venv/bin/python -m vball_app.backup --restore webapp-<time>.db    # saves the current database first
+```
+
 ## Run with Docker
 ```bash
 docker compose up --build        # from the repository root; the app on http://localhost:8080

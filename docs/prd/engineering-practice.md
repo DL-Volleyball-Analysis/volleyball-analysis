@@ -54,3 +54,14 @@ found:
 - New analysis features or accuracy work.
 - Cloud deployment, accounts, multi-user operation (PRD §7 Q1 stays: single-user, local).
 - Rewriting the frontend (it already has lint, tests and a typed API client).
+
+## Addendum 2026-10-13: backups of the app database
+On 2026-10-13 a test run emptied the local `webapp/data/webapp.db` (fixed: tests can no longer reach real data). There
+was no backup, so the user's court corrections, tags, rosters and winner corrections were lost; videos and analysis
+results were restored from the result folders. The database holds the only copy of what the user enters.
+
+- **What:** the worker and the API keep rolling backups of the database (SQLite online backup, consistent while the app
+  runs): one at each start and at most one per hour while jobs finish, the newest 10 kept, in `webapp/data/backups/`.
+  A script restores a chosen backup after making a backup of the current file.
+- **Success:** a backup exists after start; restoring it brings back the rows; the backups folder never holds more than
+  10 files; tests never touch it.
