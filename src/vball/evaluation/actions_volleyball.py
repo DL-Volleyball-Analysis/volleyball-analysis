@@ -193,6 +193,34 @@ def evaluate(args):
     print("support (test players):", {a: rows[0][3][a]["support"] for a in SCORED})
 
 
+def bootstrap_macro_f1(pairs_by_variant: dict[str, list], matches: list[int], n: int = 2000, seed: int = 0) -> dict:
+    """95% intervals of macro F1 per variant, and of each variant's difference to the first, by resampling whole matches
+    (players of one match are not independent). pairs_by_variant: name -> [(truth, prediction)] aligned with matches."""
+    rng = np.random.default_rng(seed)
+    ids = np.array(matches)
+    groups = {m: np.flatnonzero(ids == m) for m in np.unique(ids)}
+    keys = list(groups)
+    names = list(pairs_by_variant)
+    draws: dict[str, list[float]] = {name: [] for name in names}
+    for _ in range(n):
+        idx = np.concatenate([groups[keys[k]] for k in rng.integers(0, len(keys), len(keys))])
+        for name in names:
+            pairs = pairs_by_variant[name]
+            draws[name].append(f1s([pairs[i] for i in idx])["macro_f1"])
+    base = np.array(draws[names[0]])
+    out = {}
+    for name in names:
+        d = np.array(draws[name])
+        out[name] = {"ci": [round(float(np.percentile(d, 2.5)), 3), round(float(np.percentile(d, 97.5)), 3)]}
+        if name != names[0]:
+            diff = d - base
+            out[name]["diff_ci"] = [
+                round(float(np.percentile(diff, 2.5)), 3),
+                round(float(np.percentile(diff, 97.5)), 3),
+            ]
+    return out
+
+
 def classifier(args):
     import pandas as pd
 
@@ -229,4 +257,19 @@ def classifier(args):
                 for a in SCORED
             )
         )
+    if getattr(args, "bootstrap", 0):
+        matches = [int(name.split("_")[0]) for name in df["crop"]]
+        pairs_by = {
+            name: [(t, LABEL_MAP.get(classes[k])) for t, k in zip(truth, P.argmax(axis=1))]
+            for name, P in variants.items()
+        }
+        ci = bootstrap_macro_f1(pairs_by, matches, n=args.bootstrap)
+        for name, v in ci.items():
+            out[name]["macro_f1_ci"] = v["ci"]
+            if "diff_ci" in v:
+                out[name]["diff_to_classifier_ci"] = v["diff_ci"]
+            print(
+                f"{name:40s} 95% CI {v['ci']}"
+                + (f"  difference to the classifier {v['diff_ci']}" if "diff_ci" in v else "")
+            )
     Path(args.out).write_text(json.dumps(out, indent=2))

@@ -228,3 +228,14 @@ def test_evaluate_and_classifier_reports(tmp_path, monkeypatch):
     av.classifier(args)
     cls = json.loads((tmp_path / "cls.json").read_text())
     assert cls["classifier"]["set"]["f1"] == 1.0 and len(cls) == 3
+
+
+def test_bootstrap_resamples_whole_matches():
+    # match 1: all right for both; match 2: the variant fixes two of four mistakes of the base
+    base = [("set", "set")] * 4 + [("spike", "set")] * 4
+    better = [("set", "set")] * 4 + [("spike", "spike")] * 2 + [("spike", "set")] * 2
+    matches = [1] * 4 + [2] * 4
+    out = av.bootstrap_macro_f1({"base": base, "better": better}, matches, n=200)
+    lo, hi = out["base"]["ci"]
+    assert 0 <= lo <= hi <= 1
+    assert out["better"]["diff_ci"][1] >= 0 and "diff_ci" not in out["base"]

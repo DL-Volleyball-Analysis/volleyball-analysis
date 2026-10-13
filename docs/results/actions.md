@@ -204,3 +204,19 @@ called most of these moments spike or block.
 balls, 0.671 with RAVEL-011 and 0.670 with RAVEL-011 + tracker. Off-the-shelf detectors find 20-30% of the balls on
 these clips, and where no ball is detected the prior leaves the scores unchanged; the prior's benefit in practice is
 bounded by the ball detector.
+
+### Intervals by match (2026-10-14)
+`eval_actions_volleyball.py classifier --bootstrap 2000`: 95% intervals from resampling the 16 test matches (players of
+one match are not independent), and of the difference to the classifier on the same resamples.
+
+| Method | Macro F1 | 95% interval | Difference to the classifier |
+|---|---|---|---|
+| Capstone action detector (other volleyball footage), 9 frames | 0.303 | 0.293-0.315 | |
+| Per-player classifier (this dataset's training matches) | 0.668 | 0.646-0.689 | |
+| + ball prior, labelled balls | 0.678 | 0.658-0.697 | +0.005 to +0.014 |
+| + ball prior, V4c detected balls | 0.670 | 0.649-0.690 | -0.001 to +0.005 |
+
+The jump from 0.303 to 0.668 comes from classifying each player with a model trained on this dataset, against a
+detector trained on other footage: it measures in-domain per-player training, not the ball prior. The prior adds a small,
+consistent gain with labelled balls and none that can be told from zero with the balls the system detects today.
+Crops come from the dataset's labelled player boxes, not from the tracker.

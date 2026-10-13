@@ -52,6 +52,7 @@ def main():
     c.add_argument(
         "--ball-preds", nargs="*", help="detected balls (eval_ball_detection outputs) to compare with labelled ones"
     )
+    c.add_argument("--bootstrap", type=int, default=0, help="resamples of whole matches for 95%% intervals (0: none)")
     c.add_argument("--out", default="actions_volleyball_classifier.json")
     args = ap.parse_args()
     {"detect": detect, "evaluate": evaluate, "classifier": classifier}[args.cmd](args)
