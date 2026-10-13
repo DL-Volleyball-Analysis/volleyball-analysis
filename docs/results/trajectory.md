@@ -144,3 +144,11 @@ each frame to a keyframe fixed it.
 clips whose camera pans: side_high_men 2 -> 1, side_high_women 4 -> 2. The Hawaii 4K clip that motivated the change (15 of
 33 flights rejected with one calibration for a 64 s panning shot) was removed at the owner's request before it could
 be rerun, so the larger before / after is not available.
+
+## broadcast_back_view: court from the lines, 3D flights for the first time (2026-10-13)
+This Tokyo 2020 view from behind the end line had an old user court correction that overrode the line fit; with it the
+calibration failed (reprojection error 98.5 px against a 9.6 px gate) and the clip had no 3D flight. The correction was
+lost in the 2026-10-13 database incident, and the rerun from the court stage lets line evidence decide: the court is
+right by eye (far end line, far attack line, the centre line under the net posts, near attack line and near end line all
+on the painted lines, attack-line dashes included). The shot calibrates and gives 16 flights, 2 left out as physically
+impossible and 13 of the rest low quality: the 2D ball track remains the limit.
