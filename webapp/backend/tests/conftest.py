@@ -1,4 +1,5 @@
 import os
+import tempfile
 from pathlib import Path
 
 import cv2
@@ -6,19 +7,28 @@ import numpy as np
 import pandas as pd
 import pytest
 
+# vball_app.settings reads the data folder once, when it is first imported. Point it at a throw-away folder here,
+# at conftest import, before pytest imports any test module (a test module that imports vball_app at its top would
+# otherwise bind the real webapp/data, and empty_db below would wipe the user's database).
+TEST_DATA = Path(tempfile.mkdtemp(prefix="vball_webapp_test_"))
+os.environ["VBALL_WEBAPP_DATA"] = str(TEST_DATA)
+REAL_DATA = (Path(__file__).resolve().parents[2] / "data").resolve()
+
 
 @pytest.fixture(scope="session", autouse=True)
-def data_dir(tmp_path_factory):
-    # settings reads this at import, so set it before any backend module is imported
-    d = tmp_path_factory.mktemp("webapp_data")
-    os.environ["VBALL_WEBAPP_DATA"] = str(d)
-    return d
+def data_dir():
+    from vball_app import settings
+
+    # refuse to run against real data, whatever imported the settings first
+    assert settings.DATA.resolve() == TEST_DATA.resolve() != REAL_DATA, f"tests would use {settings.DATA}"
+    return TEST_DATA
 
 
 @pytest.fixture(autouse=True)
 def empty_db(data_dir):
     from vball_app import deps
 
+    assert deps.db.path.resolve().parent == TEST_DATA.resolve(), f"tests would empty {deps.db.path}"
     with deps.db.connect() as c:
         tables = ("court_corrections", "dismissed_suggestions", "tags", "rosters", "rallies", "jobs", "videos")
         c.executescript("".join(f"DELETE FROM {t};" for t in tables))
