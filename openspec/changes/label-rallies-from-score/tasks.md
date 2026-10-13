@@ -7,4 +7,4 @@
 
 ## 2. Fixed-camera rallies
 - [x] 2.1 Rally cues from pipeline results (court status, placed players and their motion, ball)
-- [ ] 2.2 Train and evaluate by match; rallies stage uses it for still cameras; docs/results/rallies.md — trained and evaluated (F1 0.76 on the six fixed clips, docs/results/rallies.md 2026-10-13); stage integration pending
+- [x] 2.2 Train and evaluate by match; rallies stage uses it for still cameras; docs/results/rallies.md (F1 0.76 on the six fixed clips; rallies stage version 3 uses it for still cameras and reproduces the offline result)

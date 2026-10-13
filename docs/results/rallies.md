@@ -79,7 +79,10 @@ What this does and does not show:
 - The weakest clip, fixed_ucla_concordia (recall 0.44), has points 5-17 s apart: the gaps between rallies are too short
   for the segmentation, which merges neighbouring rallies (one detection over 99.6-142.4 s spans five points), and one
   detection can match only one point.
-- Model saved as `models/rally_fixed_hgb.joblib` (not yet used by the rallies stage).
+- In the pipeline since 2026-10-13 (rallies stage version 3): footage whose ok camera shots are all still uses this
+  model on cues from the earlier stages' results (`vball.rally_cues.shot_cues`, shared with the training script);
+  other footage keeps the broadcast model. On fixed_hawaii_irvine the stage gives exactly the offline result
+  (13 detected, 12 of 14 points, F1 0.889).
 
 Next: more arenas (the line fit must work on light floors first), and the rallies stage choosing this model for still
 end-line cameras.

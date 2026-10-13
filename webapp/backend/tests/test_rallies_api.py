@@ -82,3 +82,72 @@ def test_out_of_training_footage_is_told_from_a_quick_check(client, clip, fake_b
     run_worker_once()
     s = {x["name"]: x for x in client.get(f"/videos/{v['id']}/stages").json()}["rallies"]
     assert s["status"] == "unavailable" and "cannot be told" in s["message"] and full == []  # no full pass
+
+
+def still_footage(monkeypatch, tmp_path, found):
+    """A still camera with an ok court, the fixed-camera model installed (fake), people found on every sampled frame."""
+    import numpy as np
+    import pandas as pd
+
+    from vball import pipeline
+
+    model = tmp_path / "rally_fixed.joblib"
+    model.write_bytes(b"")
+    monkeypatch.setattr(pipeline.config, "FIXED_RALLY_MODEL", model)
+    monkeypatch.setattr("vball.court_registration.still", lambda *a, **k: True)
+    monkeypatch.setattr("vball.court_registration.mapping_at", lambda court, frame, size: np.eye(3))
+    calls = {"people": 0}
+
+    def people_boxes(video, n, every):
+        calls["people"] += 1
+        return pd.DataFrame(
+            [(f, 10, 10, 20, 40) for f in range(0, n, every)], columns=["frame", "x1", "y1", "x2", "y2"]
+        )
+
+    monkeypatch.setattr(pipeline.models, "people_boxes", people_boxes)
+    monkeypatch.setattr("vball.rallies.load_model", lambda path: {"model": path.name})
+
+    def detect(model, cues):
+        calls["cues"] = cues
+        return found
+
+    monkeypatch.setattr("vball.rallies.detect", detect)
+    out = tmp_path / "results"
+    out.mkdir()
+    pd.DataFrame({"frame": range(50), "visible": 1, "x": 5.0, "y": 5.0}).to_csv(out / "ball.csv", index=False)
+    prev = {
+        "decode": {"fps": 25.0, "frames": 50, "width": 320, "height": 180},
+        "court": {"shots": [{"status": "ok", "samples": [{}], "start_frame": 0, "end_frame": 49}]},
+    }
+    return out, prev, calls
+
+
+def test_still_end_line_camera_uses_the_fixed_camera_model(clip, monkeypatch, tmp_path):
+    from vball import pipeline
+
+    out, prev, calls = still_footage(monkeypatch, tmp_path, [(0.2, 1.6, 0.7)])
+    res = pipeline.rallies.run(clip, out, prev, lambda f: None)
+    assert res["status"] == "done" and res["footage"] == "still end-line camera"
+    assert res["model"] == "rally_fixed.joblib" and res["rallies"] == [
+        {"start_s": 0.2, "end_s": 1.6, "confidence": 0.7}
+    ]
+    assert "shot" in calls["cues"] and calls["people"] == 1
+    pipeline.rallies.run(clip, out, prev, lambda f: None)
+    assert calls["people"] == 1  # people boxes are kept in the results folder (people.csv.gz) and reused
+
+
+def test_still_camera_without_the_fixed_model_is_unavailable(clip, monkeypatch, tmp_path):
+    from vball import pipeline
+
+    out, prev, _ = still_footage(monkeypatch, tmp_path, [])
+    monkeypatch.setattr(pipeline.config, "FIXED_RALLY_MODEL", tmp_path / "missing.joblib")
+    res = pipeline.rallies.run(clip, out, prev, lambda f: None)
+    assert res["status"] == "unavailable" and "rally model is missing" in res["message"]
+
+
+def test_still_camera_with_no_rally_found_says_so(clip, monkeypatch, tmp_path):
+    from vball import pipeline
+
+    out, prev, _ = still_footage(monkeypatch, tmp_path, [])
+    res = pipeline.rallies.run(clip, out, prev, lambda f: None)
+    assert res["status"] == "done" and res["count"] == 0 and "No rally found" in res["message"]

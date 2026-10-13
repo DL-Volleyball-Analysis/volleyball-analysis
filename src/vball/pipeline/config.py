@@ -13,7 +13,10 @@ BALL_MODEL = "v4c"
 COURT_MODELS = {"gym": MODELS / "court_kpt.pt", "broadcast": MODELS / "court_kpt_broadcast.pt"}
 # capstone action recogniser (test mAP@0.5 0.957, same matches as training) and the retrained digit detector;
 # shirt numbers are read only once the digit model is installed (docs/results/actions.md)
-RALLY_MODEL = MODELS / "rally_cues_hgb.joblib"  # docs/results/rallies.md
+RALLY_MODEL = MODELS / "rally_cues_hgb.joblib"  # broadcast views (docs/results/rallies.md)
+# still end-line cameras: trained on score-bug labels of full matches, F1 0.76 on six fixed clips (docs/results/rallies.md)
+FIXED_RALLY_MODEL = MODELS / "rally_fixed_hgb.joblib"
+PEOPLE_FPS = 2.0  # person boxes for the fixed-camera rally cues, as in its training data
 ACTION_MODEL = MODELS / "action_yolo11m.pt"  # serves (the person classifier has no serve class)
 PERSON_MODEL = (
     MODELS / "person_action_yolo26s_cls.pt"

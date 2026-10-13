@@ -70,7 +70,7 @@ VERSIONS = {
     "actions": "4",  # 3: per-player classifier + ball prior; 4: serves at SERVE_FPS
     "trajectory": "5",
     "events": "0.3",
-    "rallies": "2",
+    "rallies": "3",  # 3: fixed-camera model for still end-line cameras
 }  # rallies 1: detected from cues; 2: quick check first
 
 

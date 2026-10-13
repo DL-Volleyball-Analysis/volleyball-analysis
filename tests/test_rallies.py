@@ -111,3 +111,25 @@ def test_fixed_camera_weak_labels_and_end_matching():
     assert (y[:14] == -1).all()  # before the first rally's play window nothing is known
     m = tfr.match_ends([(10, 20, 0.9), (30, 33, 0.8), (40, 46, 0.7)], [24.0, 50.0])
     assert m["matched"] == 2 and m["precision"] == round(2 / 3, 3) and m["recall"] == 1.0 and m["median_delay_s"] == 4.0
+
+
+def test_detect_keeps_rallies_inside_camera_shots():
+    import pandas as pd
+
+    from vball.rallies import RallyConfig, detect
+
+    class Play:  # P(play) = the cue itself
+        def predict_proba(self, X):
+            p = X["x"].to_numpy()
+            return np.column_stack([1 - p, p])
+
+    t = np.arange(0, 20, 0.2)
+    cues = pd.DataFrame({"t": t, "x": ((t > 2) & (t < 18)).astype(float), "shot": (t >= 10).astype(int)})
+    model = {
+        "classifier": Play(),
+        "rate": 5.0,
+        "columns": ["x"],
+        "config": RallyConfig(smooth_s=0.2, p_on=0.5, p_off=0.5, min_rally_s=1.0, min_gap_s=0.5),
+    }
+    found = detect(model, cues)
+    assert len(found) == 2 and found[0][1] < 10 <= found[1][0]  # one play stretch, cut at the shot change

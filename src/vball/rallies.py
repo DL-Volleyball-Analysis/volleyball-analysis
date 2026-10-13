@@ -176,5 +176,7 @@ def detect(model: dict, cues: pd.DataFrame) -> list[tuple[float, float, float]]:
     """Rallies (start s, end s, confidence) from a video's cues with a saved model."""
     if not len(cues):
         return []
+    if "shot" in cues:  # rallies do not cross camera shots
+        return [r for _, part in cues.groupby("shot") for r in detect(model, part.drop(columns="shot"))]
     p = model["classifier"].predict_proba(features(cues, model["rate"], model.get("columns", CUES)))[:, 1]
     return segment(cues["t"].to_numpy(), p, model["config"])

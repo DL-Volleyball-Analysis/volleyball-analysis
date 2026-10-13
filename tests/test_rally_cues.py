@@ -84,3 +84,27 @@ def test_stage_cues_from_ball_and_people():
     assert first.on_court == 4 and first.both_sides == 2 and first.behind_end == 1
     assert 0.3 < first.player_speed < 1.1  # two walk 1 m/s, two stand still: the median between
     assert (rally_cues.stage_cues(ball, people, fps, n, (1280, 720), None, rate=2.0).on_court == 0).all()
+
+
+def test_shot_cues_cover_ok_shots_on_the_video_time_axis(monkeypatch):
+    import pandas as pd
+
+    from vball import court_registration
+
+    H = np.array([[50.0, 0, 100], [0, 50.0, 100], [0, 0, 1]])
+    monkeypatch.setattr(court_registration, "mapping_at", lambda court, frame, size: H)
+    fps, n = 10.0, 60
+    ball = pd.DataFrame({"frame": np.arange(n), "visible": 1, "x": 500.0, "y": 400.0})
+    people = pd.DataFrame([(f, 90, 120, 110, 200) for f in range(0, n, 5)], columns=["frame", "x1", "y1", "x2", "y2"])
+    court = {
+        "shots": [
+            {"status": "ok", "samples": [{}], "start_frame": 0, "end_frame": 19},
+            {"status": "needs_review", "samples": [{}], "start_frame": 20, "end_frame": 39},  # left out
+            {"status": "ok", "samples": [{}], "start_frame": 40, "end_frame": 59},
+        ]
+    }
+    cues = rally_cues.shot_cues(court, ball, people, fps, (1280, 720), rate=2.0)
+    assert sorted(cues["shot"].unique()) == [0, 1]
+    assert cues[cues.shot == 0].t.max() < 2.0 and cues[cues.shot == 1].t.min() >= 4.0
+    assert (cues.on_court == 1).all()
+    assert rally_cues.shot_cues({"shots": []}, ball, people, fps, (1280, 720)).empty

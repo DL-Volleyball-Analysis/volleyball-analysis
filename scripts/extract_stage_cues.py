@@ -13,44 +13,11 @@ import argparse
 import json
 from pathlib import Path
 
-import cv2
-import numpy as np
 import pandas as pd
 
-from vball import court_registration, pipeline
+from vball import pipeline, players
 from vball.paths import DATASETS
-from vball.rally_cues import stage_cues
-
-PEOPLE_FPS = 2.0
-
-
-def detect_people(video: Path, fps: float, n: int, every: int) -> pd.DataFrame:
-    """Person boxes on every `every`-th frame with the pipeline's general detector and settings."""
-    from ultralytics import YOLO
-
-    model = YOLO(str(pipeline.config.GENERAL_PLAYER_MODEL))
-    cap, rows, i = cv2.VideoCapture(str(video)), [], 0
-    while i < n:
-        if i % every:
-            if not cap.grab():
-                break
-            i += 1
-            continue
-        ok, frame = cap.read()
-        if not ok:
-            break
-        r = model(
-            frame,
-            imgsz=pipeline.config.PLAYER_CFG.imgsz,
-            conf=pipeline.config.PLAYER_CFG.conf,
-            classes=[0],
-            verbose=False,
-        )[0]
-        for b in r.boxes.xyxy.cpu().numpy():
-            rows.append((i, *b))
-        i += 1
-    cap.release()
-    return pd.DataFrame(rows, columns=["frame", "x1", "y1", "x2", "y2"])
+from vball.rally_cues import shot_cues
 
 
 def match_cues(video: Path, out: Path) -> pd.DataFrame:
@@ -68,24 +35,9 @@ def match_cues(video: Path, out: Path) -> pd.DataFrame:
     if people_csv.exists():
         people = pd.read_csv(people_csv)
     else:
-        people = detect_people(video, fps, n, max(1, int(round(fps / PEOPLE_FPS))))
-        people.to_csv(people_csv, index=False, float_format="%.1f")
-    ball = pd.read_csv(out / "ball.csv")
-    parts = []
-    for shot in prev["court"].get("shots", []):
-        if shot["status"] != "ok" or not shot["samples"]:
-            continue
-        a, b = shot["start_frame"], shot["end_frame"]
-        H = court_registration.mapping_at(prev["court"], (a + b) // 2, size)
-        sb = ball[(ball.frame >= a) & (ball.frame <= b)].copy()
-        sp = people[(people.frame >= a) & (people.frame <= b)].copy()
-        sb["frame"] -= a
-        sp["frame"] -= a
-        c = stage_cues(sb, sp, fps, b - a + 1, size, H)
-        c["t"] = np.round(c["t"] + a / fps, 3)
-        c["shot"] = len(parts)
-        parts.append(c)
-    return pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
+        people = pipeline.models.people_boxes(video, n, players.sample_every(fps, pipeline.config.PEOPLE_FPS))
+        people.to_csv(people_csv, index=False)  # full precision: a rerun reads exactly what the first run used
+    return shot_cues(prev["court"], pd.read_csv(out / "ball.csv"), people, fps, size)
 
 
 def main():

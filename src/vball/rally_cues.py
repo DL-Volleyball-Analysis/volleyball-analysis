@@ -237,3 +237,33 @@ def stage_cues(
             ]
         )
     return pd.DataFrame(rows, columns=STAGE_COLUMNS)
+
+
+def shot_cues(
+    court_result: dict,
+    ball: pd.DataFrame,
+    people: pd.DataFrame,
+    fps: float,
+    image_size: tuple[int, int],
+    rate: float = 5.0,
+) -> pd.DataFrame:
+    """`stage_cues` for every camera shot whose court is ok, on the video's time axis, with a `shot` column (rallies do
+    not cross shots). ball and people are the whole video's (frame-indexed); the same code makes the training cues
+    (scripts/extract_stage_cues.py) and the rallies stage's."""
+    from .court_registration import mapping_at
+
+    parts = []
+    for shot in court_result.get("shots", []):
+        if shot.get("status") != "ok" or not shot.get("samples"):
+            continue
+        a, b = shot["start_frame"], shot["end_frame"]
+        H = mapping_at(court_result, (a + b) // 2, image_size)
+        sb = ball[(ball.frame >= a) & (ball.frame <= b)].copy()
+        sp = people[(people.frame >= a) & (people.frame <= b)].copy()
+        sb["frame"] -= a
+        sp["frame"] -= a
+        c = stage_cues(sb, sp, fps, b - a + 1, image_size, H, rate=rate)
+        c["t"] = np.round(c["t"] + a / fps, 3)
+        c["shot"] = len(parts)
+        parts.append(c)
+    return pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()

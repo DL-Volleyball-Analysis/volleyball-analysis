@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import pandas as pd
 
 from vball import actions, players
 from vball.court_keypoints import detect as detect_keypoints
@@ -96,3 +97,28 @@ def rally_quick_check(video: Path):
     from vball.rally_cues import quick_check
 
     return quick_check(video)
+
+
+def people_boxes(video: Path, n_frames: int, every: int) -> pd.DataFrame:
+    """Person boxes (frame, x1, y1, x2, y2) on every `every`-th frame with the general detector, the input of the
+    fixed-camera rally cues (scripts/extract_stage_cues.py made the training data the same way). Tests replace this."""
+    import cv2
+    from ultralytics import YOLO
+
+    model: Any = YOLO(str(config.GENERAL_PLAYER_MODEL))
+    rows: list[tuple] = []
+    cap, i = cv2.VideoCapture(str(video)), 0
+    while i < n_frames:
+        if i % every:
+            if not cap.grab():
+                break
+            i += 1
+            continue
+        ok, frame = cap.read()
+        if not ok:
+            break
+        r = model(frame, imgsz=config.PLAYER_CFG.imgsz, conf=config.PLAYER_CFG.conf, classes=[0], verbose=False)[0]
+        rows.extend((i, *b) for b in r.boxes.xyxy.cpu().numpy())
+        i += 1
+    cap.release()
+    return pd.DataFrame(rows, columns=["frame", "x1", "y1", "x2", "y2"])

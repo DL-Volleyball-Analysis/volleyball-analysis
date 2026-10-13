@@ -103,6 +103,7 @@ def no_action_models(monkeypatch, tmp_path):
     monkeypatch.setattr(pipeline.config, "PERSON_MODEL", tmp_path / "missing_person.pt")
     monkeypatch.setattr(pipeline.config, "GENERAL_PLAYER_MODEL", tmp_path / "missing_general.pt")
     monkeypatch.setattr(pipeline.config, "RALLY_MODEL", tmp_path / "missing_rally.joblib")
+    monkeypatch.setattr(pipeline.config, "FIXED_RALLY_MODEL", tmp_path / "missing_fixed_rally.joblib")
     monkeypatch.setattr(pipeline.config, "COURT_MODELS", {"gym": tmp_path / "missing_court.pt"})
 
 
