@@ -76,6 +76,9 @@ What this does and does not show:
   transfers to new gyms.
 - Labels are points, not rallies: the score bug gives each rally's end plus a delay, so rally starts are not measured,
   and points the bug reader missed (up to 77 in one training match) leave rallies unlabelled in the training data.
+- The weakest clip, fixed_ucla_concordia (recall 0.44), has points 5-17 s apart: the gaps between rallies are too short
+  for the segmentation, which merges neighbouring rallies (one detection over 99.6-142.4 s spans five points), and one
+  detection can match only one point.
 - Model saved as `models/rally_fixed_hgb.joblib` (not yet used by the rallies stage).
 
 Next: more arenas (the line fit must work on light floors first), and the rallies stage choosing this model for still

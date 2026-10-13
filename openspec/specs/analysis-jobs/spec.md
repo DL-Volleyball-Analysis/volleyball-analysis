@@ -10,8 +10,8 @@ Runs video analysis as an ordered, resumable pipeline of stages outside the requ
 The system SHALL analyse a video in the fixed stage order decode, court, ball, players, actions, trajectory, events, rallies, and SHALL record each stage's status as done, todo (not implemented), unavailable (missing model) or pending (not run yet).
 
 #### Scenario: Court model missing
-- **WHEN** a video is analysed and no court keypoint model is installed
-- **THEN** the court stage is recorded as unavailable with a message saying the model is not trained yet, and later stages still run
+- **WHEN** a video is analysed and no court keypoint model is installed, or its file differs from models/manifest.json
+- **THEN** the court stage is recorded as unavailable with a message saying the model is missing or is not the expected version, and later stages still run
 
 #### Scenario: Actions after players
 - **WHEN** a video is analysed from the decode stage
@@ -81,3 +81,15 @@ When the user sets or clears a court correction, the system SHALL queue an analy
 #### Scenario: Correction on an analysed video
 - **WHEN** the user corrects a shot of a fully analysed video
 - **THEN** a job starting at the players stage is queued, and the decode, court and ball results are reused
+
+### Requirement: Pipeline in the analysis package
+The staged pipeline SHALL be part of the `vball` package (`vball.pipeline`) and be usable without the web app; the
+web app, scripts and tests SHALL import it as a package, without editing `sys.path`.
+
+#### Scenario: Script use
+- **WHEN** a script runs analysis stages on a match
+- **THEN** it imports `vball.pipeline` and the stages produce the same files the web app would
+
+#### Scenario: Results unchanged by the move
+- **WHEN** one fixed end-line clip and one broadcast clip are analysed before and after the move
+- **THEN** every stage's JSON and CSV output is identical, ignoring timestamps
