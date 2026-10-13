@@ -1,0 +1,20 @@
+# Build context: code and the lock only. Weights, videos, results and local tools stay out.
+.git
+.venv
+**/__pycache__
+**/*.egg-info
+models
+data
+outputs
+external
+private
+papers
+notebooks
+training
+webapp/data
+webapp/frontend/node_modules
+webapp/frontend/dist
+webapp/frontend/coverage
+.pytest_cache
+.coverage
+CLAUDE.md

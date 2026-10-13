@@ -61,6 +61,16 @@ cd frontend && npm install && npm run dev                     # UI on http://loc
 After changing backend models, regenerate the frontend types with the API running:
 `cd frontend && npm run gen:api`.
 
+## Run with Docker
+```bash
+docker compose up --build        # from the repository root; the app on http://localhost:8080
+```
+Three containers: `api` (FastAPI), `worker` (analysis) and `web` (the built UI behind nginx, `/api` passed to the API).
+Weights are mounted read-only from `./models` (`scripts/fetch_models.py` lists them), app data stays in
+`./webapp/data`. Videos are added by upload; `/videos/import` registers a path, which must exist inside the
+container. The image (about 4 GB, CPU PyTorch) pins the upstream VballNet repository to the commit the results
+were measured with.
+
 ## Test
 ```bash
 ../.venv/bin/python -m pytest                                 # from the repository root: vball and backend suites

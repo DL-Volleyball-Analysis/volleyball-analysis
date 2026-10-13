@@ -25,7 +25,8 @@
 ## 5. Models and operations
 - [x] 5.1 `models/manifest.json` (vball.manifest), start-up check in the API and the worker, stages use only files matching it, `scripts/fetch_models.py`; tests for a missing and a changed file
 - [x] 5.2 `logging` in place of `print` in vball and the app; settings from environment; tests
-- [ ] 5.3 Dockerfile and docker-compose.yml; verify `docker compose up` serves /health and the frontend
+- [x] 5.3 Dockerfile and docker-compose.yml; verify `docker compose up` serves /health and the frontend
+  (verified 2026-10-13: /api/health ok, UI 200, worker ready, the 11 analysed videos listed with all stage results)
 
 ## 6. Documentation and planning debt
 - [x] 6.1 docs/architecture.md (components, data flow, stage contract, diagram); README links it

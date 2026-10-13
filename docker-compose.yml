@@ -1,0 +1,22 @@
+# The web app on one machine: http://localhost:8080
+#   docker compose up --build
+# Weights come from ./models (scripts/fetch_models.py lists what is needed); app data stays in ./webapp/data.
+services:
+  api:
+    build: { context: ., target: app }
+    image: vball-app
+    volumes:
+      - ./models:/app/models:ro
+      - ./webapp/data:/data
+  worker:
+    image: vball-app
+    command: ["python", "-m", "vball_app.worker"]
+    depends_on: [api]
+    volumes:
+      - ./models:/app/models:ro
+      - ./webapp/data:/data
+  web:
+    build: { context: ., target: web }
+    depends_on: [api]
+    ports:
+      - "8080:80"
