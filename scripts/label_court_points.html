@@ -1,0 +1,100 @@
+<!doctype html>
+<!-- Template for scripts/eval_fixed_court.py --make, which fills in the plates and the point names. Local use only. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Court point labels</title>
+<style>
+  :root { --bg: #f4f5f7; --ink: #1d2330; --muted: #5b6475; --accent: #0b6bcb; --line: #d5d9e0; }
+  body { margin: 0; font: 15px/1.45 system-ui, sans-serif; background: var(--bg); color: var(--ink); }
+  header { display: flex; gap: 16px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); background: #fff; flex-wrap: wrap; }
+  h1 { font-size: 16px; margin: 0 12px 0 0; }
+  .prompt { font-weight: 600; }
+  .prompt b { color: var(--accent); }
+  button { font: inherit; padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px; background: #fff; cursor: pointer; }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  main { display: grid; grid-template-columns: 1fr 260px; gap: 16px; padding: 16px; }
+  .stage { position: relative; }
+  canvas#img { width: 100%; height: auto; display: block; cursor: crosshair; border: 1px solid var(--line); background: #000; }
+  aside { display: flex; flex-direction: column; gap: 12px; }
+  canvas#loupe { width: 240px; height: 240px; border: 1px solid var(--line); background: #000; }
+  ol { margin: 0; padding-left: 20px; color: var(--muted); }
+  li.done { color: var(--ink); }
+  li.skip { text-decoration: line-through; }
+  li.now { color: var(--accent); font-weight: 600; }
+  .muted { color: var(--muted); font-size: 13px; }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Court point labels</h1>
+  <span id="clip"></span>
+  <span class="prompt" id="prompt"></span>
+  <button id="skip" title="S">Not visible (S)</button>
+  <button id="undo" title="Z">Undo (Z)</button>
+  <button id="prev">Previous clip</button>
+  <button id="next">Next clip</button>
+  <button class="primary" id="save">Save labels.json</button>
+</header>
+<main>
+  <div class="stage"><canvas id="img"></canvas></div>
+  <aside>
+    <canvas id="loupe" width="240" height="240"></canvas>
+    <div class="muted">Magnified 4× around the cursor. Click where the painted line edges meet on the floor (the centre of the lines' crossing).</div>
+    <ol id="list"></ol>
+  </aside>
+</main>
+<script>
+const IMAGES = /*IMAGES*/{};
+const POINTS = /*POINTS*/[];
+const names = Object.keys(IMAGES);
+const labels = Object.fromEntries(names.map(n => [n, {}]));
+let k = 0, img = new Image();
+const cv = document.getElementById('img'), ctx = cv.getContext('2d');
+const lp = document.getElementById('loupe'), lctx = lp.getContext('2d');
+
+function current() { return POINTS.find(p => !(p in labels[names[k]])); }
+function draw() {
+  ctx.drawImage(img, 0, 0);
+  const L = labels[names[k]];
+  ctx.lineWidth = Math.max(2, img.width / 600);
+  POINTS.forEach((p, i) => {
+    const xy = L[p]; if (!xy) return;
+    ctx.strokeStyle = '#ffd400'; ctx.beginPath(); ctx.arc(xy[0], xy[1], img.width / 160, 0, 7); ctx.stroke();
+    ctx.fillStyle = '#ffd400'; ctx.font = `${Math.round(img.width / 70)}px system-ui`; ctx.fillText(i + 1, xy[0] + img.width / 120, xy[1] - img.width / 120);
+  });
+  document.getElementById('clip').textContent = `${k + 1} / ${names.length}: ${names[k]}`;
+  const c = current();
+  document.getElementById('prompt').innerHTML = c ? `Click: <b>${c}</b>` : 'All points done for this clip';
+  document.getElementById('list').innerHTML = POINTS.map(p => {
+    const cls = p === c ? 'now' : (p in L ? (L[p] ? 'done' : 'skip') : '');
+    return `<li class="${cls}">${p}</li>`;
+  }).join('');
+}
+function load() { img = new Image(); img.onload = () => { cv.width = img.width; cv.height = img.height; draw(); }; img.src = 'data:image/jpeg;base64,' + IMAGES[names[k]]; }
+function at(e) { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * img.width / r.width, (e.clientY - r.top) * img.height / r.height]; }
+cv.addEventListener('click', e => { const c = current(); if (!c) return; labels[names[k]][c] = at(e).map(v => Math.round(v * 10) / 10); draw(); });
+cv.addEventListener('mousemove', e => {
+  const [x, y] = at(e), s = 30;
+  lctx.imageSmoothingEnabled = false;
+  lctx.drawImage(img, x - s, y - s, 2 * s, 2 * s, 0, 0, 240, 240);
+  lctx.strokeStyle = '#ff3b30'; lctx.beginPath(); lctx.moveTo(120, 0); lctx.lineTo(120, 240); lctx.moveTo(0, 120); lctx.lineTo(240, 120); lctx.stroke();
+});
+function skip() { const c = current(); if (c) { labels[names[k]][c] = null; draw(); } }
+function undo() { const L = labels[names[k]], done = POINTS.filter(p => p in L); if (done.length) { delete L[done[done.length - 1]]; draw(); } }
+document.getElementById('skip').onclick = skip;
+document.getElementById('undo').onclick = undo;
+document.getElementById('next').onclick = () => { k = Math.min(names.length - 1, k + 1); load(); };
+document.getElementById('prev').onclick = () => { k = Math.max(0, k - 1); load(); };
+document.addEventListener('keydown', e => { if (e.key === 's' || e.key === 'S') skip(); if (e.key === 'z' || e.key === 'Z') undo(); });
+document.getElementById('save').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(labels, null, 2)], { type: 'application/json' }));
+  a.download = 'labels.json'; a.click();
+};
+load();
+</script>
+</body>
+</html>
