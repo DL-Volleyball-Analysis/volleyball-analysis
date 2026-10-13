@@ -13,6 +13,10 @@ and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
 - Court error in metres from hand-labelled floor points: `scripts/eval_fixed_court.py` and a labelling page.
 
 ### Changed
+- 3D: a touch is anchored only when one player is clearly nearest to the ball's ray (margin 1 m, trajectory stage 6).
+  A stress test with twelve players showed the old nearest-player rule picking the wrong player half the time at 0.6 m
+  of position error, making attacks five times worse; v0.1.0's attack gain (0.76 -> 0.31 m) holds for an unambiguous
+  toucher only.
 - Fixed end-line courts measured on hand-labelled floor points: five of six right to 0.02-0.06 m (median); Quincy is
   wrong by 1.06 m. v0.1.0 said six of six by eye.
 
