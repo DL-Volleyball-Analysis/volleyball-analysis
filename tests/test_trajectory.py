@@ -192,3 +192,42 @@ def test_without_players_a_flight_has_no_anchors():
     assert fit(CAM, r.uv, Flight(0, r.touches[-1]), FPS).anchors == []
     far = {"start": [np.array([17.0, 8.5])], "end": None}  # nobody near the ball's ray
     assert fit(CAM, r.uv, Flight(0, r.touches[-1]), FPS, players_at=far).anchors == []
+
+
+def test_an_ambiguous_toucher_is_not_anchored():
+    from vball.trajectory import anchor_for
+
+    uv = CAM.project(np.array([[10.5, 1.0, 3.2]]))[0]  # the attack's touch point
+    hitter = np.array([10.5, 1.0])
+    assert np.allclose(anchor_for(CAM, uv, [hitter, [16.0, 8.0]], 2.5, margin_m=1.0), hitter)  # nobody else close
+    near = hitter + [0.0, 0.6]  # a second player about as close to the ray
+    assert anchor_for(CAM, uv, [hitter, near], 2.5, margin_m=1.0) is None
+    assert anchor_for(CAM, uv, [hitter, near], 2.5, margin_m=0.0) is not None  # the old rule takes the nearest
+
+
+def test_crowded_attack_is_never_worse_than_no_anchor():
+    """Change safer-player-anchors: twelve players and 0.6 m of toucher error (the stress test) with the default
+    margin; the old rule (margin 0) made this attack several times worse than the unanchored fit."""
+    import importlib.util
+    from pathlib import Path
+
+    from vball.trajectory import FlightConfig
+    from vball.trajectory.synthetic import corrupt
+
+    spec = importlib.util.spec_from_file_location(
+        "ets", Path(__file__).resolve().parents[1] / "scripts" / "eval_trajectory_synthetic.py"
+    )
+    ets = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ets)
+    plain, safe = [], []
+    for seed in range(10):
+        rng = np.random.default_rng(1000 + seed)
+        r = render(CAM, TOUCHES, DURATIONS, FPS)
+        uv = corrupt(r.uv, SIZE, miss=0.3, false=0.12, noise_px=2.0, seed=seed)
+        fl = true_flights(r)[-1]
+        people = ets.court_players(np.asarray(TOUCHES[3])[:2], 3, rng, 0.6)
+        frames = np.arange(fl.start, fl.end + 1)
+        for out, pat in ((plain, None), (safe, {"start": people, "end": None})):
+            f = fit(CAM, uv, fl, FPS, FlightConfig(), players_at=pat)
+            out.append(np.median(np.linalg.norm(f.at(frames) - r.positions[frames], axis=1)))
+    assert np.median(safe) <= np.median(plain) + 0.05

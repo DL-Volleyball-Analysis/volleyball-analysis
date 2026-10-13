@@ -49,6 +49,9 @@ class FlightConfig:
     robust_rounds: int = 3
     bounded: bool = True  # keep the start inside the hall and the speed within the limit
     anchor_radius_m: float = 2.5  # nearest player to the ball's ray within this distance anchors a touch
+    # ... and only when every other player is at least this much farther from the ray: with several players near the
+    # ray a wrong anchor costs metres along it (stress test, docs/results/trajectory.md; change safer-player-anchors)
+    anchor_margin_m: float = 1.0
     anchor_sigma_m: float = 1.0  # soft prior on the ball's horizontal position at an anchored touch
     anchor_weight_px: float = 4.0  # a 1-sigma anchor deviation costs like this many pixels of reprojection
 
@@ -184,9 +187,10 @@ def _point_on_ray_at_height(cam: Camera, uv: np.ndarray, z: float) -> np.ndarray
     return c + s * d if s > 0 else None
 
 
-def anchor_for(cam: Camera, uv: np.ndarray, players_xy, radius_m: float) -> np.ndarray | None:
-    """The court position of the player nearest to the ball's ray at a touch, if within radius_m. The distance is
-    horizontal, between the player's position and the ray's points at plausible touch heights (0.5-3.5 m)."""
+def anchor_for(cam: Camera, uv: np.ndarray, players_xy, radius_m: float, margin_m: float = 0.0) -> np.ndarray | None:
+    """The court position of the player nearest to the ball's ray at a touch, if within radius_m and nearer than every
+    other player by at least margin_m (else ambiguous: None). The distance is horizontal, between the player's position
+    and the ray's points at plausible touch heights (0.5-3.5 m)."""
     if players_xy is None or not len(players_xy):
         return None
     d, c = cam.ray(uv), cam.position
@@ -198,8 +202,11 @@ def anchor_for(cam: Camera, uv: np.ndarray, players_xy, radius_m: float) -> np.n
     ab = b - a
     t = np.clip(((pts - a) @ ab) / max(ab @ ab, 1e-9), 0, 1)
     dist = np.linalg.norm(pts - (a + t[:, None] * ab), axis=1)
-    k = int(np.argmin(dist))
-    return pts[k] if dist[k] <= radius_m else None
+    order = np.argsort(dist)
+    k = int(order[0])
+    if dist[k] > radius_m or (len(order) > 1 and dist[order[1]] - dist[k] < margin_m):
+        return None
+    return pts[k]
 
 
 def fit(
@@ -272,7 +279,7 @@ def fit(
     # there may be a false one), then refit with the priors
     for end, te in (("start", 0.0), ("end", T)):
         uv_end = _project(cam, best.x, np.array([te]))[0]
-        a = anchor_for(cam, uv_end, (players_at or {}).get(end), cfg.anchor_radius_m)
+        a = anchor_for(cam, uv_end, (players_at or {}).get(end), cfg.anchor_radius_m, cfg.anchor_margin_m)
         if a is not None:
             anchors[end] = a
     if anchors:

@@ -68,7 +68,7 @@ VERSIONS = {
     "ball": f"{config.BALL_MODEL}-1",
     "players": f"{config.PLAYER_CFG.label()}-4",
     "actions": "4",  # 3: per-player classifier + ball prior; 4: serves at SERVE_FPS
-    "trajectory": "5",
+    "trajectory": "6",  # 6: anchors only for an unambiguous toucher
     "events": "0.3",
     "rallies": "3",  # 3: fixed-camera model for still end-line cameras
 }  # rallies 1: detected from cues; 2: quick check first

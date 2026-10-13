@@ -108,13 +108,14 @@ def stress(seeds: int, miss: float, false: float, noise: float) -> None:
         "12 players, 0.6 m, own segmentation": dict(crowd=True, jitter=0.6, segment=True),
         "12 players, 0.6 m, camera off": dict(crowd=True, jitter=0.6, camera=off_cam),
     }
+    margins = {"no anchors": None, "margin 0 (old)": 0.0, "margin 0.5": 0.5, "margin 1.0 (default)": 1.0}
     print(
-        f"{seeds} seeds, {miss:.0%} missed (bursts), {false:.0%} false, {noise} px noise; median 3D error (m), "
-        "robust fit -> with anchors"
+        f"{seeds} seeds, {miss:.0%} missed (bursts), {false:.0%} false, {noise} px noise; median 3D error (m) of the "
+        "set / the attack; wrong anchors at the default margin"
     )
-    print(f"{'condition':40s}" + "".join(f"{n:>16s}" for n in NAMES) + "  wrong anchors  unmatched")
+    print(f"{'condition':40s}" + "".join(f"{m:>22s}" for m in margins) + "   wrong   unmatched")
     for name, c in conditions.items():
-        plain, anch = {n: [] for n in NAMES}, {n: [] for n in NAMES}
+        errs = {m: {n: [] for n in NAMES} for m in margins}
         wrong = total = unmatched = 0
         for seed in range(seeds):
             rng = np.random.default_rng(1000 + seed)
@@ -134,28 +135,28 @@ def stress(seeds: int, miss: float, false: float, noise: float) -> None:
                 for k, t in enumerate(TOUCHES)
             ]
             for k, (n, fl, tf) in enumerate(zip(NAMES, flights, truth)):
-                if fl is None:
-                    unmatched += 1
-                    plain[n].append(np.nan)
-                    anch[n].append(np.nan)
-                    continue
                 frames = np.arange(tf.start, tf.end + 1)
-                for store, pat in ((plain, None), (anch, {"start": people[k], "end": people[k + 1]})):
-                    try:
-                        f = fit(cam, uv, fl, FPS, FlightConfig(), players_at=pat)
-                    except ValueError:
-                        store[n].append(np.nan)
+                unmatched += fl is None
+                for m, margin in margins.items():
+                    if fl is None:
+                        errs[m][n].append(np.nan)
                         continue
-                    store[n].append(np.median(np.linalg.norm(f.at(frames) - r.positions[frames], axis=1)))
-                    if pat is not None:
+                    pat = None if margin is None else {"start": people[k], "end": people[k + 1]}
+                    try:
+                        f = fit(cam, uv, fl, FPS, FlightConfig(anchor_margin_m=margin or 0.0), players_at=pat)
+                    except ValueError:
+                        errs[m][n].append(np.nan)
+                        continue
+                    errs[m][n].append(np.median(np.linalg.norm(f.at(frames) - r.positions[frames], axis=1)))
+                    if margin == 1.0:
                         for end, idx in (("start", k), ("end", k + 1)):
                             if end in f.anchors and people[idx] is not None:
                                 total += 1
-                                chosen = f.anchor_xy[end]
-                                if chosen is not None and np.linalg.norm(np.asarray(chosen) - people[idx][0]) > 1e-9:
-                                    wrong += 1
-        cells = "".join(f"{np.nanmedian(plain[n]):7.2f} -> {np.nanmedian(anch[n]):5.2f}" for n in NAMES)
-        print(f"{name:40s}{cells}  {wrong:5d}/{total:<5d}  {unmatched:5d}")
+                                wrong += bool(np.linalg.norm(np.asarray(f.anchor_xy[end]) - people[idx][0]) > 1e-9)
+        cells = "".join(
+            f"{np.nanmedian(errs[m]['set']):12.2f} /{np.nanmedian(errs[m]['attack']):6.2f}  " for m in margins
+        )
+        print(f"{name:40s}{cells}  {wrong:3d}/{total:<4d}  {unmatched:4d}")
 
 
 def main():

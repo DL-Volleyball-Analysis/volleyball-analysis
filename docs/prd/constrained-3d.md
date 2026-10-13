@@ -42,3 +42,16 @@ the rest of the system knows (court, net, players) to remove the depth ambiguity
 
 ## Dependencies
 - `add-ball-trajectory-3d` (fit, stage, board), `add-player-tracking` (court positions of players).
+
+## Addendum 2026-10-13: anchors only for an unambiguous toucher
+A stress test (docs/results/trajectory.md, "Player anchors under realistic conditions") shows that the anchor's gain
+holds only when the touching player is the only candidate near the ball's ray. With twelve players on court and the
+toucher's position off by 0.6 m, half the anchors pick another player along the ray and the attack error grows from
+0.76 m to 3.9 m, five times the unanchored fit. The pipeline passes every placed player as a candidate, so real
+flights are exposed to this.
+
+- **What:** anchor a touch only when the nearest player to the ray is nearer than the second-nearest by a margin
+  (default 1.0 m: in the stress test never worse than no anchor); otherwise fit without that anchor. The margin is a
+  setting; the stress test reports 0.5 m too.
+- **Success:** in the stress test the anchored fit is never worse than the unanchored one at the default margin; the
+  ablation's unambiguous case keeps its gain; real clips: flights, rejections and quality before and after reported.
