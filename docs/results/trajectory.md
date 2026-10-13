@@ -152,3 +152,25 @@ lost in the 2026-10-13 database incident, and the rerun from the court stage let
 right by eye (far end line, far attack line, the centre line under the net posts, near attack line and near end line all
 on the painted lines, attack-line dashes included). The shot calibrates and gives 16 flights, 2 left out as physically
 impossible and 13 of the rest low quality: the 2D ball track remains the limit.
+
+## 3D flights on every evaluation clip (trajectory stage 5, 2026-10-13)
+Counts from the web app's analysis results (`flights.json`, `trajectory.json`). Kept flights passed the physical bounds;
+rejected ones did not (e.g. faster than 40 m/s, a path below the floor); high quality = fit residual and depth
+uncertainty both small. These are the system's own checks, not accuracy (there is no 3D ground truth).
+
+| Clip | Length | Kept | Rejected | Rejected share | High quality |
+|---|---|---|---|---|---|
+| fixed_gcu_ucla | 3 min | 115 | 29 | 20% | 42 |
+| fixed_hawaii_irvine | 3 min | 68 | 34 | 33% | 12 |
+| fixed_hawaii_pennstate | 3 min | 102 | 102 | 50% | 15 |
+| fixed_quincy_ballstate | 3 min | 187 | 53 | 22% | 43 |
+| fixed_ucla_concordia | 3 min | 76 | 16 | 17% | 25 |
+| fixed_usc_pepperdine | 3 min | 138 | 89 | 39% | 18 |
+| broadcast_side_rally | 8 s | 12 | 0 | 0% | 3 |
+| broadcast_back_view | 14 s | 16 | 2 | 11% | 3 |
+| broadcast_side_high_women | 6 s | 4 | 1 | 20% | 0 |
+| broadcast_side_high_men | 5 s | 1 | 1 | 50% | 0 |
+| broadcast_back_rally | 8 s | 0 | 0 | | |
+
+broadcast_back_rally has no calibrated camera (no usable court in its shot). Rejection does not follow the court's line
+evidence (hawaii_pennstate has the best-supported court and the most rejections), which points at the 2D ball track.

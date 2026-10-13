@@ -5,6 +5,18 @@ and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
 
 ## [Unreleased]
 
+### Added
+- Rallies stage version 3: still end-line cameras use the fixed-camera rally model (cues shared with its training
+  script); on the six fixed clips it reproduces the offline result (F1 0.76).
+- Rolling backups of the app database (`vball_app.backup`): at start and hourly after jobs, newest 10 kept, restore
+  saves the current file first.
+- Court error in metres from hand-labelled floor points: `scripts/eval_fixed_court.py` and a labelling page.
+
+### Fixed
+- The backend tests could reach the real `webapp/data` and emptied the local database; test data is now isolated with
+  guards. The 11 analysed videos were restored with their results; user corrections and tags were lost.
+- broadcast_back_view gets its court from line evidence and 16 3D flights (it had none).
+
 ## [0.1.0] - 2026-10-13
 
 First release: the rebuilt analysis system after the capstone project, with its measurements.
