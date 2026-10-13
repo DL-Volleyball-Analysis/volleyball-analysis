@@ -72,6 +72,7 @@ class FlightFit:
     reasons: list[str] = field(default_factory=list)
     dropped: int = 0  # detections left out as inconsistent with the flight
     anchors: list[str] = field(default_factory=list)  # "start" / "end": touches pulled toward a player
+    anchor_xy: dict[str, list[float]] = field(default_factory=dict)  # the chosen player's court position per anchor
 
     def at(self, frames) -> np.ndarray:
         t = (np.asarray(frames, float) - self.start) / self.fps
@@ -310,6 +311,7 @@ def fit(
         reasons,
         dropped,
         sorted(anchors),
+        {end: [float(v) for v in xy] for end, xy in anchors.items()},
     )
 
 

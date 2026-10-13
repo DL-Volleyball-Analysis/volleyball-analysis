@@ -174,3 +174,35 @@ uncertainty both small. These are the system's own checks, not accuracy (there i
 
 broadcast_back_rally has no calibrated camera (no usable court in its shot). Rejection does not follow the court's line
 evidence (hawaii_pennstate has the best-supported court and the most rejections), which points at the 2D ball track.
+
+## Player anchors under realistic conditions: a stress test (2026-10-13)
+`scripts/eval_trajectory_synthetic.py --stress --seeds 20`: the ablation's corrupted detections (30% missed in bursts,
+12% false, 2 px), robust fit with and without anchors, under conditions the ablation did not test. Median 3D error (m)
+of the attack, and anchors on the wrong player:
+
+| Condition | Without anchors | With anchors | Wrong anchors |
+|---|---|---|---|
+| Touching player only, 0.3 m off (the ablation's setting) | 0.76 | 0.32 | 0 / 140 |
+| Twelve players in a match formation, toucher 0.3 m off | 0.76 | 0.40 | 20 / 140 |
+| Twelve players, toucher 0.6 m off | 0.76 | **3.91** | 67 / 140 |
+| Twelve players, toucher 1.0 m off | 0.76 | **5.37** | 76 / 140 |
+| Twelve players, 0.6 m, camera slightly off (f +3%, 0.3 m) | 0.68 | **3.90** | 61 / 140 |
+| Twelve players, 0.6 m, the system's own segmentation | 3.08 | 1.68 | 29 / 45 (48 of 80 flights not matched) |
+
+**The published gain depends on who is near the ray.** With only the touching player as a candidate the anchor is
+always right; with twelve players and a toucher position off by 0.6 m (easily reached on real footage: court error,
+jumping, foot position), half the anchors pick another player, often a blocker or a teammate along the ray, which is
+exactly the depth direction the anchor was meant to fix, and the attack error grows fivefold over the unanchored fit.
+Under these detection errors the segmentation itself fails on most flights, with or without anchors.
+
+A prototype that anchors only when the nearest player is clearly nearer than the second (prototype, not in the code):
+
+| Condition (attack) | Without anchors | Margin 0.5 m | Margin 1.0 m |
+|---|---|---|---|
+| Twelve players, 0.3 m | 0.76 | 0.59 | 0.76 |
+| Twelve players, 0.6 m | 0.76 | 0.59 | 0.76 |
+| Twelve players, 1.0 m | 0.76 | 1.11 | 0.76 |
+| Twelve players, 0.6 m, camera off | 0.68 | 0.61 | 0.68 |
+
+A 1 m margin never makes the fit worse but seldom anchors; 0.5 m keeps a smaller gain (about 20% on the attack) up to
+0.6 m of position error. The claim "anchors cut the attack error by 59%" holds only for an unambiguous toucher.
