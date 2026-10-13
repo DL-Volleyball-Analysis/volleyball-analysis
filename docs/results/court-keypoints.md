@@ -171,3 +171,25 @@ camera needs one labelled frame per clip, task 3.1). What it took, each step fou
 - A floor test: perspective (some court direction vanishes within 20 image widths), a near-horizontal horizon with the
   court below it. Without it a scoreboard panel on the Quincy wall won. A focal-length test does not work: a symmetric
   end-line view leaves the focal length undetermined.
+
+## Line fit on light floors: a whiteness channel, tried and not adopted (2026-10-13)
+Two full Watchdog matches have no usable court (Pepperdine: thin white lines on a light grey floor with many light
+reflections; McKendree: white lines on light orange wood). Their white lines differ from the floor more in saturation
+than in brightness, so the line test was run on V - S (bright and unsaturated) instead of grey, as a third mask next to
+bright and dark lines, the best-scoring fit winning:
+
+| Plate | Bright: support / good lines | Dark | Whiteness | Picked court |
+|---|---|---|---|---|
+| fixed_gcu_ucla | 0.27 / 3 | **0.82 / 7** | 0.39 / 4 | same as before (dark lines) |
+| fixed_hawaii_irvine | 0.94 / 7 | none | **1.00 / 7** | same court, more support |
+| fixed_hawaii_pennstate | 0.98 / 7 | 0.55 / 3 | **1.00 / 7** | same |
+| fixed_quincy_ballstate | 0.74 / 5 | 0.51 / 5 | **0.72 / 6** | same |
+| fixed_ucla_concordia | 0.76 / 6 | 0.73 / 3 | **0.78 / 6** | same |
+| fixed_usc_pepperdine | 0.86 / 6 | 0.26 / 1 | **0.99 / 7** | same |
+| Pepperdine (full match) | **0.57 / 6** | 0.55 / 4 | 0.52 / 5 | still wrong (pulled by reflections) |
+| McKendree (full match) | 0.43 / 4 | 0.41 / 4 | **0.65 / 6** | still wrong (squeezed into the far half; the near end line is likely hidden under the banner at the bottom edge) |
+
+Whiteness raises the support of correct fits but does not fix the two failures, which stay below the 0.70 gate and are
+still flagged needs_review. Not adopted: it would change every court result (stage version bump) without the gain it
+was meant for. Next ideas: mask specular highlights (bright blobs that move between frames of the plate's input) and
+allow fits whose near end line is outside the image.
