@@ -154,6 +154,8 @@ on the painted lines, attack-line dashes included). The shot calibrates and give
 impossible and 13 of the rest low quality: the 2D ball track remains the limit.
 
 ## 3D flights on every evaluation clip (trajectory stage 5, 2026-10-13)
+
+(Superseded by stage 6 below: anchors only for an unambiguous toucher.)
 Counts from the web app's analysis results (`flights.json`, `trajectory.json`). Kept flights passed the physical bounds;
 rejected ones did not (e.g. faster than 40 m/s, a path below the floor); high quality = fit residual and depth
 uncertainty both small. These are the system's own checks, not accuracy (there is no 3D ground truth).
@@ -195,7 +197,8 @@ jumping, foot position), half the anchors pick another player, often a blocker o
 exactly the depth direction the anchor was meant to fix, and the attack error grows fivefold over the unanchored fit.
 Under these detection errors the segmentation itself fails on most flights, with or without anchors.
 
-A prototype that anchors only when the nearest player is clearly nearer than the second (prototype, not in the code):
+Anchoring only when the nearest player is clearly nearer than the second (change safer-player-anchors, trajectory stage
+version 6, default margin 1.0 m):
 
 | Condition (attack) | Without anchors | Margin 0.5 m | Margin 1.0 m |
 |---|---|---|---|
@@ -204,5 +207,32 @@ A prototype that anchors only when the nearest player is clearly nearer than the
 | Twelve players, 1.0 m | 0.76 | 1.11 | 0.76 |
 | Twelve players, 0.6 m, camera off | 0.68 | 0.61 | 0.68 |
 
-A 1 m margin never makes the fit worse but seldom anchors; 0.5 m keeps a smaller gain (about 20% on the attack) up to
-0.6 m of position error. The claim "anchors cut the attack error by 59%" holds only for an unambiguous toucher.
+A 1 m margin never makes the fit worse but seldom anchors in a crowd; 0.5 m keeps a smaller gain (about 20% on the
+attack) up to 0.6 m of position error and is worse at 1.0 m. A wrong anchor costs metres and a right one gains
+decimetres, and the real position error of a touch is unknown, so the default is 1.0 m. The claim "anchors cut the
+attack error by 59%" holds only for an unambiguous toucher (the first row: 0.76 -> 0.32 m, kept by the default).
+
+### Real clips before and after the margin (trajectory stage 5 -> 6, 2026-10-13)
+| Clip | Kept | Rejected | High quality | Flights with an anchor |
+|---|---|---|---|---|
+| fixed_gcu_ucla | 115 -> 108 | 29 -> 36 | 42 -> 12 | 110 -> 60 |
+| fixed_hawaii_irvine | 68 -> 45 | 34 -> 57 | 12 -> 4 | 63 -> 25 |
+| fixed_hawaii_pennstate | 102 -> 69 | 102 -> 135 | 15 -> 5 | 95 -> 41 |
+| fixed_quincy_ballstate | 187 -> 160 | 53 -> 80 | 43 -> 33 | 177 -> 74 |
+| fixed_ucla_concordia | 76 -> 56 | 16 -> 36 | 25 -> 6 | 75 -> 35 |
+| fixed_usc_pepperdine | 138 -> 111 | 89 -> 116 | 18 -> 11 | 130 -> 56 |
+| broadcast_side_rally | 12 -> 12 | 0 -> 0 | 3 -> 3 | 12 -> 2 |
+| broadcast_back_view | 16 -> 15 | 2 -> 3 | 3 -> 0 | 16 -> 5 |
+| broadcast_side_high_women | 4 -> 2 | 1 -> 3 | 0 -> 0 | 4 -> 0 |
+| broadcast_side_high_men | 1 -> 1 | 1 -> 1 | 0 -> 0 | 1 -> 1 |
+
+Before, nine in ten real flights had an anchor; on fixed clips with twelve players on court, about half of them now
+have none because another player was about as close to the ray. Fewer flights pass the physical checks and far fewer
+are rated high quality. These checks cannot tell whether a flight is right: an anchor narrows the reported depth
+uncertainty and pulls the path into the hall whether it picked the right player or not, so the earlier counts included
+flights held in place by wrong anchors. The new counts reflect the fit without that help. Accuracy on real flights stays
+unmeasured until there is real 3D ground truth; the margin follows from the synthetic stress test, where a wrong anchor
+costs metres.
+
+With stage 6 the six fixed clips keep 45-160 flights per 3 minutes, reject 25-66% as impossible, and rate 7-21% of the
+kept ones high quality (the table "3D flights on every evaluation clip" above is stage 5).
