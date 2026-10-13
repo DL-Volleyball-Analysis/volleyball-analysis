@@ -162,8 +162,8 @@ plate (median of 60 frames: players gone). Line evidence of the chosen fit, chec
 | ucla_concordia | multi-sport, basketball lines | white | 6 | 0.76 | 9 s |
 | usc_pepperdine | volleyball only, large logo | white | 6 | 0.85 | 9 s |
 
-All six correct by eye (court lines on the painted lines; no labelled frames yet, so no error in metres: a fixed
-camera needs one labelled frame per clip, task 3.1). What it took, each step found on these clips:
+All six looked correct by eye (court lines on the painted lines). Corrected 2026-10-13 by labelled floor points (section
+below): five are right to a few centimetres, Quincy is wrong by about 1 m. What it took, each step found on these clips:
 - Line pixels by the brighter-than-both-sides test (Farin et al.) instead of a white top-hat: the top-hat kept wood
   grain and crowd texture, and the search then preferred courts squashed onto a stripe.
 - A per-line support term in the score, and rejecting fans and slivers (interior angle under 25 deg).
@@ -193,3 +193,28 @@ Whiteness raises the support of correct fits but does not fix the two failures, 
 still flagged needs_review. Not adopted: it would change every court result (stage version bump) without the gain it
 was meant for. Next ideas: mask specular highlights (bright blobs that move between frames of the plate's input) and
 allow fits whose near end line is outside the image.
+
+## Fixed end-line cameras: court error in metres from labelled floor points (2026-10-13)
+Verify-court-by-lines task 3.1. On each clip's background plate the owner clicked six floor points (near end line and
+near attack line where they meet the sidelines, and the centre line under the net at both sidelines;
+`scripts/eval_fixed_court.py`, labels in `outputs/court/fixed_labels/labels.json`). Each click is mapped to the court
+with the app's court for that shot and compared with the point's true position (under the court's symmetry).
+
+| Clip | Median error | Max error | Line support / good lines | Focal length from the net |
+|---|---|---|---|---|
+| fixed_hawaii_pennstate | 0.018 m | 0.027 m | 0.98 / 7 | 5424 px |
+| fixed_ucla_concordia | 0.024 m | 0.063 m | 0.75 / 6 | 4340 px |
+| fixed_hawaii_irvine | 0.032 m | 0.038 m | 0.94 / 7 | 4969 px |
+| fixed_usc_pepperdine | 0.050 m | 0.100 m | 0.85 / 6 | 3810 px |
+| fixed_gcu_ucla | 0.058 m | 0.469 m | 0.79 / 7 (dark lines) | not found |
+| **fixed_quincy_ballstate** | **1.058 m** | **2.488 m** | 0.78 / 5 | **801 px** |
+
+All 36 points: median 0.041 m, 86% within 0.3 m. The five right courts: median 0.032 m, 97% within 0.3 m.
+
+**Quincy is wrong, which the by-eye check had missed.** Its near attack line is right (0.05 and 0.14 m), so the overlay
+looks plausible, but the court is stretched in depth: the centre line is drawn about 1 m in front of the net posts and
+the near end line about 2.4 m beyond the real one, outside the image. The earlier statement "right on all six clips by
+eye" is corrected to five of six. Two signs stand out on this clip only: the fewest supported lines (5 of 7) and a focal
+length from the net tape about five times shorter than on the other clips, the stretched floor forcing a wide-angle
+camera. Both are candidate checks for a doubtful line fit; they were noticed on this test set, so they need other arenas
+before they become a rule.

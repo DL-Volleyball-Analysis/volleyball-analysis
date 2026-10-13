@@ -12,6 +12,10 @@ and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
   saves the current file first.
 - Court error in metres from hand-labelled floor points: `scripts/eval_fixed_court.py` and a labelling page.
 
+### Changed
+- Fixed end-line courts measured on hand-labelled floor points: five of six right to 0.02-0.06 m (median); Quincy is
+  wrong by 1.06 m. v0.1.0 said six of six by eye.
+
 ### Fixed
 - The backend tests could reach the real `webapp/data` and emptied the local database; test data is now isolated with
   guards. The 11 analysed videos were restored with their results; user corrections and tags were lost.

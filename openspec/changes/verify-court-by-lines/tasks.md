@@ -9,7 +9,7 @@
 - [ ] 2.2 Rerun the fixed and broadcast clips; court, players, 3D before / after
 
 ## 3. Evaluation
-- [ ] 3.1 One labelled frame per fixed clip; error in court metres; results in docs/results/court-keypoints.md
+- [x] 3.1 One labelled frame per fixed clip; error in court metres; results in docs/results/court-keypoints.md (five clips 0.02-0.06 m median; Quincy wrong, 1.06 m)
 
 ## 4. Phase 2 (only if needed)
 - [ ] 4.1 Moving cameras: line fit per sampled frame with players masked

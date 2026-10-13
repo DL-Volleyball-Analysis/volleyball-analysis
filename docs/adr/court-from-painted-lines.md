@@ -17,8 +17,9 @@ cross lines) to them, scored by how many line pixels they explain. Reject fits t
 well supported; otherwise the shot is marked needs_review (`vball.court_lines`, `court_registration.with_line_evidence`).
 
 ## Consequences
-- 6 of 6 fixed clips get the right court by eye, without training data; error in metres is not measured yet (one
-  labelled frame per clip is the next step).
+- Without training data, five of six fixed clips get a court right to 0.02-0.06 m (median, hand-labelled floor points);
+  one (Quincy) passes the checks but is stretched in depth, 1.06 m off, which the earlier by-eye check had missed
+  (docs/results/court-keypoints.md). A wrong fit can therefore pass the line-support gate.
 - Works only when the camera is still and the lines are visible: on a light floor with thin white lines and on one
   arena with a shifted fit, it fails and correctly marks the shot needs_review (two of six full matches).
 - Adds a few seconds per still shot; moving cameras keep the keypoint models.

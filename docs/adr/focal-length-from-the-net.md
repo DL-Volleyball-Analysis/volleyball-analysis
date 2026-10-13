@@ -16,8 +16,9 @@ length is the median of the near-best candidates. Calibration then also starts f
 poses with the camera below the floor (`court_lines.focal_from_net`, `calibration`).
 
 ## Consequences
-- All six fixed clips calibrate, with plausible camera positions; 3D flights exist on fixed end-line views for the
-  first time.
+- All six fixed clips calibrate and 3D flights exist on fixed end-line views for the first time. On Quincy, whose court
+  is stretched in depth, the focal length comes out about five times shorter than on the others: a sign the estimate
+  can also flag a wrong court.
 - Men's and women's heights are not told apart from the image; the projection of both is checked instead.
 - Depends on the net being visible and unobstructed in the background plate.
 
