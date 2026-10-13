@@ -6,6 +6,9 @@ and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
 ## [Unreleased]
 
 ### Added
+- Action evaluation: 95% intervals by resampling whole test matches (`--bootstrap`). The 0.303 -> 0.678 gain is
+  per-player in-domain classification; the ball prior adds +0.005 to +0.014 with annotated balls and nothing
+  measurable with detected balls.
 - Rallies stage version 3: still end-line cameras use the fixed-camera rally model (cues shared with its training
   script); on the six fixed clips it reproduces the offline result (F1 0.76).
 - Rolling backups of the app database (`vball_app.backup`): at start and hourly after jobs, newest 10 kept, restore
