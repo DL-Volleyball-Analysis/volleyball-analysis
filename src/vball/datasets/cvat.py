@@ -65,6 +65,26 @@ def read_court_labels(xml_path: Path, label: str = "court") -> list[CourtLabel]:
     return out
 
 
+def api_json_to_xml(data: dict) -> str:
+    """CVAT for images 1.1 XML from the compact JSON the labelling page posts (frames: [name, width, height];
+    shapes: frame, label, el: [point name, x, y, outside, occluded]) read from CVAT's REST API."""
+    by_frame: dict[int, list[dict]] = {}
+    for shape in data["shapes"]:
+        by_frame.setdefault(shape["frame"], []).append(shape)
+    parts = ["<annotations>"]
+    for i, (name, w, h) in enumerate(data["frames"]):
+        parts.append(f'<image id="{i}" name="{name}" width="{w}" height="{h}">')
+        for shape in by_frame.get(i, []):
+            pts = "".join(
+                f'<points label="{n}" outside="{o}" occluded="{c}" points="{x},{y}"></points>'
+                for n, x, y, o, c in shape["el"]
+            )
+            parts.append(f'<skeleton label="{shape["label"]}">{pts}</skeleton>')
+        parts.append("</image>")
+    parts.append("</annotations>")
+    return "".join(parts)
+
+
 def floor_residuals(lab: CourtLabel) -> tuple[np.ndarray | None, dict[int, float]]:
     """Homography court metres -> image from the placed floor points, and each point's distance in pixels from it.
 
@@ -96,9 +116,11 @@ def check(lab: CourtLabel, max_err_frac: float = 0.006) -> list[str]:
     phone lens's distortion, which a homography cannot model."""
     problems = []
     H, res = floor_residuals(lab)
-    if H is None:
-        n = int((lab.points[K6Y7R_FLOOR_IDS, 2] > 0).sum())
-        problems.append(f"only {n} floor points placed (need 4)")
+    n = int((lab.points[K6Y7R_FLOOR_IDS, 2] > 0).sum())
+    if H is None and n < 4:
+        problems.append(f"only {n} floor points placed (need 4 to check them)")
+    # n >= 4 without a fit: all on one sideline (a low side camera sees only the far one). The label is valid for
+    # training but cannot be checked here.
     for k, e in res.items():
         if e > max_err_frac * lab.width:
             problems.append(f"{POINT_NAMES[k]} does not fit the other floor points ({e:.0f} px)")

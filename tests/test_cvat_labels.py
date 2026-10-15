@@ -58,3 +58,8 @@ def test_swapped_points_are_caught(tmp_path):
 def test_too_few_points(tmp_path):
     lab = cvat.read_court_labels(_xml(tmp_path, _true_points(), outside=set(range(3, 10))))[0]
     assert any("need 4" in p for p in cvat.check(lab))
+
+
+def test_one_sideline_only_is_valid(tmp_path):
+    lab = cvat.read_court_labels(_xml(tmp_path, _true_points(), outside=set(range(5, 10))))[0]
+    assert cvat.check(lab) == []

@@ -9,6 +9,7 @@ Usage:
 """
 
 import argparse
+import json
 from pathlib import Path
 
 import cv2
@@ -27,7 +28,12 @@ def main():
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    labels = cvat.read_court_labels(Path(args.xml))
+    src = Path(args.xml)
+    if src.suffix == ".json":  # compact JSON read from CVAT's REST API
+        xml = src.with_suffix(".xml")
+        xml.write_text(cvat.api_json_to_xml(json.loads(src.read_text())))
+        src = xml
+    labels = cvat.read_court_labels(src)
     for lab in labels:
         _, err, n = cvat.floor_fit(lab)
         problems = cvat.check(lab)
