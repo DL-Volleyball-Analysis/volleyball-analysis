@@ -7,20 +7,27 @@ the owner will label such footage over time. Correcting the system's output is s
 from scratch, and every correction becomes training and test data. This loop is needed before any retraining,
 including the multi-task model (change add-multitask-model).
 
+A survey of annotation tools (2026-10-16: CVAT, Label Studio, X-AnyLabeling, the TrackNet labelling tool, Roboflow)
+found that CVAT already does what we need: video tracks with keyframe interpolation, keypoint skeletons, per-frame
+points, attributes, import of pre-annotations and export in standard formats, self-hosted with Docker (MIT licence).
+Building our own labelling UI would be slower and harder to trust; our own code shrinks to converters that can be
+tested exhaustively.
+
 ## What Changes
 
-- Review app: a labelling mode on sampled frames of an analysed video, prefilled from the pipeline: court points
-  (the 14 keypoints), ball position or "not visible", player boxes with ids, action per player, rally winner per rally.
-  Accept, move, add, delete; a frame may be labelled for any subset of tasks.
-- Backend: labels stored per video and frame with the task, the user and the time; never overwritten, a new version
-  supersedes; the app database backup covers them.
-- `vball.datasets.labels`: export to one dataset format (images plus per-task annotations, a split by video) that the
-  public datasets are also converted into.
-- Frame choice: frames where the pipeline is least sure first (low court status, missed ball, crowded players).
-- A label count per task and per video in the app.
+- CVAT, self-hosted with Docker on the owner's machine (not part of this repository; setup documented).
+- `vball.datasets.cvat`: pipeline output -> CVAT pre-annotations (players as tracks with ids, the 14 court keypoints as
+  a skeleton, the ball as a per-frame point with "outside" when not visible, actions as track attributes); CVAT export
+  -> our dataset format (images plus per-task annotations, split by whole video). Only edited or accepted items are
+  labels.
+- Checks on every export: round trip of SportsMOT ground truth through both converters scores 1.0; overlays drawn
+  back on sampled frames; label sanity (court keypoints fit a homography within tolerance, no ball jump beyond physics,
+  at most twelve players per frame); a re-labelled subset measures the labeller's own consistency.
+- Rally winners keep using the review app's existing winner override.
+- Frame choice: the frames where the pipeline is least sure are exported first.
 
 ## Impact
 
 - Specs: labelling (new).
-- Code: webapp backend (labels API and table), frontend (labelling mode), `vball.datasets.labels`.
-- No model changes.
+- Code: `vball.datasets.cvat`, a script `scripts/cvat_labels.py` (export / import / check), docs/labelling.md.
+- No model changes; no labelling UI in the review app.

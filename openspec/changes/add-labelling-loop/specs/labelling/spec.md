@@ -1,29 +1,28 @@
 ## ADDED Requirements
 
-### Requirement: Correcting predictions into labels
-The review app SHALL let the user label sampled frames of an analysed video for court points, ball, players, actions
-and rally winner, starting from the pipeline's prediction, and SHALL store a prediction as a label only when the user
-explicitly accepts or edits it.
+### Requirement: Pre-annotations from the pipeline
+The project SHALL export an analysed video's pipeline output as CVAT pre-annotations (players as tracks with ids, the
+14 court keypoints, the ball as a per-frame point or outside, actions as attributes), marked as model predictions.
 
-#### Scenario: Accepting a court
-- **WHEN** the user opens a frame whose predicted court is right and presses accept
-- **THEN** the 14 court points are stored as a court label for that frame
+#### Scenario: Ball not detected
+- **WHEN** the pipeline has no ball in a frame
+- **THEN** the ball point is marked outside in that frame
 
-#### Scenario: Frame not reviewed
-- **WHEN** the user leaves a frame without accepting or editing a task
-- **THEN** no label is stored for that task
+### Requirement: Only human-touched labels
+The import SHALL keep an item as a label only when the labeller edited or explicitly accepted it, and SHALL drop items
+still marked as model predictions.
 
-### Requirement: Partial, versioned labels
-A label SHALL belong to one video, frame and task, record its author and time, and never be overwritten; a newer
-version SHALL supersede it, and a frame MAY carry labels for any subset of tasks.
+#### Scenario: Untouched prediction
+- **WHEN** a player box imported as a prediction was never edited or accepted
+- **THEN** it is not in the dataset
 
-#### Scenario: Correcting a label later
-- **WHEN** the user moves a ball label that was saved yesterday
-- **THEN** both versions are kept and the export uses the newer one
+### Requirement: Verified converters and split by video
+The converters SHALL reproduce labelled ground truth exactly through a round trip (a tracking score of 1.0 on
+SportsMOT ground truth), and the dataset SHALL assign whole videos to train, validation or test.
 
-### Requirement: Dataset export split by video
-The project SHALL export the labels together with the converted public datasets in one format, assigning whole videos
-to train, validation or test, with the test videos fixed once chosen.
+#### Scenario: Round trip
+- **WHEN** SportsMOT ground truth is exported to CVAT format and imported back
+- **THEN** evaluating it against the original gives HOTA 1.0
 
 #### Scenario: Two frames of one video
 - **WHEN** a video has labelled frames

@@ -164,3 +164,16 @@ switches in a crowded, occluded scene) and actions from a classifier trained on 
 player detector trained on gym data as well (VolliQ: one indoor match, 4 cameras, 1.16 M player boxes, CC BY-NC-SA 4.0).
 
 > The 4K moving-camera clips referred to above (Canada vs Italy, Choforo55 gym, Hawaii vs UCI, Long Beach vs UCLA) were removed on 2026-10-12 at the owner's request; testing moved to fixed end-line camera clips (data/videos/fixed).
+
+## Re-identification, step 1: appearance from the detector (2026-10-16, change add-player-reid)
+BoT-SORT with `with_reid: True` and `model: auto` (appearance from the fine-tuned detector's own features, no training;
+`src/vball/trackers/botsort_reid.yaml`), same detector, 960 px, 10 fps, 15 SportsMOT volleyball validation sequences:
+
+| Tracker | HOTA | IDF1 | MOTA | Recall | Precision | ID switches |
+|---|---|---|---|---|---|---|
+| BoT-SORT (motion only) | 0.636 | 0.690 | 0.919 | 0.956 | 0.970 | 411 |
+| BoT-SORT + detector appearance | **0.647** | **0.714** | **0.921** | 0.959 | 0.968 | **388** |
+
+IDF1 +0.024, HOTA +0.011, 23 fewer identity switches: it passes the adoption rule (IDF1 up, HOTA not down) but misses
+the target (IDF1 0.75), so step 2 (a trained embedding) follows. Time per frame is not reported here: the analysis
+worker ran on the same CPU during this evaluation (some sequences 2-4x slower); it will be measured on an idle machine.

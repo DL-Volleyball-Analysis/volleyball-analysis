@@ -44,7 +44,7 @@ class TrackerConfig:
 
     def label(self) -> str:
         model = Path(self.model).stem  # the file name only: labels name output folders and stage versions
-        return f"{model}_{self.imgsz}_{self.tracker.removesuffix('.yaml')}_{self.det_fps:g}fps"
+        return f"{model}_{self.imgsz}_{Path(self.tracker).stem}_{self.det_fps:g}fps"
 
 
 def ultralytics_step(cfg: TrackerConfig) -> Step:
