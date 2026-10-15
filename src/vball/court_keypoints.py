@@ -55,6 +55,49 @@ K6Y7R_FLIP_IDX = [4, 3, 2, 1, 0, 9, 8, 7, 6, 5, 10, 11, 12, 13]
 VNL4_TO_K6Y7R = [1, 3, 6, 8]
 
 
+# Index permutation for the court turned by 180 degrees (far sideline <-> near sideline, ends swapped): the same
+# floor seen by the camera, numbered from the other side. Net points follow their centre point (2 <-> 7).
+K6Y7R_ROT180_IDX = [5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 13, 12, 11, 10]
+
+
+def _floor_homography(kp: np.ndarray):
+    ids = [i for i in K6Y7R_FLOOR_IDS if kp[i, 2] > 0]
+    if len(ids) < 4:
+        return None
+    H, _ = cv2.findHomography(K6Y7R_FLOOR[ids].astype(np.float64), kp[ids, :2].astype(np.float64), 0)
+    return H
+
+
+def _mirrored(H: np.ndarray) -> bool:
+    """True when the court -> image map reverses orientation at the court centre. A camera sees the floor from above,
+    so every correctly numbered label has the same orientation (court x, y right-handed -> image y down: det < 0);
+    the other sign is a mirror-numbered label."""
+    x = np.array([LENGTH / 2, WIDTH / 2, 1.0])
+    w = H[2] @ x
+    J = (H[:2, :2] * w - np.outer(H[:2] @ x, H[2, :2])) / w**2
+    return bool(np.linalg.det(J) > 0)
+
+
+def canonical_numbering(kp: np.ndarray) -> np.ndarray:
+    """The label renumbered to the one convention the court model is trained on. A volleyball court looks the same
+    after a 180-degree turn, so two numberings fit every view; labellers and mirror augmentation mix them (end-line
+    views especially). Rule: (1) a mirror-numbered label is permuted by the flip; (2) of the two remaining
+    numberings, the one whose centre point 2 lies further up-left in the image (smaller x + y) than point 7. Side
+    views get the far sideline as 0-4 left to right (the k6y7r rule), end-line views the left sideline as 0-4.
+    `kp` is (14, 3) in pixels (x, y, visibility); labels with fewer than four floor points or
+    all on one line are returned unchanged (their orientation is unknown)."""
+    H = _floor_homography(kp)
+    if H is None:
+        return kp
+    if _mirrored(H):
+        kp = kp[K6Y7R_FLIP_IDX]
+        H = _floor_homography(kp)
+        if H is None:
+            return kp
+    c2, c7 = cv2.perspectiveTransform(K6Y7R_FLOOR[[2, 7]].reshape(-1, 1, 2).astype(np.float64), H).reshape(2, 2)
+    return kp[K6Y7R_ROT180_IDX] if c2.sum() > c7.sum() else kp
+
+
 def k6y7r_points_3d(net_top: float = NET_TOP_MEN) -> np.ndarray:
     """All 14 keypoints in court metres (x, y, z), for PnP / 3D calibration."""
     lo = net_top - NET_BAND_HEIGHT

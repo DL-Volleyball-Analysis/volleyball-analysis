@@ -112,6 +112,17 @@ def straighten(lab: CourtLabel) -> tuple[CourtLabel, dict[int, float]]:
     return CourtLabel(lab.image, lab.width, lab.height, pts), moved
 
 
+def yolo_keypoints(lab: CourtLabel) -> np.ndarray:
+    """(14, 3) keypoints normalised to the image for a YOLO pose label: x, y, visibility. Points placed outside the
+    image count as not labelled (visibility 0, coordinates 0); occluded points keep visibility 1."""
+    kp = lab.points.astype(np.float64).copy()
+    inside = (kp[:, 0] >= 0) & (kp[:, 0] < lab.width) & (kp[:, 1] >= 0) & (kp[:, 1] < lab.height)
+    kp[~inside | (kp[:, 2] == 0)] = 0
+    kp[:, 0] /= lab.width
+    kp[:, 1] /= lab.height
+    return kp
+
+
 def floor_residuals(lab: CourtLabel) -> tuple[np.ndarray | None, dict[int, float]]:
     """Homography court metres -> image from the placed floor points, and each point's distance in pixels from it.
 

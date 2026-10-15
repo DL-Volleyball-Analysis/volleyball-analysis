@@ -79,3 +79,12 @@ def test_straighten_puts_sidelines_and_net_posts_on_lines(tmp_path):
         assert np.linalg.svd(xy - xy.mean(0))[1][1] < 1e-3  # collinear
     assert moved[1] > 2 and moved[11] > 0.3 and moved[5] < 1e-3
     assert np.array_equal(fixed.points[:, 2], lab.points[:, 2])
+
+
+def test_yolo_keypoints_drop_points_outside_the_image(tmp_path):
+    pts = _true_points()
+    pts[0] = (-5, 500)
+    lab = cvat.read_court_labels(_xml(tmp_path, pts, occluded={9}))[0]
+    kp = cvat.yolo_keypoints(lab)
+    assert kp[0].tolist() == [0, 0, 0] and kp[9, 2] == 1
+    assert np.allclose(kp[5, :2], pts[5] / (1920, 1080), atol=1e-5)

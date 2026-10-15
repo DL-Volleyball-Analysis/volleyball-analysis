@@ -2,8 +2,11 @@
 
 For each labelled image: fit a homography from the model's floor keypoints with confidence >= 0.5 (RANSAC),
 map the labelled floor points through it, and compare with their true court positions. This is the error a
-landing call would see. Splits: `test` (k6y7r, all 10 floor points) and `test_vnl` (broadcast clips, the four
-front-zone corners). Per clip for the broadcast split. Also: pixel error of the four net points (10-13) where
+landing call would see. Splits: `test` (k6y7r, all 10 floor points), `test_vnl` (broadcast clips, the four
+front-zone corners) and, in court_keypoints_v4, `test_amateur` (our labels of unseen amateur recordings) and
+`test_watchdog` (fixed end-line plates). Per clip for the broadcast split, per image for ours. The court looks the
+same turned by 180 degrees and both numberings exist in older training data, so each image counts the better of
+the two (never a mirror, which would be a wrong court). Also: pixel error of the four net points (10-13) where
 they are labelled (k6y7r only), and inference time per image (model call only, this machine's CPU).
 
   .venv/bin/python scripts/eval_court_keypoints.py --model models/court_kpt.pt
@@ -17,11 +20,17 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from vball.court_keypoints import K6Y7R_FLOOR, VNL4_TO_K6Y7R
+from vball.court_keypoints import K6Y7R_FLOOR, K6Y7R_ROT180_IDX, VNL4_TO_K6Y7R
 from vball.paths import DATASETS
 
 FLOOR = np.float64(K6Y7R_FLOOR)
-SPLITS = {"test": list(range(10)), "test_vnl": VNL4_TO_K6Y7R}
+SPLITS = {
+    "test": list(range(10)),
+    "test_vnl": VNL4_TO_K6Y7R,
+    "test_amateur": list(range(10)),
+    "test_watchdog": list(range(10)),
+}
+ROT = np.array(K6Y7R_ROT180_IDX)
 
 
 def train_imgsz(model) -> int:
@@ -31,6 +40,8 @@ def train_imgsz(model) -> int:
 
 def evaluate(model, root: Path, split: str, imgsz: int, conf_min: float = 0.5) -> dict:
     errs, per_clip, n, no_fit, net_px, secs = [], {}, 0, 0, [], []
+    if not (root / split).exists():
+        return {"images": 0}
     for lp in sorted((root / split / "labels").glob("*.txt")):
         img_p = next((root / split / "images").glob(lp.stem + ".*"))
         img = cv2.imread(str(img_p))
@@ -49,7 +60,10 @@ def evaluate(model, root: Path, split: str, imgsz: int, conf_min: float = 0.5) -
         if r.keypoints is not None and len(r.keypoints):
             kp = r.keypoints.data[int(r.boxes.conf.argmax())].cpu().numpy()
             net = [i for i in range(10, 14) if gt[i, 2] > 0]
-            net_px.extend(np.linalg.norm(kp[net, :2] - gt[net, :2], axis=1))
+            if net:
+                same = np.linalg.norm(kp[net, :2] - gt[net, :2], axis=1)
+                turned = np.linalg.norm(kp[ROT[net], :2] - gt[net, :2], axis=1)
+                net_px.extend(same if np.median(same) <= np.median(turned) else turned)
             use = [i for i in range(10) if kp[i, 2] >= conf_min]
             if len(use) >= 4:
                 H, _ = cv2.findHomography(kp[use, :2].astype(np.float64), FLOOR[use], cv2.RANSAC, 0.01 * np.hypot(w, h))
@@ -58,8 +72,13 @@ def evaluate(model, root: Path, split: str, imgsz: int, conf_min: float = 0.5) -
             continue
         est = cv2.perspectiveTransform(gt[ids, :2].reshape(-1, 1, 2), H).reshape(-1, 2)
         e = np.linalg.norm(est - FLOOR[ids], axis=1)
+        e_turned = np.linalg.norm(est - FLOOR[ROT[ids]], axis=1)
+        if np.median(e_turned) < np.median(e):
+            e = e_turned
         errs.extend(e)
-        clip = lp.stem.split("_mp4")[0] if "_mp4" in lp.stem else "k6y7r"
+        clip = (
+            lp.stem.split("_mp4")[0] if "_mp4" in lp.stem else lp.stem[5:] if lp.stem.startswith("cvat_") else "k6y7r"
+        )
         per_clip.setdefault(clip, []).extend(e)
     e = np.array(errs)
     return {
@@ -89,8 +108,13 @@ def main():
     print(f"model {Path(args.model).name}, dataset {args.dataset}, imgsz {imgsz}")
     for split in SPLITS:
         r = evaluate(model, DATASETS / args.dataset, split, imgsz)
+        if not r["images"]:
+            continue
+        if r["median"] is None:
+            print(f"{split:13s} images {r['images']:4d}  no fit on any image")
+            continue
         print(
-            f"{split:9s} images {r['images']:4d}  no fit {r['no_fit']:3d}  median {r['median']:.2f} m  "
+            f"{split:13s} images {r['images']:4d}  no fit {r['no_fit']:3d}  median {r['median']:.2f} m  "
             f"p90 {r['p90']:.2f} m  within 0.3 m {r['within_0.3']:.0%}  {r['ms']:.0f} ms/image"
         )
         if r["net_px_median"] is not None:

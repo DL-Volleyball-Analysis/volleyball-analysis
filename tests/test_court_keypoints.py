@@ -86,3 +86,50 @@ def test_centred_camera_gives_no_net_points_instead_of_a_guess():
 
     cam = synthetic_camera(eye=(9.0, -14.0, 9.0))
     assert net_points_from_floor(project(k6y7r_points_3d()[:10], cam), cam[3]) is None
+
+
+def _label(floor_px):
+    kp = np.zeros((14, 3))
+    kp[:10, :2] = floor_px
+    kp[:10, 2] = 2
+    kp[10:, 2] = 0
+    return kp
+
+
+def project_end_view():
+    """Camera behind the court's x = 0 end line: the sideline y = 9 (points 0-4) appears on the left, point 0 at
+    the bottom."""
+    img = np.float32([[700, 950], [1220, 950], [1080, 300], [840, 300]])  # (0,9), (0,0), (18,0), (18,9)
+    court = np.float32([[0, 9], [0, 0], [18, 0], [18, 9]])
+    H = cv2.getPerspectiveTransform(court, img)
+    return cv2.perspectiveTransform(K6Y7R_FLOOR.reshape(-1, 1, 2), H).reshape(-1, 2)
+
+
+def test_canonical_numbering_keeps_the_rule_and_undoes_turns_and_mirrors():
+    from vball.court_keypoints import K6Y7R_ROT180_IDX, canonical_numbering
+
+    for floor in (project_side_view()[0], project_end_view()):
+        kp = _label(floor)
+        assert np.allclose(canonical_numbering(kp), kp)
+        assert np.allclose(canonical_numbering(kp[K6Y7R_ROT180_IDX]), kp)
+        mirror_numbered = kp[K6Y7R_FLIP_IDX]  # same image, left and right numbered the wrong way round
+        assert np.allclose(canonical_numbering(mirror_numbered), kp)
+
+
+def test_canonical_numbering_of_a_mirrored_end_view():
+    from vball.court_keypoints import canonical_numbering
+
+    kp = _label(project_end_view())
+    mirrored = kp.copy()
+    mirrored[:, 0] = 1920 - mirrored[:, 0]
+    out = canonical_numbering(mirrored[K6Y7R_FLIP_IDX])
+    assert out[0:5, 0].mean() < out[5:10, 0].mean()  # 0-4 is the left sideline again
+    assert out[0, 1] > out[4, 1]  # point 0 at the bottom
+
+
+def test_canonical_numbering_leaves_one_sideline_alone():
+    from vball.court_keypoints import canonical_numbering
+
+    kp = _label(project_side_view()[0])
+    kp[5:10, 2] = 0
+    assert np.allclose(canonical_numbering(kp), kp)
