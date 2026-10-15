@@ -32,6 +32,6 @@ hair, shoes and the shirt number do.
 ## Targets
 IDF1 ≥ 0.75 and fewer identity switches than 411 on SportsMOT volleyball validation, at ≤ 30% more time per frame.
 
-## Out of scope
-A multi-task network that replaces the detector, ball and action models with one backbone: our tasks are trained on
-different datasets with no common labels, and its gain would be speed, not accuracy. Revisit when speed is the limit.
+## Later
+A re-identification head on the multi-task network (multitask-model.md) once that network exists; the trained
+embedding here is its baseline.

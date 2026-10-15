@@ -24,4 +24,4 @@ appearance: an embedding per player crop, compared when tracks are associated an
 - Specs: player-tracking (identity across gaps; measured re-identification).
 - Code: `vball.reid` (new), players stage, `vball.evaluation` tracking evaluation, tracker configuration.
 - Models: possibly one new weight file (step 2).
-- Not included: a multi-task network (see the PRD, out of scope).
+- Later: a re-identification head on the multi-task network (change add-multitask-model) uses this as its baseline.
