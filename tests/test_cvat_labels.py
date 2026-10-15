@@ -63,3 +63,19 @@ def test_too_few_points(tmp_path):
 def test_one_sideline_only_is_valid(tmp_path):
     lab = cvat.read_court_labels(_xml(tmp_path, _true_points(), outside=set(range(5, 10))))[0]
     assert cvat.check(lab) == []
+
+
+def test_straighten_puts_sidelines_and_net_posts_on_lines(tmp_path):
+    pts = _true_points()
+    pts[11] = pts[10] + (pts[2] - pts[10]) * -1.5  # net top on the post line through k02 and k10
+    noisy = pts.copy()
+    noisy[1] += (0, 4)  # off the far sideline
+    d = (pts[2] - pts[10]) / np.linalg.norm(pts[2] - pts[10])
+    noisy[11] += 5 * np.array([-d[1], d[0]])  # off the post line
+    lab = cvat.read_court_labels(_xml(tmp_path, noisy))[0]
+    fixed, moved = cvat.straighten(lab)
+    for group in cvat.STRAIGHT_LINES:
+        xy = fixed.points[group, :2].astype(np.float64)
+        assert np.linalg.svd(xy - xy.mean(0))[1][1] < 1e-3  # collinear
+    assert moved[1] > 2 and moved[11] > 0.3 and moved[5] < 1e-3
+    assert np.array_equal(fixed.points[:, 2], lab.points[:, 2])

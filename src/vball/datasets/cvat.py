@@ -85,6 +85,33 @@ def api_json_to_xml(data: dict) -> str:
     return "".join(parts)
 
 
+# Points that lie on one straight line in the world, so also in an undistorted image: the far and near sidelines, then
+# the net post above each centre point (net bottom and top). A post line goes through its centre point as already
+# placed on the sideline, which is better supported (five points) than the net points.
+STRAIGHT_LINES = [[0, 1, 2, 3, 4], [5, 6, 7, 8, 9], [2, 10, 11], [7, 13, 12]]
+
+
+def straighten(lab: CourtLabel) -> tuple[CourtLabel, dict[int, float]]:
+    """The label with each point moved perpendicular onto the line fitted (total least squares) through its group in
+    `STRAIGHT_LINES`, and how far each point moved in px. Only groups with at least three placed points are changed;
+    a point's position along its line is the labeller's, so the court's measurements are not imposed."""
+    pts = lab.points.copy()
+    moved: dict[int, float] = {}
+    for group in STRAIGHT_LINES:
+        ids = [k for k in group if lab.points[k, 2] > 0]
+        if len(ids) < 3:
+            continue
+        xy = pts[ids, :2].astype(np.float64)
+        post = group[0] in (2, 7) and group[0] in ids
+        c = xy[0] if post else xy.mean(0)  # a post line keeps its centre point fixed
+        d = np.linalg.svd(xy - c)[2][0]
+        proj = c + np.outer((xy - c) @ d, d)
+        for k, q in zip(ids[1:] if post else ids, proj[1:] if post else proj):
+            moved[k] = moved.get(k, 0.0) + float(np.linalg.norm(q - pts[k, :2]))
+            pts[k, :2] = q
+    return CourtLabel(lab.image, lab.width, lab.height, pts), moved
+
+
 def floor_residuals(lab: CourtLabel) -> tuple[np.ndarray | None, dict[int, float]]:
     """Homography court metres -> image from the placed floor points, and each point's distance in pixels from it.
 
