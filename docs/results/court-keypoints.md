@@ -218,3 +218,33 @@ eye" is corrected to five of six. Two signs stand out on this clip only: the few
 length from the net tape about five times shorter than on the other clips, the stretched floor forcing a wide-angle
 camera. Both are candidate checks for a doubtful line fit; they were noticed on this test set, so they need other arenas
 before they become a rule.
+
+## Court set v4: our labels, one numbering, baseline (2026-10-16)
+Change add-labelling-loop. The owner labelled 59 images in CVAT (14 points each): 43 amateur recordings (one plate per
+recording, YouTube and the owner's own), 10 broadcast frames and 6 Watchdog end-line plates. Each label is checked
+against a court homography (`scripts/cvat_labels.py check`); all 517 placed floor points: median 0.07 m from the fit
+(p90 0.65 m). Eight labels with errors above 1.5 m were re-checked and corrected by the owner. The remaining misfits lie
+along the far sideline of low views (12-40 px, mostly 0.3-0.6 m), where cross lines meet it at a grazing angle; a
+lens-distortion term does not explain them. They are kept as placed. Points are straightened onto their sideline or net
+post (`cvat.straighten`, median move 0.6 px).
+
+**Numbering.** A court looks the same turned by 180 degrees, so two numberings fit every view. End-line and corner views
+were mixed: in k6y7r 20 unmirrored images use one, 40 the other, its own mirrored images both; ultralytics' mirror with
+a fixed flip_idx turns one into the other; our end-line labels use the second. Three labels were mirror-numbered (two
+k6y7r, one ours). v4 renumbers every label by one rule (`court_keypoints.canonical_numbering`, no label near its
+boundary) and makes the mirrored training copies itself, renumbered, so training runs with fliplr=0. The evaluation
+counts the better of the two numberings per image (never a mirror), which changes v3b on k6y7r test from 7.28 to 5.96 m.
+
+**Splits** (by recording): train 27 amateur recordings (repeated 3 times) and the 10 broadcast frames; valid 5 amateur;
+`test_amateur` the owner's 5 recordings (4 sessions) and 6 amateur videos; `test_watchdog` the 6 Watchdog plates.
+
+Baseline before fine-tuning (`scripts/eval_court_keypoints.py --dataset court_keypoints_v4`, median error in court metres,
+share within 0.3 m, images without a fit):
+
+| Model | k6y7r test | VNL clips 4-5 | test_amateur (11) | test_watchdog (6) |
+|---|---|---|---|---|
+| v2 (gym) | 0.49 m (31%), 9 no fit | 1.43 m (0%), 158 no fit | 4.21 m (2%), 1 no fit | 1.64 m (3%) |
+| v3b (broadcast) | 5.96 m (5%), 2 no fit | 0.10 m (96%) | 8.51 m (1%), 2 no fit | 7.75 m (0%), 3 no fit |
+
+Neither model registers amateur recordings: the best per image is 0.8-1.0 m (two recordings, v2), most are 3-11 m off.
+Fine-tuning v3b on v4 (`notebooks/train_court_keypoints.ipynb`, 150 epochs at 1280 px) is the next step.
