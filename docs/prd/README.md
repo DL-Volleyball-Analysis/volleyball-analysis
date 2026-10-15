@@ -14,6 +14,7 @@ This PRD answers *why, for whom, and what counts as success*. How the system mus
 | [landing-page.md](landing-page.md) | public landing page (volleyvision-website) |
 | [player-tracking.md](player-tracking.md) | player detection, tracking, court positions |
 | [tactics-board.md](tactics-board.md) | 3D ball trajectory, 2D / 3D tactics board |
+| [player-reid.md](player-reid.md) | re-identification: one id per player across crossings and rallies |
 | [player-stats.md](player-stats.md) | attack efficiency and serve statistics from coach tags |
 | [player-actions.md](player-actions.md) | action events and shirt numbers per player, suggested tags |
 | [player-filtering.md](player-filtering.md) | only the players on court: player-only detector, 12-player cap, team check |
