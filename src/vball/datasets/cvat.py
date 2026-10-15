@@ -66,34 +66,34 @@ def read_court_labels(xml_path: Path, label: str = "court") -> list[CourtLabel]:
 
 
 def floor_residuals(lab: CourtLabel) -> tuple[np.ndarray | None, dict[int, float]]:
-    """Homography court metres -> image from the placed floor points, and each point's error in pixels against a fit
-    of the others (leave one out, so one misplaced point cannot hide by bending the fit)."""
+    """Homography court metres -> image from the placed floor points, and each point's distance in pixels from it.
+
+    Leave-one-out errors were tried first and rejected: a point with no neighbour nearby (the one corner close to the
+    camera) is extrapolated from far points and gets a large error even when it is right (167 px on a correct label).
+    """
     ids = [k for k in K6Y7R_FLOOR_IDS if lab.points[k, 2] > 0]
     if len(ids) < 4:
         return None, {}
     src = np.asarray(K6Y7R_FLOOR, np.float64)[ids]
     dst = lab.points[ids, :2].astype(np.float64)
     H, _ = cv2.findHomography(src, dst, 0)
-    res = {}
-    if len(ids) > 4:
-        for i, k in enumerate(ids):
-            keep = [j for j in range(len(ids)) if j != i]
-            Hk, _ = cv2.findHomography(src[keep], dst[keep], 0)
-            if Hk is not None:
-                res[k] = float(np.linalg.norm(cv2.perspectiveTransform(src[i][None, None], Hk)[0, 0] - dst[i]))
-    return H, res
+    if H is None:
+        return None, {}
+    err = np.linalg.norm(cv2.perspectiveTransform(src[None], H)[0] - dst, axis=1)
+    return H, {k: float(e) for k, e in zip(ids, err)} if len(ids) > 4 else {}
 
 
 def floor_fit(lab: CourtLabel) -> tuple[np.ndarray | None, float, int]:
-    """(H, median leave-one-out error px, floor points used)."""
+    """(H, median distance of the floor points from the fit in px, floor points used)."""
     H, res = floor_residuals(lab)
     n = int((lab.points[K6Y7R_FLOOR_IDS, 2] > 0).sum())
     return H, float(np.median(list(res.values()))) if res else float("nan"), n
 
 
 def check(lab: CourtLabel, max_err_frac: float = 0.006) -> list[str]:
-    """Problems with one label; an empty list means it can be used. A floor point is suspect when the others predict
-    it more than 0.6% of the image width away (12 px at 1920; room for a phone lens's mild distortion)."""
+    """Problems with one label; an empty list means it can be used. A floor point is suspect when it lies more than
+    0.6% of the image width (12 px at 1920) from the court fitted to all floor points; the margin leaves room for a
+    phone lens's distortion, which a homography cannot model."""
     problems = []
     H, res = floor_residuals(lab)
     if H is None:
@@ -105,7 +105,7 @@ def check(lab: CourtLabel, max_err_frac: float = 0.006) -> list[str]:
     for k in range(N_POINTS):
         x, y, v = lab.points[k]
         if v > 0 and not (0 <= x < lab.width and 0 <= y < lab.height):
-            problems.append(f"{POINT_NAMES[k]} placed outside the image")
+            problems.append(f"{POINT_NAMES[k]} placed outside the image (mark it outside instead)")
     return problems
 
 

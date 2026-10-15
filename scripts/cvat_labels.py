@@ -33,7 +33,7 @@ def main():
         problems = cvat.check(lab)
         placed = int((lab.points[:, 2] > 0).sum())
         status = "ok" if not problems else "; ".join(problems)
-        print(f"{lab.image}: {placed}/14 points, {n} floor, leave-one-out median {err:.1f} px -> {status}")
+        print(f"{lab.image}: {placed}/14 points, {n} floor, median {err:.1f} px from the fit -> {status}")
         img = cv2.imread(str(Path(args.images) / lab.image))
         if img is not None:
             cv2.imwrite(str(out / lab.image), cvat.draw(img, lab))
