@@ -13,14 +13,15 @@ One network with a shared backbone and one head per task can learn from all data
 is labelled for only some tasks, and runs faster than four models.
 
 ## User stories
-- As the owner, I correct what the system got wrong in the review app (court points, ball, player boxes and ids,
-  actions, rally winner), and each correction is saved as a label.
+- As the owner, I correct what the system got wrong (court points, ball, player boxes and ids, actions in CVAT;
+  rally winner in the review app), and each correction is saved as a label.
 - As the owner, I see how many labels each task has and how the model improved after each retraining.
 - As a coach, analysis gets better on my hall's footage as more of it is corrected.
 
 ## Requirements
-1. Labelling in the web app on sampled frames of an analysed video, starting from the pipeline's output; a frame may
-   be labelled for any subset of tasks; labels are versioned and exported in one dataset format.
+1. Labelling in CVAT (self-hosted; chosen over Label Studio, X-AnyLabeling and our own tool, 2026-10-16), starting
+   from the pipeline's output imported as pre-annotations; a frame may be labelled for any subset of tasks; only
+   human-touched items become labels; exported into one dataset format by tested converters.
 2. A dataset builder merges our labels with the public datasets (SportsMOT, k6y7r, VNL, WASB data, Volleyball dataset)
    and splits by video or match, never by frame.
 3. A multi-task network: shared backbone, heads for players (boxes), court keypoints (14 points), ball (position,
