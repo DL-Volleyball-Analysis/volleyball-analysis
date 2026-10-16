@@ -26,6 +26,7 @@ This PRD answers *why, for whom, and what counts as success*. How the system mus
 | [moving-camera.md](moving-camera.md) | court, corrections and 3D that follow a panning and zooming camera |
 | [analysis-speed.md](analysis-speed.md) | analysis time: no repeated work for still cameras and out-of-training footage |
 | [score-labels.md](score-labels.md) | rally and point-winner labels read from the on-screen score of fixed-camera matches |
+| [rally-playback.md](rally-playback.md) | one continuous 3D ball path per rally, touch roles (serve, receive, set, attack), stable boxes on amateur footage |
 | [engineering-practice.md](engineering-practice.md) | layering, tooling, review process, releases, model manifest, operations and architecture docs |
 
 Background: analysis of the capstone web app in [`docs/webapp_redesign.md`](../webapp_redesign.md); organisation-wide repo plan in [`docs/repo-organization.md`](../repo-organization.md).
