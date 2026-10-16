@@ -13,6 +13,9 @@ and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
   script); on the six fixed clips it reproduces the offline result (F1 0.76).
 - Rolling backups of the app database (`vball_app.backup`): at start and hourly after jobs, newest 10 kept, restore
   saves the current file first.
+- Court model v4: v3b fine-tuned on the owner's 59 CVAT labels with one keypoint numbering. Median error 0.35 m on
+  k6y7r gym test (v2 0.49 m), 0.05 m on held-out broadcast clips (v3b 0.10 m), 1.35 m on amateur recordings (v2
+  4.21 m, still not usable); worse than v2 on six end-line plates (2.11 vs 1.64 m). Not yet in the pipeline.
 - Court error in metres from hand-labelled floor points: `scripts/eval_fixed_court.py` and a labelling page.
 
 ### Changed

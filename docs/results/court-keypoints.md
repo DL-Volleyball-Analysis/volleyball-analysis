@@ -247,4 +247,25 @@ share within 0.3 m, images without a fit):
 | v3b (broadcast) | 5.96 m (5%), 2 no fit | 0.10 m (96%) | 8.51 m (1%), 2 no fit | 7.75 m (0%), 3 no fit |
 
 Neither model registers amateur recordings: the best per image is 0.8-1.0 m (two recordings, v2), most are 3-11 m off.
-Fine-tuning v3b on v4 (`notebooks/train_court_keypoints.ipynb`, 150 epochs at 1280 px) is the next step.
+Fine-tuning v3b on v4 follows below.
+
+## Court model v4: fine-tuned on our labels (2026-10-16)
+v3b fine-tuned on court set v4 on Colab (`notebooks/train_court_keypoints.ipynb`, YOLO26s-pose, 1280 px, run
+`court_kpt_v4`). The Colab GPU quota stopped the run at epoch 133 of 150; validation pose mAP50-95 had flattened (0.653
+at epoch 101, best 0.678 at epoch 124, used here as `models/court_kpt_v4.pt`).
+
+| Model | k6y7r test | VNL clips 4-5 | test_amateur (11) | test_watchdog (6) |
+|---|---|---|---|---|
+| v2 (gym) | 0.49 m (31%), 9 no fit | 1.43 m (0%), 158 no fit | 4.21 m (2%), 1 no fit | **1.64 m** (3%) |
+| v3b (broadcast) | 5.96 m (5%), 2 no fit | 0.10 m (96%) | 8.51 m (1%), 2 no fit | 7.75 m (0%), 3 no fit |
+| v4 | **0.35 m** (47%), 6 no fit | **0.05 m** (99%) | **1.35 m** (8%), 1 no fit | 2.11 m (6%), 1 no fit |
+
+Net points on k6y7r test: 4.9 px median (v2 8.7 px, v3b 21.2 px). Speed as v3b (about 300 ms per 1080p image on CPU).
+
+- One model is now better than both earlier ones on gym images and held-out broadcast clips, so per-shot choice
+  between v2 and v3b is no longer needed there.
+- Amateur recordings improve from 4.21 m to 1.35 m median but are still not registered: per recording 0.70-4.03 m,
+  none within 0.3 m for most points. The worst is the owner's `shihchien_0308` (4.03 m). 11 test images from 11
+  recordings is a small test; the 27 training recordings are the main limit.
+- Watchdog end-line plates: v4 is worse than v2 by median (2.11 vs 1.64 m) on 6 images, one without a fit. Fixed
+  end-line cameras keep the painted-line fit (five of six right to 0.02-0.06 m).
