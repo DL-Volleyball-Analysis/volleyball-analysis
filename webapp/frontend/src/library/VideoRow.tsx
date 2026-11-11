@@ -39,6 +39,10 @@ function Failed({ video }: { video: Video }) {
 }
 
 function Score({ score }: { score: ScoreSummary }) {
+  if (score.a + score.b + score.sets_a + score.sets_b === 0) {
+    // no rally has a winner yet: show what was found instead of a 0-0 that reads as a result
+    return <span className="text-ink-muted">{score.rallies} {score.rallies === 1 ? 'rally' : 'rallies'} found</span>
+  }
   // Each segment stays on one line; segments wrap as units on narrow screens.
   return (
     <span className="flex flex-wrap gap-x-3">

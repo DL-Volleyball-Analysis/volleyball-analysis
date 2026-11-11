@@ -2,6 +2,15 @@ import type { Rally } from '../api/types'
 
 /** Score after the rally at the playback position (0-0 before the first rally). */
 export function Scoreboard({ rallies, index }: { rallies: readonly Rally[]; index: number }) {
+  if (!rallies.some((r) => r.effective_winner)) {
+    // Rallies found but no winner decided (by the model or by hand): a 0-0 score would read as a result.
+    return (
+      <section aria-label="Score" className="text-ink-muted">
+        <span className="text-ink font-semibold" data-testid="rally-count">{rallies.length}</span> rallies found
+        {rallies.length > 0 && <span> · winners not decided yet</span>}
+      </section>
+    )
+  }
   const s = rallies[index]?.score ?? { set_no: 1, a: 0, b: 0, sets_a: 0, sets_b: 0, set_over: false }
   return (
     <section aria-label="Score" className="flex items-baseline gap-5">

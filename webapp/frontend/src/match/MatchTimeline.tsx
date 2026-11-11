@@ -38,8 +38,8 @@ export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSele
   const dragging = useRef(false)
   const coverage = useBallCoverage(videoId)
   const [trackWidth, setTrackWidth] = useState(800)
-  // action labels about 24 px wide: two rows, then ticks, so dense moments stay readable
-  const actionRows = labelRows(actions.map((a) => a.start_s), duration, 24 / Math.max(trackWidth, 1))
+  // action labels about 30 px wide (three letters at 12 px with a gap): two rows, then ticks, so dense moments stay readable
+  const actionRows = labelRows(actions.map((a) => a.start_s), duration, 30 / Math.max(trackWidth, 1))
 
   // Re-measure on resize only (not during playback) to choose how many ruler labels fit.
   useEffect(() => {

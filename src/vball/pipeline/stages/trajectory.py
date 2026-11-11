@@ -139,8 +139,8 @@ def run(video: Path, out: Path, prev: dict, tick) -> dict:
         notes.append(f"{len(unusable)} of {len(shots)} camera shots could not be calibrated ({unusable[0]}).")
     if rejected:
         notes.append(
-            f"{len(rejected)} flights were left out as physically impossible ({rejected[0][2]}), "
-            "a sign that the camera calibration is off."
+            f"{len(rejected)} flights were left out as physically impossible (for example {rejected[0][2]}): "
+            "usually a broken 2D ball track, otherwise a camera calibration error."
         )
     if notes:
         res["message"] = " ".join(notes)

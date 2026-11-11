@@ -50,7 +50,7 @@ function MatchView({ id }: { id: string }) {
   const rallies = ralliesQ.data ?? NO_RALLIES
   const pos = useRallyAt(rallies)
   const correction = useCorrectRally(id)
-  const [layers, setLayers] = useState<Layers>({ ball: true, court: false, players: false })
+  const [layers, setLayers] = useState<Layers>({ ball: true, court: true, players: true })
   const [panel, setPanel] = useState<Panel>('rallies')
   const tags = useTags(id).data ?? NO_TAGS
   const addTag = useAddTag(id)
@@ -159,7 +159,8 @@ function MatchView({ id }: { id: string }) {
               <LayerMenu layers={layers} onChange={setLayers} courtAvailable={courtAvailable} playersAvailable={playersAvailable} />
             </div>
           </div>
-          <aside className="border-t border-line lg:border-t-0 lg:border-l">
+          <aside className="border-t border-line lg:relative lg:border-t-0 lg:border-l">
+            <div className="lg:absolute lg:inset-0 lg:overflow-y-auto">
             {(entry || tag || suggestion) && (
               <div className="border-b border-line px-4 py-3">
                 {suggestion ? (
@@ -204,6 +205,7 @@ function MatchView({ id }: { id: string }) {
                 <CourtShots court={court.data} busy={Boolean(picking) || courtFix.save.isPending || courtFix.clear.isPending}
                   onSet={startPicking} onClear={(s) => courtFix.clear.mutate(s.shot)} />
               </section>
+            </div>
             </div>
           </aside>
         </div>
