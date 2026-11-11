@@ -12,6 +12,7 @@ Layout: `stages/<name>.py` (one `run(video, out, prev, tick)` per stage), `confi
 """
 
 import json
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Literal, get_args
@@ -80,10 +81,13 @@ def run(
     from_stage: str = "decode",
     on_progress: Callable[[str, float], None] = lambda stage, p: None,
     court_corrections: Callable[[], list[dict]] | None = None,
+    on_stage_done: Callable[[str, float, bool], None] = lambda stage, seconds, reused: None,
 ) -> dict:
     """Run the pipeline; returns {stage: result}. Raises on the first failing stage. Court corrections are read
     (court_corrections()) when the court stage is reached and overlaid on the court result later stages see, so
-    a correction saved while a job waits or decodes is still applied."""
+    a correction saved while a job waits or decodes is still applied. on_stage_done(stage, seconds, reused) is
+    called after each stage with its wall time (0 and reused=True for a stage taken from the cache); a computed
+    stage also records its time as `elapsed_s` in its file."""
     if from_stage not in STAGES:
         raise ValueError(f"unknown stage {from_stage!r}; stages are {STAGES}")
     results_dir.mkdir(parents=True, exist_ok=True)
@@ -98,9 +102,14 @@ def run(
                 on_progress(stage, base + WEIGHTS[stage] * float(np.clip(frac, 0, 1)))
 
             tick(0)
+            t0 = time.perf_counter()
             res = {"version": VERSIONS[stage], **FUNCS[stage](video, results_dir, out, tick)}
+            res["elapsed_s"] = round(time.perf_counter() - t0, 3)
             stage_file(results_dir, stage).write_text(json.dumps(res))
             cached = res
+            on_stage_done(stage, res["elapsed_s"], False)
+        else:
+            on_stage_done(stage, 0.0, True)
         if stage == "court" and court_corrections is not None:
             cached = corrected_court(cached, out.get("decode"), court_corrections(), results_dir)
         out[stage] = cached

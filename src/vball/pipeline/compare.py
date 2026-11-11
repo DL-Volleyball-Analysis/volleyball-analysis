@@ -15,9 +15,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+TIMING_KEYS = {"elapsed_s"}  # wall time differs on every run; it is not a result
+
 
 def json_diff(a, b, tol: float, path: str = "") -> list[str]:
     if isinstance(a, dict) and isinstance(b, dict):
+        a = {k: v for k, v in a.items() if k not in TIMING_KEYS}
+        b = {k: v for k, v in b.items() if k not in TIMING_KEYS}
         out = [f"{path}/{k}: only in {'first' if k in a else 'second'}" for k in sorted(set(a) ^ set(b))]
         for k in sorted(set(a) & set(b)):
             out += json_diff(a[k], b[k], tol, f"{path}/{k}")

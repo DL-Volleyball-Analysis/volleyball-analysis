@@ -14,7 +14,7 @@ stage takes, so throughput questions have no measured answer (PRD `docs/prd/scal
 - `python -m vball_app.worker --workers N` starts N processes, each with its own worker id and a thread limit for
   OpenCV, ONNX Runtime and PyTorch; SIGTERM and SIGINT release the current job.
 - Stage timings: `vball.pipeline.run` measures each stage and passes the times to the caller and the stage file;
-  the jobs table stores them as JSON; `GET /jobs/{id}` returns them.
+  the jobs table stores them as JSON; the job endpoints (`/videos/{id}/jobs/latest`, the job stream) return them.
 - `scripts/bench_workers.py` and `docs/results/scaling.md`; the deployment ADR records the decision and the numbers.
 
 ## Capabilities
@@ -27,7 +27,7 @@ stage takes, so throughput questions have no measured answer (PRD `docs/prd/scal
 
 ## Impact
 
-- Code: `webapp/backend/vball_app/{db,worker,schemas}.py`, `api/jobs.py`, `src/vball/pipeline/__init__.py`,
+- Code: `webapp/backend/vball_app/{db,worker,schemas}.py`, `src/vball/pipeline/__init__.py`,
   `docker-compose.yml`, new `scripts/bench_workers.py`, backend and pipeline tests.
 - Database: three columns and one JSON column added to `jobs` by the existing start-up migration (no data lost).
 - Docs: ADR `single-user-local-deployment` (updated), `docs/architecture.md`, `docs/results/scaling.md`.

@@ -19,6 +19,9 @@ class Job(BaseModel):
     error: str | None
     created_at: str
     updated_at: str
+    worker_id: str | None = None
+    attempts: int = 0
+    timings: dict[str, float] | None = None  # seconds per stage the last run computed (reused stages are absent)
 
 
 class ScoreSummary(BaseModel):

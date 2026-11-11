@@ -10,7 +10,7 @@ import json
 import sqlite3
 import uuid
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 SCHEMA = """
@@ -30,7 +30,11 @@ CREATE TABLE IF NOT EXISTS jobs (
     progress REAL NOT NULL DEFAULT 0,  -- 0..1 over the whole pipeline
     error TEXT,
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    worker_id TEXT,                    -- the worker holding the job while running
+    lease_until TEXT,                  -- the holder renews it; after it passes, another worker may take the job
+    attempts INTEGER NOT NULL DEFAULT 0,  -- times the job was claimed
+    timings TEXT                       -- JSON {stage: seconds} of the stages the last run computed
 );
 CREATE INDEX IF NOT EXISTS jobs_by_video ON jobs(video_id, created_at);
 CREATE TABLE IF NOT EXISTS rallies (
@@ -81,10 +85,28 @@ CREATE TABLE IF NOT EXISTS court_corrections (
 """
 
 FINISHED = ("done", "failed")
+LEASE_S = 60.0  # a worker renews its lease every LEASE_S / 3 (vball_app.worker)
+MAX_ATTEMPTS = 3  # a job whose lease expired this many times fails instead of killing a fourth worker
+JOB_COLUMNS = {  # added after the first release; created by the start-up migration on older databases
+    "worker_id": "TEXT",
+    "lease_until": "TEXT",
+    "attempts": "INTEGER NOT NULL DEFAULT 0",
+    "timings": "TEXT",
+}
 
 
-def now() -> str:
-    return datetime.now(UTC).isoformat(timespec="seconds")
+def job_row(row) -> dict | None:
+    """A jobs row as a dict with `timings` decoded."""
+    if row is None:
+        return None
+    job = dict(row)
+    job["timings"] = json.loads(job["timings"]) if job.get("timings") else None
+    return job
+
+
+def now(after_s: float = 0.0) -> str:
+    """UTC time as ISO text, which orders correctly as a string (all times in the database use it)."""
+    return (datetime.now(UTC) + timedelta(seconds=after_s)).isoformat(timespec="milliseconds")
 
 
 class Database:
@@ -97,6 +119,10 @@ class Database:
             if "corners_px" in cols:  # first draft of the table (2026-10-11, never released): no data to keep
                 c.execute("DROP TABLE court_corrections")
             c.executescript(SCHEMA)
+            have = {r[1] for r in c.execute("PRAGMA table_info(jobs)")}
+            for col, decl in JOB_COLUMNS.items():
+                if col not in have:
+                    c.execute(f"ALTER TABLE jobs ADD COLUMN {col} {decl}")
 
     @contextmanager
     def connect(self):
@@ -152,7 +178,7 @@ class Database:
     def get_job(self, jid: str) -> dict | None:
         with self.connect() as c:
             row = c.execute("SELECT * FROM jobs WHERE id = ?", (jid,)).fetchone()
-        return dict(row) if row else None
+        return job_row(row)
 
     def latest_job(self, video_id: str) -> dict | None:
         with self.connect() as c:
@@ -160,7 +186,7 @@ class Database:
                 "SELECT * FROM jobs WHERE video_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1",
                 (video_id,),
             ).fetchone()
-        return dict(row) if row else None
+        return job_row(row)
 
     def active_job(self, video_id: str) -> dict | None:
         with self.connect() as c:
@@ -168,31 +194,66 @@ class Database:
                 "SELECT * FROM jobs WHERE video_id = ? AND status IN ('queued', 'running') LIMIT 1",
                 (video_id,),
             ).fetchone()
-        return dict(row) if row else None
+        return job_row(row)
 
-    def claim_next_job(self) -> dict | None:
-        """Atomically move the oldest queued job to running."""
+    def claim_next_job(self, worker_id: str, lease_s: float = LEASE_S, max_attempts: int = MAX_ATTEMPTS) -> dict | None:
+        """Atomically give `worker_id` the oldest queued job, or a running job whose holder's lease has expired (its
+        worker died), with a fresh lease. Jobs that already lost `max_attempts` workers fail instead. Several worker
+        processes may call this at once: SQLite runs one write transaction at a time, so a job goes to one worker."""
+        t = now()
         with self.connect() as c:
+            c.execute(
+                "UPDATE jobs SET status = 'failed', error = 'worker lost ' || attempts || ' times', worker_id = NULL, "
+                "lease_until = NULL, updated_at = ? "
+                "WHERE status = 'running' AND (lease_until IS NULL OR lease_until < ?) AND attempts >= ?",
+                (t, t, max_attempts),
+            )
             row = c.execute(
-                "UPDATE jobs SET status = 'running', updated_at = ? WHERE id = ("
-                "  SELECT id FROM jobs WHERE status = 'queued' ORDER BY created_at, rowid LIMIT 1"
+                "UPDATE jobs SET status = 'running', worker_id = ?, lease_until = ?, attempts = attempts + 1, "
+                "updated_at = ? WHERE id = ("
+                "  SELECT id FROM jobs WHERE status = 'queued' "
+                "  OR (status = 'running' AND (lease_until IS NULL OR lease_until < ?)) "
+                "  ORDER BY created_at, rowid LIMIT 1"
                 ") RETURNING *",
-                (now(),),
+                (worker_id, now(lease_s), t, t),
             ).fetchone()
-        return dict(row) if row else None
+        return job_row(row)
 
-    def update_job(self, jid: str, **fields) -> None:
-        fields["updated_at"] = now()
-        cols = ", ".join(f"{k} = ?" for k in fields)
+    def renew_lease(self, jid: str, worker_id: str, lease_s: float = LEASE_S) -> bool:
+        """Extend the holder's lease; False when the job is no longer this worker's (it was taken after the lease
+        ran out, or it finished)."""
         with self.connect() as c:
-            c.execute(f"UPDATE jobs SET {cols} WHERE id = ?", (*fields.values(), jid))
-
-    def requeue_running(self) -> int:
-        """After a worker crash/restart, jobs left 'running' are queued again."""
-        with self.connect() as c:
-            return c.execute(
-                "UPDATE jobs SET status = 'queued', updated_at = ? WHERE status = 'running'", (now(),)
+            n = c.execute(
+                "UPDATE jobs SET lease_until = ? WHERE id = ? AND worker_id = ? AND status = 'running'",
+                (now(lease_s), jid, worker_id),
             ).rowcount
+        return n > 0
+
+    def release_job(self, jid: str, worker_id: str) -> bool:
+        """Queue the job again at once (a worker told to stop); the interrupted run does not count as an attempt."""
+        with self.connect() as c:
+            n = c.execute(
+                "UPDATE jobs SET status = 'queued', worker_id = NULL, lease_until = NULL, stage = NULL, "
+                "attempts = MAX(attempts - 1, 0), updated_at = ? WHERE id = ? AND worker_id = ? AND status = 'running'",
+                (now(), jid, worker_id),
+            ).rowcount
+        return n > 0
+
+    def update_job(self, jid: str, worker_id: str | None = None, **fields) -> bool:
+        """Set job fields. With `worker_id`, only while that worker holds the job (False otherwise), so a worker that
+        lost its lease cannot overwrite the new holder's state. Finishing a job drops its lease."""
+        fields["updated_at"] = now()
+        if fields.get("status") in FINISHED:
+            fields.update(worker_id=None, lease_until=None)
+        if isinstance(fields.get("timings"), dict):
+            fields["timings"] = json.dumps(fields["timings"])
+        cols = ", ".join(f"{k} = ?" for k in fields)
+        where, args = "id = ?", [jid]
+        if worker_id is not None:
+            where, args = "id = ? AND worker_id = ?", [jid, worker_id]
+        with self.connect() as c:
+            n = c.execute(f"UPDATE jobs SET {cols} WHERE {where}", (*fields.values(), *args)).rowcount
+        return n > 0
 
     # rallies
     def replace_rallies(self, video_id: str, rallies: list[dict]) -> None:

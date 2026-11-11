@@ -13,9 +13,9 @@ def upload(client, clip):
 def run_worker_once():
     from vball_app import deps, worker
 
-    job = deps.db.claim_next_job()
+    job = deps.db.claim_next_job("test-worker")
     assert job is not None
-    worker.process(deps.db, job)
+    worker.process(deps.db, job, "test-worker")
     return deps.db.get_job(job["id"])
 
 
@@ -40,9 +40,15 @@ def test_pipeline_stages_and_ball_window(client, clip, fake_ball, monkeypatch, t
     job = run_worker_once()
     assert job["status"] == "done", job["error"]
     assert job["progress"] == 1.0
+    from vball.pipeline import STAGES
+
+    assert set(job["timings"]) == set(STAGES) and all(
+        t >= 0 for t in job["timings"].values()
+    )  # first run: all computed
+    assert client.get(f"/videos/{v['id']}/jobs/latest").json()["timings"] == job["timings"]
 
     stages = {s["name"]: s for s in client.get(f"/videos/{v['id']}/stages").json()}
-    assert stages["decode"]["status"] == "done"
+    assert stages["decode"]["status"] == "done" and stages["decode"]["summary"]["elapsed_s"] >= 0
     assert [s["start_frame"] for s in stages["decode"]["summary"]["shots"]] == [0, 25]
     assert stages["court"]["status"] == "unavailable"
     assert stages["ball"]["summary"]["detected"] == 25
@@ -61,8 +67,10 @@ def test_rerun_reuses_earlier_stages(client, clip, fake_ball, monkeypatch):
     calls = []
     monkeypatch.setitem(pipeline.FUNCS, "decode", lambda *a: calls.append("decode") or {"status": "done"})
     assert client.post(f"/videos/{v['id']}/jobs", json={"from_stage": "ball"}).status_code == 201
-    assert run_worker_once()["status"] == "done"
+    job = run_worker_once()
+    assert job["status"] == "done"
     assert calls == []  # decode result reused
+    assert "decode" not in job["timings"] and "court" not in job["timings"] and "ball" in job["timings"]
 
 
 def test_job_stream_ends_with_final_state(client, clip, fake_ball):

@@ -509,8 +509,14 @@ export interface components {
         CourtCorrection: {
             /** Frame */
             frame: number;
-            /** Corners Px */
-            corners_px: number[][];
+            /** Points Px */
+            points_px: number[][];
+            /**
+             * Preset
+             * @default corners
+             * @enum {string}
+             */
+            preset: "corners" | "near_half";
         };
         /** CourtOut */
         CourtOut: {
@@ -644,6 +650,17 @@ export interface components {
             created_at: string;
             /** Updated At */
             updated_at: string;
+            /** Worker Id */
+            worker_id?: string | null;
+            /**
+             * Attempts
+             * @default 0
+             */
+            attempts: number;
+            /** Timings */
+            timings?: {
+                [key: string]: number;
+            } | null;
         };
         /** JobRequest */
         JobRequest: {

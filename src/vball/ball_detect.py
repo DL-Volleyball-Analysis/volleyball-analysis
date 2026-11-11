@@ -15,6 +15,7 @@ Two detector families, both from asigatchov/fast-volleyball-tracking-inference (
 """
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -37,7 +38,10 @@ def _session(path: Path):
     import onnxruntime as ort
 
     providers = [p for p in ("CUDAExecutionProvider", "CPUExecutionProvider") if p in ort.get_available_providers()]
-    return ort.InferenceSession(str(path), providers=providers)
+    opts = ort.SessionOptions()
+    if threads := int(os.environ.get("VBALL_THREADS", "0")):  # set per process when several workers share a machine
+        opts.intra_op_num_threads = threads
+    return ort.InferenceSession(str(path), sess_options=opts, providers=providers)
 
 
 def _windows(n: int):
