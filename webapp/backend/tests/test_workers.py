@@ -5,6 +5,7 @@ These tests use their own database file under tmp_path, never the app's."""
 import multiprocessing as mp
 import os
 import signal
+import sys
 import threading
 import time
 from pathlib import Path
@@ -260,14 +261,28 @@ def test_limit_threads_sets_every_library(monkeypatch):
         monkeypatch.delenv(var, raising=False)
     calls = []
     monkeypatch.setattr("cv2.setNumThreads", calls.append)
-    monkeypatch.setattr(torch, "set_num_threads", calls.append)
+    torch.set_num_threads = calls.append
     worker.limit_threads(3)
     assert os.environ["VBALL_THREADS"] == os.environ["OMP_NUM_THREADS"] == "3" and calls == [3, 3]
 
 
 def test_benchmark_runs_jobs_and_sums_stage_times(tmp_path, monkeypatch, clip):
     """vball_app.bench with the worker command replaced: a fake process that finishes every job at once."""
+    import types
+
     from vball_app import bench
+
+    class Proc:  # psutil.Process of the worker tree; CI installs no psutil
+        def __init__(self, pid):
+            pass
+
+        def children(self, recursive=False):
+            return []
+
+        def memory_info(self):
+            return types.SimpleNamespace(rss=1_000_000_000)
+
+    monkeypatch.setitem(sys.modules, "psutil", types.SimpleNamespace(Process=Proc, NoSuchProcess=ProcessLookupError))
 
     class FakeWorker:
         pid = os.getpid()

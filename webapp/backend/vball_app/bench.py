@@ -16,8 +16,6 @@ import tempfile
 import time
 from pathlib import Path
 
-import psutil
-
 from vball.pipeline.stages.decode import video_meta
 
 from .db import FINISHED, Database
@@ -32,6 +30,8 @@ def run(
     kill_after_s: float | None = None,
     keep: Path | None = None,
 ) -> dict:
+    import psutil  # a measurement tool's dependency (installed with ultralytics), not the app's
+
     data = Path(tempfile.mkdtemp(prefix=f"vball_bench_{workers}w_", dir=keep))
     db = Database(data / "webapp.db")
     jobs = []
