@@ -254,8 +254,12 @@ def test_main_starts_one_or_several_workers(monkeypatch):
 
 
 def test_limit_threads_sets_every_library(monkeypatch):
-    import torch
+    import types
+
     from vball_app import worker
+
+    torch = types.ModuleType("torch")  # CI installs no torch
+    monkeypatch.setitem(sys.modules, "torch", torch)
 
     for var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "VBALL_THREADS"):
         monkeypatch.delenv(var, raising=False)
