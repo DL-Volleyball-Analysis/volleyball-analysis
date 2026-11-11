@@ -67,6 +67,9 @@ def fake_ball(monkeypatch):
         )
 
     monkeypatch.setattr("vball.ball.track", track)
+    monkeypatch.setattr(
+        "vball.pipeline.models.gym_ball_track", lambda video, weights, chunk, tick: track(video, "wasb_gym")
+    )
 
 
 @pytest.fixture

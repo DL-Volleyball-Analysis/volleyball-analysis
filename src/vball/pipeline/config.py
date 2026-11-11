@@ -7,6 +7,11 @@ from vball import actors, players
 from vball.paths import MODELS
 
 BALL_MODEL = "v4c"
+# WASB fine-tuned on gym footage (change train-ball-detector): held-out gym matches F1 0.946 at 10 px against 0.859 for
+# VballNet V4c (docs/results/ball-tracking.md); used for still cameras, whose footage it was trained on. Broadcast
+# keeps V4c until its broadcast test (change smooth-rally-playback, design "Ball model by footage").
+GYM_BALL_MODEL = MODELS / "wasb_gym.onnx"
+GYM_BALL_CHUNK = 300  # frames per detection and linking pass: bounds memory on full matches
 # the installed court keypoint model: copy the chosen weights here (models/ is not in git)
 # Every installed court model registers every shot; court_registration.pick keeps the best per shot. v2 is right
 # on gym images (0.49 m) and v3b on broadcast clips (0.10 m); neither does both (docs/results/court-keypoints.md).

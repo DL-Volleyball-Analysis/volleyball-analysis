@@ -6,7 +6,7 @@ import type { Job, Video } from './types'
 
 const job = (status: Job['status'], progress: number): Job => ({
   id: 'j1', video_id: 'v1', status, from_stage: 'decode', stage: 'ball', progress, error: null,
-  created_at: '', updated_at: '',
+  created_at: '', updated_at: '', attempts: 1,
 })
 const video: Video = {
   id: 'v1', name: 'match', fps: 25, frames: 50, width: 320, height: 180, created_at: '', job: job('queued', 0), score: null,

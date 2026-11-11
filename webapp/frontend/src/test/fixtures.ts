@@ -2,7 +2,7 @@ import type { Job, Rally, Video } from '../api/types'
 
 export const job = (patch: Partial<Job> = {}): Job => ({
   id: 'j1', video_id: 'v1', status: 'done', from_stage: 'decode', stage: null, progress: 1, error: null,
-  created_at: '2026-10-08T00:00:00Z', updated_at: '2026-10-08T00:00:00Z', ...patch,
+  created_at: '2026-10-08T00:00:00Z', updated_at: '2026-10-08T00:00:00Z', attempts: 1, ...patch,
 })
 
 export const video = (patch: Partial<Video> = {}): Video => ({

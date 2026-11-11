@@ -177,6 +177,7 @@ def main():
     ap = argparse.ArgumentParser(description="Run analysis workers.")
     ap.add_argument("--workers", type=int, default=1, help="worker processes on this machine (default 1)")
     ap.add_argument("--threads", type=int, default=None, help="compute threads per worker (default: cores / workers)")
+    ap.add_argument("--lease", type=float, default=LEASE_S, help=f"lease seconds (default {LEASE_S:.0f})")
     args = ap.parse_args()
     configure_logging()
     check_models()
@@ -184,10 +185,10 @@ def main():
     n = max(1, args.workers)
     threads = args.threads or (max(1, (os.cpu_count() or 1) // n) if n > 1 else None)
     if n == 1:
-        run_worker(threads)
+        run_worker(threads, args.lease)
         return
     ctx = mp.get_context("spawn")
-    procs = [ctx.Process(target=run_worker, args=(threads,), name=f"worker-{i}") for i in range(n)]
+    procs = [ctx.Process(target=run_worker, args=(threads, args.lease), name=f"worker-{i}") for i in range(n)]
     for p in procs:
         p.start()
     signal.signal(signal.SIGTERM, lambda *_: [p.terminate() for p in procs])  # children release their jobs

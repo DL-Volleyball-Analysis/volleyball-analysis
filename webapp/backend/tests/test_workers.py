@@ -7,6 +7,7 @@ import os
 import signal
 import threading
 import time
+from pathlib import Path
 
 import pytest
 from vball_app.db import Database
@@ -193,3 +194,98 @@ def test_threads_do_not_double_claim(tmp_path):
     for t in ts:
         t.join()
     assert len(got) == 30 == len(set(got))
+
+
+def test_run_worker_releases_its_job_on_stop(monkeypatch):
+    """In-process version of the signal test: a Stop raised during a job (as the signal handler does) queues it."""
+    from vball_app import deps, worker
+
+    vid = deps.db.add_video("v", "/nowhere.mp4", {})["id"]
+    jid = deps.db.add_job(vid, "decode")["id"]
+    monkeypatch.setattr(worker, "configure_logging", lambda: None)
+    monkeypatch.setattr(worker.signal, "signal", lambda *a: None)
+    monkeypatch.setattr(worker, "process", lambda db, job, wid, lease: worker._raise_stop(signal.SIGTERM, None))
+    monkeypatch.setattr(worker, "limit_threads", lambda n: None)
+    worker.run_worker(threads=2)
+    j = deps.db.get_job(jid)
+    assert (j["status"], j["worker_id"]) == ("queued", None)
+
+
+def test_run_worker_idles_until_stopped(monkeypatch):
+    from vball_app import worker
+
+    monkeypatch.setattr(worker, "configure_logging", lambda: None)
+    monkeypatch.setattr(worker.signal, "signal", lambda *a: None)
+    monkeypatch.setattr(worker.time, "sleep", lambda s: worker._raise_stop(signal.SIGINT, None))
+    worker.run_worker()  # no job queued: polls once, then stops cleanly
+
+
+def test_main_starts_one_or_several_workers(monkeypatch):
+    from vball_app import worker
+
+    started = []
+    monkeypatch.setattr(worker, "configure_logging", lambda: None)
+    monkeypatch.setattr(worker, "check_models", lambda: {})
+    monkeypatch.setattr(worker.backup, "back_up", lambda: None)
+    monkeypatch.setattr(worker, "run_worker", lambda threads, lease: started.append(("inline", threads, lease)))
+
+    class Proc:
+        def __init__(self, target, args, name):
+            self.args = args
+
+        def start(self):
+            started.append(("process", *self.args))
+
+        def join(self):
+            pass
+
+        def terminate(self):
+            pass
+
+    monkeypatch.setattr(worker.mp, "get_context", lambda kind: type("Ctx", (), {"Process": Proc}))
+    monkeypatch.setattr(worker.signal, "signal", lambda *a: None)
+    monkeypatch.setattr(worker.os, "cpu_count", lambda: 8)
+    monkeypatch.setattr("sys.argv", ["worker"])
+    worker.main()
+    monkeypatch.setattr("sys.argv", ["worker", "--workers", "4", "--lease", "30"])
+    worker.main()
+    assert started == [("inline", None, 60.0)] + [("process", 2, 30.0)] * 4
+
+
+def test_limit_threads_sets_every_library(monkeypatch):
+    import torch
+    from vball_app import worker
+
+    for var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "VBALL_THREADS"):
+        monkeypatch.delenv(var, raising=False)
+    calls = []
+    monkeypatch.setattr("cv2.setNumThreads", calls.append)
+    monkeypatch.setattr(torch, "set_num_threads", calls.append)
+    worker.limit_threads(3)
+    assert os.environ["VBALL_THREADS"] == os.environ["OMP_NUM_THREADS"] == "3" and calls == [3, 3]
+
+
+def test_benchmark_runs_jobs_and_sums_stage_times(tmp_path, monkeypatch, clip):
+    """vball_app.bench with the worker command replaced: a fake process that finishes every job at once."""
+    from vball_app import bench
+
+    class FakeWorker:
+        pid = os.getpid()
+
+        def __init__(self, cmd, env, stdout, stderr):
+            db = Database(Path(env["VBALL_WEBAPP_DATA"]) / "webapp.db")
+            assert cmd[-4:] == ["--workers", "2", "--lease", "20.0"]
+            while (j := db.claim_next_job("fake")) is not None:
+                db.update_job(j["id"], "fake", status="done", timings={"ball": 1.0, "court": 2.0})
+
+        def send_signal(self, sig):
+            pass
+
+        def wait(self, timeout):
+            pass
+
+    monkeypatch.setattr(bench.subprocess, "Popen", FakeWorker)
+    r = bench.run([clip], workers=2, copies=3, keep=tmp_path)
+    assert (r["jobs"], r["done"], r["failed"], r["attempts"]) == (3, 3, [], [1, 1, 1])
+    assert r["stage_s"] == {"court": 6.0, "ball": 3.0} and r["peak_rss_gb"] > 0
+    assert '"workers": 2' in bench.to_json([r])

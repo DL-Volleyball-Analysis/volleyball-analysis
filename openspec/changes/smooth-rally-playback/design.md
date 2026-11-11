@@ -38,8 +38,8 @@ starts from the fit quality of the two flights at the touch and is raised or low
 for that player overlapping the touch. Lives in `vball.touches` (pure functions, unit-tested with hand-written
 chains); the events stage (now a placeholder) calls it and writes `touches.json`.
 
-**Ball model by footage.** The ball stage already runs after the court stage. Still camera (`camera_motion` reports no
-motion) or court from the gym model or a correction -> WASB gym (`models/wasb_gym.onnx` via `ball_detect.Wasb`, then
+**Ball model by footage.** The ball stage already runs after the court stage. Every shot still (`camera_motion`
+reports no motion; a per-shot choice was dropped: one video, one ball model keeps the track consistent) -> WASB gym (`models/wasb_gym.onnx` via `ball_detect.Wasb`, then
 `ball_track.track`, processed in chunks of 300 frames for memory); else VballNet V4c. The result names the model. The
 broadcast decision for WASB stays in `train-ball-detector` task 3.2.
 

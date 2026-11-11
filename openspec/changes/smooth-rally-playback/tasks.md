@@ -9,7 +9,7 @@
   `docs/results/rally-playback.md`
 
 ## 2. Ball model by footage
-- [ ] 2.1 Ball stage picks WASB gym for still cameras and gym or corrected courts, VballNet otherwise; chunked
+- [x] 2.1 Ball stage picks WASB gym for still cameras, VballNet otherwise; chunked
   processing; result names the model; version bump; tests with stub models
 - [ ] 2.2 `models/wasb_gym.onnx` in the manifest as a pipeline model; re-measure
 

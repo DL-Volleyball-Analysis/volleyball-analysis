@@ -16,6 +16,36 @@ from vball.court_keypoints import detect as detect_keypoints
 from . import config
 
 
+def gym_ball_track(video: Path, weights: Path, chunk: int, tick: Callable[[float], None]) -> pd.DataFrame:
+    """Ball track by WASB (vball.ball_detect.Wasb) linked per chunk of frames (vball.ball_track); same columns as
+    vball.ball.track. Tests replace this function with a fake."""
+    import cv2
+
+    from vball import ball_detect, ball_track
+
+    det = ball_detect.Wasb(weights)
+    cap = cv2.VideoCapture(str(video))
+    n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 1
+    parts, start = [], 0
+    while True:
+        frames: list[np.ndarray] = []
+        while len(frames) < chunk:
+            ok, f = cap.read()
+            if not ok:
+                break
+            frames.append(f)
+        if not frames:
+            break
+        df = ball_track.track(frames, det.candidates(frames))
+        df["frame"] += start
+        parts.append(df)
+        start += len(frames)
+        tick(min(1.0, start / n))
+    cap.release()
+    cols = ["frame", "visible", "x", "y", "radius"]
+    return pd.concat(parts, ignore_index=True)[cols] if parts else pd.DataFrame(columns=cols)
+
+
 def court_detector(weights: Path):
     """frame -> 14 x (x, y, conf) with one court model, at the size it was trained at.
     Tests replace this function with a fake detector."""
