@@ -7,7 +7,7 @@
 - [x] 1.2 Heartbeat thread and lost-lease abandon; SIGTERM / SIGINT release; tests
 
 ## 2. Several workers
-- [ ] 2.1 `--workers N`, worker ids, per-process thread limits; compose scaling note; SIGKILL test with two workers
+- [x] 2.1 `--workers N`, worker ids, per-process thread limits; compose scaling note; SIGKILL test with two workers
   (job finished by the other, stage outputs equal)
 
 ## 3. Stage timings
@@ -15,6 +15,6 @@
   and frontend types regenerated; tests
 
 ## 4. Measure and document
-- [ ] 4.1 `scripts/bench_workers.py`; run 1, 2, 4 workers on four cached videos from `players`; `docs/results/scaling.md`
-- [ ] 4.2 ADR and architecture updated with the measured speed-up, bottleneck stage and memory; CHANGELOG;
+- [x] 4.1 `scripts/bench_workers.py`; run 1, 2, 4 workers on four cached videos from `players`; `docs/results/scaling.md`
+- [x] 4.2 ADR and architecture updated with the measured speed-up, bottleneck stage and memory; CHANGELOG;
   `openspec validate scale-out-analysis-workers --strict`

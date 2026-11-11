@@ -6,6 +6,11 @@ and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
 ## [Unreleased]
 
 ### Added
+- Several analysis workers on one machine (`python -m vball_app.worker --workers N`): jobs are leased, a dead worker's
+  job is finished by another, Ctrl-C queues the job again, and each job records its stage times. Four workers on
+  8 cores: 1.79x the throughput of one (docs/results/scaling.md).
+- Still cameras use WASB with gym weights for the ball (held-out gym F1 0.946 against 0.859 for VballNet).
+- `scripts/demo.sh`: the whole app offline with one command, opening an analysed match.
 - Action evaluation: 95% intervals by resampling whole test matches (`--bootstrap`). The 0.303 -> 0.678 gain is
   per-player in-domain classification; the ball prior adds +0.005 to +0.014 with annotated balls and nothing
   measurable with detected balls.
@@ -27,6 +32,7 @@ and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
   wrong by 1.06 m. v0.1.0 said six of six by eye.
 
 ### Fixed
+- A second worker no longer takes over the first worker's running job at start-up.
 - The backend tests could reach the real `webapp/data` and emptied the local database; test data is now isolated with
   guards. The 11 analysed videos were restored with their results; user corrections and tags were lost.
 - broadcast_back_view gets its court from line evidence and 16 3D flights (it had none).

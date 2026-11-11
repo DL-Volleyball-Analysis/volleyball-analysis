@@ -56,11 +56,12 @@ def run(
                 except psutil.NoSuchProcess:
                     pass
             peak_rss = max(peak_rss, rss)
-            if kill_after_s is not None and killed is None and time.perf_counter() - t0 >= kill_after_s:
-                kids = root.children() or [root]
-                killed = kids[0].pid
-                os.kill(killed, signal.SIGKILL)
             states = [s for j in jobs if (s := db.get_job(j)) is not None]
+            if kill_after_s is not None and killed is None and time.perf_counter() - t0 >= kill_after_s:
+                held = [s for s in states if s["status"] == "running" and s["worker_id"]]
+                if held:  # worker ids are host-pid-tag: kill the process that holds a job
+                    killed = int(held[0]["worker_id"].split("-")[-2])
+                    os.kill(killed, signal.SIGKILL)
             if all(s["status"] in FINISHED for s in states):
                 break
             time.sleep(1.0)

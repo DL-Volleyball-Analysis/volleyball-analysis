@@ -10,7 +10,7 @@ services:
       - ./webapp/data:/data
   worker:
     image: vball-app
-    command: ["python", "-m", "vball_app.worker"]
+    command: ["python", "-m", "vball_app.worker"]  # add "--workers", "N" to run N side by side (docs/results/scaling.md)
     depends_on: [api]
     volumes:
       - ./models:/app/models:ro

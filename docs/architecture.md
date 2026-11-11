@@ -17,7 +17,7 @@ flowchart LR
   end
   subgraph app["webapp/backend/vball_app"]
     api["FastAPI routers"] --> db[(SQLite)]
-    worker["worker"] --> db
+    worker["workers (N processes,<br/>leased jobs)"] --> db
     render["render"]
   end
   ui["webapp/frontend<br/>React review app"] -- HTTP / SSE --> api
