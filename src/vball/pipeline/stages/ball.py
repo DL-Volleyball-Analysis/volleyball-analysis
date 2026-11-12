@@ -1,4 +1,4 @@
-"""Ball: 2D ball track. Still cameras (gym and amateur footage) use WASB with gym weights, others VballNet V4c."""
+"""Ball: 2D ball track with VballNet V4c; WASB with gym weights for still cameras when config.GYM_BALL_FOR_STILL is on."""
 
 from pathlib import Path
 
@@ -18,14 +18,20 @@ def still_camera(prev: dict, out: Path) -> bool:
 
 
 def run(video: Path, out: Path, prev: dict, tick) -> dict:
-    if still_camera(prev, out) and usable(config.GYM_BALL_MODEL):
+    if config.GYM_BALL_FOR_STILL and still_camera(prev, out) and usable(config.GYM_BALL_MODEL):
         model = config.GYM_BALL_MODEL.stem
         df = models.gym_ball_track(video, config.GYM_BALL_MODEL, config.GYM_BALL_CHUNK, tick)
         why = "still camera"
     else:
         model = config.BALL_MODEL
         df = ball.track(video, config.BALL_MODEL, out_dir=out / "ball_raw", force=True)
-        why = "moving camera" if usable(config.GYM_BALL_MODEL) else "gym ball model not installed"
+        why = (
+            "default model"
+            if not config.GYM_BALL_FOR_STILL
+            else "moving camera"
+            if usable(config.GYM_BALL_MODEL)
+            else "gym ball model not installed"
+        )
     csv = out / "ball.csv"
     df.to_csv(csv, index=False, float_format="%.1f")
     return {

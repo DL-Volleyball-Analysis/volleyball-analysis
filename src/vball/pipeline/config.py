@@ -8,8 +8,11 @@ from vball.paths import MODELS
 
 BALL_MODEL = "v4c"
 # WASB fine-tuned on gym footage (change train-ball-detector): held-out gym matches F1 0.946 at 10 px against 0.859 for
-# VballNet V4c (docs/results/ball-tracking.md); used for still cameras, whose footage it was trained on. Broadcast
-# keeps V4c until its broadcast test (change smooth-rally-playback, design "Ball model by footage").
+# VballNet V4c. Not a default: on the fixed NCAA end-line clips it found the ball in far fewer frames than V4c (quincy
+# 76% -> 23%, usc_pepperdine 79% -> 26%) with fewer good 3D flights, while on an amateur side view it found more
+# (52% -> 68%) (docs/results/ball-tracking.md, 2026-11-12). The footage type that suits it is not known yet, so the
+# ball stage uses it only when GYM_BALL_FOR_STILL is switched on.
+GYM_BALL_FOR_STILL = False
 GYM_BALL_MODEL = MODELS / "wasb_gym.onnx"
 GYM_BALL_CHUNK = 300  # frames per detection and linking pass: bounds memory on full matches
 # the installed court keypoint model: copy the chosen weights here (models/ is not in git)

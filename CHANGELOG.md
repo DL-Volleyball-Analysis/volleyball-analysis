@@ -9,7 +9,9 @@ and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). 
 - Several analysis workers on one machine (`python -m vball_app.worker --workers N`): jobs are leased, a dead worker's
   job is finished by another, Ctrl-C queues the job again, and each job records its stage times. Four workers on
   8 cores: 1.79x the throughput of one (docs/results/scaling.md).
-- Still cameras use WASB with gym weights for the ball (held-out gym F1 0.946 against 0.859 for VballNet).
+- WASB with gym weights as an optional ball model for still cameras (`GYM_BALL_FOR_STILL`, off): better on an
+  amateur side view (ball found in 68% of frames against 52%), much worse on the fixed NCAA end-line clips (23-26%
+  against 76-79%), so VballNet stays the default.
 - `scripts/demo.sh`: the whole app offline with one command, opening an analysed match.
 - Action evaluation: 95% intervals by resampling whole test matches (`--bootstrap`). The 0.303 -> 0.678 gain is
   per-player in-domain classification; the ball prior adds +0.005 to +0.014 with annotated balls and nothing

@@ -27,6 +27,7 @@ def stubs(monkeypatch, tmp_path):
     weights = tmp_path / "wasb_gym.onnx"
     weights.write_bytes(b"fake")  # outside models/: only has to exist
     monkeypatch.setattr(config, "GYM_BALL_MODEL", weights)
+    monkeypatch.setattr(config, "GYM_BALL_FOR_STILL", True)
     calls = []
     monkeypatch.setattr(models, "gym_ball_track", lambda *a: calls.append("wasb") or track())
     monkeypatch.setattr(ball_stage.ball, "track", lambda *a, **k: calls.append("v4c") or track())
@@ -51,3 +52,11 @@ def test_without_gym_weights_or_motion_vballnet_is_used(stubs, monkeypatch, tmp_
     weights.write_bytes(b"fake")
     monkeypatch.setattr(results, "motion_of", lambda out: None)  # no camera motion: not known to be still
     assert ball_stage.run(tmp_path / "v.mp4", tmp_path, DECODE, lambda p: None)["model"] == "v4c"
+
+
+def test_by_default_every_video_uses_vballnet(stubs, monkeypatch, tmp_path):
+    calls, _ = stubs
+    monkeypatch.setattr(config, "GYM_BALL_FOR_STILL", False)
+    monkeypatch.setattr(results, "motion_of", lambda out: Motion(0.0))  # a still camera
+    r = ball_stage.run(tmp_path / "v.mp4", tmp_path, DECODE, lambda p: None)
+    assert (r["model"], r["model_reason"], calls) == ("v4c", "default model", ["v4c"])

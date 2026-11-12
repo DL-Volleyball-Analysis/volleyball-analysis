@@ -11,7 +11,9 @@
 ## 2. Ball model by footage
 - [x] 2.1 Ball stage picks WASB gym for still cameras, VballNet otherwise; chunked
   processing; result names the model; version bump; tests with stub models
-- [ ] 2.2 `models/wasb_gym.onnx` in the manifest as a pipeline model; re-measure
+- [ ] 2.2 `models/wasb_gym.onnx` in the manifest as a pipeline model; re-measure (2026-11-12, first three fixed
+  clips: WASB found the ball in 17-26% of frames against 28-79% for V4c; option off by default until the footage
+  that suits it is known)
 
 ## 3. Stable player tracks
 - [ ] 3.1 15 Hz detection and longer tracker memory on still cameras (players config)

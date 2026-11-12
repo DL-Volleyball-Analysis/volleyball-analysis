@@ -66,7 +66,7 @@ FUNCS = {
 VERSIONS = {
     "decode": "2",
     "court": "6",
-    "ball": "2",  # 2: WASB gym weights for still cameras, VballNet V4c otherwise
+    "ball": "3",  # 2: WASB gym weights for still cameras; 3: V4c again by default (WASB worse on NCAA end-line clips)
     "players": f"{config.PLAYER_CFG.label()}-4",
     "actions": "4",  # 3: per-player classifier + ball prior; 4: serves at SERVE_FPS
     "trajectory": "6",  # 6: anchors only for an unambiguous toucher
