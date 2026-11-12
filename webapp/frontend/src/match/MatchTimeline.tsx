@@ -9,9 +9,10 @@ import { needsReview, reasonText } from './rallyText'
 import { labelRows, rulerStep, timeAt } from './timeline'
 
 const LANES = ['Rallies', 'Ball', 'Landings', 'Actions', 'Tags', 'Review'] as const
-// Shown by default; the others open with "More lanes". A timeline says where things happen; what happened is in
-// the rally's play-by-play list (as in Veo, Hudl / Volleymetrics), so lanes stay few and marks carry no text.
-const MAIN_LANES: readonly string[] = ['Rallies', 'Actions', 'Tags']
+// By default the timeline shows rallies, and coach tags once there are any; ball, landings, actions, open suggestions
+// and review open with "More lanes". What happened is read in the actions list beside the video (as in Balltime's
+// rallies / actions lists and Veo's event menu), so the timeline only says where.
+const shownByDefault = (lane: string, hasTags: boolean) => lane === 'Rallies' || (lane === 'Tags' && hasTags)
 const ACTION_SHORT: Record<ActionEvent['action'], string> = { serve: 'Srv', receive: 'Rec', set: 'Set', spike: 'Spk', block: 'Blk' }
 const LABEL_PX = 56 // room per ruler label, so labels never overlap on narrow screens
 
@@ -84,7 +85,7 @@ export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSele
     <div className="grid grid-cols-[4.5rem_minmax(0,1fr)] text-[12px]" role="group" aria-label="Match timeline">
       <div className="border-r border-line bg-panel">
         <div className="h-5" />
-        {LANES.filter((l) => more || MAIN_LANES.includes(l)).map((l) => (
+        {LANES.filter((l) => more || shownByDefault(l, tags.length > 0)).map((l) => (
           <div key={l} className="flex h-6 items-center px-2 text-ink-muted">{l}</div>
         ))}
       </div>
@@ -159,7 +160,6 @@ export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSele
           })}
         </div>
 
-        </>)}
 
         {/* Actions: recognised by the action model, in the team's colour when known; click to seek */}
         <div className="relative h-6 border-b border-line" data-testid="lane-actions">
@@ -183,10 +183,13 @@ export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSele
           })}
         </div>
 
+        </>)}
+
+        {(more || tags.length > 0) && (<>
         {/* Tags: the player number (S before it for a serve) in the team's colour; outside rallies dimmed.
             Open suggestions are dashed and never counted until accepted. */}
         <div className="relative h-6 border-b border-line" data-testid="lane-tags">
-          {suggestions.filter((s) => s.status === 'open').map((s) => {
+          {more && suggestions.filter((s) => s.status === 'open').map((s) => {
             const label = `Suggested ${s.kind}${s.number != null ? ` by ${s.number}` : ''} at ${s.time_s.toFixed(1)} s`
             return (
               <button
@@ -221,6 +224,8 @@ export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSele
           ))}
         </div>
 
+        </>)}
+
         {more && (
         /* Review: low-confidence rallies */
         <div className="relative h-6">
@@ -245,7 +250,7 @@ export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSele
       <div className="border-r border-line bg-panel" />
       <button type="button" aria-expanded={more} onClick={() => setMore((m) => !m)}
         className="justify-self-start px-2 py-1 text-ink-muted hover:text-ink">
-        {more ? '▾ Fewer lanes' : '▸ More lanes: ball, landings, review'}
+        {more ? '▾ Fewer lanes' : '▸ More lanes: ball, landings, actions, suggested tags, review'}
       </button>
     </div>
   )

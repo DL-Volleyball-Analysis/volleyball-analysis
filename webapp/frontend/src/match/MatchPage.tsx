@@ -182,9 +182,9 @@ function MatchView({ id }: { id: string }) {
               </div>
             )}
             <div className="px-4 pt-3 pb-4">
-              <h2 className="mb-1 text-[13px] font-semibold">Rally</h2>
-              <RallyInspector rallies={rallies} index={pos.index} onCorrect={correct} />
               {actionsQ.data && <PlayByPlay rally={rallies[pos.index]} actions={actionsQ.data.events} />}
+              <h2 className="mt-3 mb-1 text-[13px] font-semibold">Rally</h2>
+              <RallyInspector rallies={rallies} index={pos.index} onCorrect={correct} />
             </div>
             <div className="border-t border-line px-4 pb-4">
               <Tabs tabs={PANELS} value={panel} onChange={setPanel} label="Match details" />

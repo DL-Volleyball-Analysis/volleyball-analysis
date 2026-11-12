@@ -31,3 +31,13 @@ test('says so when a rally has no recognised action', () => {
   renderApp(<ClockContext.Provider value={createClock()}><PlayByPlay rally={rally} actions={[]} /></ClockContext.Provider>)
   expect(screen.getByText('No actions recognised in this rally.')).toBeInTheDocument()
 })
+
+
+test('Whole match lists every action, also outside the rally', async () => {
+  const rally = { ...rallies(['a'])[0], start_s: 10, end_s: 16 }
+  const actions = [act('spike', 14, 2, 'b'), act('set', 30, 4, 'a')]
+  renderApp(<ClockContext.Provider value={createClock()}><PlayByPlay rally={rally} actions={actions} /></ClockContext.Provider>)
+  expect(screen.getAllByRole('listitem')).toHaveLength(1)
+  await userEvent.click(screen.getByRole('button', { name: 'Whole match' }))
+  expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual([expect.stringContaining('Attack'), expect.stringContaining('Set#4')])
+})

@@ -84,3 +84,11 @@ by team; Hudl / Volleymetrics filter clips by player, rotation and action and st
 organises review by rally and touch. So: the timeline shows Rallies, Actions (dots in the team colour, the action in the
 tooltip) and Tags; Ball, Landings and Review open with "More lanes". The rally inspector gains a play-by-play list of
 the rally's actions (time, action, player, team) with filters by action; a row seeks the video.
+
+Revised the same day after the owner's review of the dark theme: all-match action dots and open suggestions still
+formed a solid band. Following Balltime (rallies and actions as lists beside the player, filtered by player, action
+and outcome; nothing per touch on a timeline), the timeline shows rallies only, and tags once there are any (accepted
+ones; open suggestions behind "More lanes" with ball, landings, actions and review). The play-by-play list comes first
+in the inspector, for this rally or the whole match, and says that actions are per-player pose recognitions not yet
+matched to the ball's touches (several players in a ready position appear together; touch attribution is change
+smooth-rally-playback task 5).

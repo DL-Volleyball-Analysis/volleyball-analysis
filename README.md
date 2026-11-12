@@ -84,8 +84,9 @@ Every number comes from a script and a labelled split, or is named a proxy or sy
 
 <sub>Match review (React + FastAPI, <a href="webapp/README.md">webapp/</a>) on a fixed end-line clip: the court
 fitted to the painted lines and the tracked players on the video, rally details and list, timeline lanes for rallies,
-ball, actions and tags. Since 2026-11-12 the timeline shows rallies, action dots and tags (ball, landings and review
-behind "More lanes"), and each rally has a play-by-play list of its actions that jumps the video to a touch. The 13 rallies come from the fixed-camera rally model (12 of the score bug's 14 points
+ball, actions and tags. Since 2026-11-12 the timeline shows rallies (and coach tags once there are any; ball, landings,
+actions, suggestions and review behind "More lanes"), and a play-by-play list beside the video names the actions of the
+rally or the whole match and jumps the video to one, as in Balltime's actions list. The 13 rallies come from the fixed-camera rally model (12 of the score bug's 14 points
 matched). Footage: NCAA men's volleyball (VolleyballWatchdog), research use.</sub>
 
 <img src="docs/assets/boards-and-stats.png" alt="2D and 3D tactics boards and a player statistics table">

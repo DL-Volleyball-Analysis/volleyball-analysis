@@ -138,6 +138,8 @@ describe('MatchTimeline rendering cost', () => {
           onSelectSuggestion={onSelectSuggestion} />
       </ClockContext.Provider>,
     )
+    expect(screen.queryAllByTestId('action-mark')).toHaveLength(0) // actions and suggestions wait behind More lanes
+    await userEvent.click(screen.getByRole('button', { name: /More lanes/ }))
     const marks = screen.getAllByTestId('action-mark')
     expect(marks.map((m) => m.dataset.action)).toEqual(['Spk', 'Rec']) // dots: the text is in the name
     expect(marks[0]).toHaveAccessibleName('spike by #10 (A) at 4.0 s')
