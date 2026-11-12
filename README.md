@@ -48,6 +48,17 @@ flowchart LR
 Each stage is versioned and cached, reports why it could not produce a result (no usable court, camera not
 calibrated, model missing), and later stages only use results marked reliable.
 
+## Open the app
+
+After [Setup](#setup), with analysed videos in `webapp/data` (or none, to start empty):
+```
+scripts/demo.sh                          # API :8000, two analysis workers, review UI; opens an analysed match
+scripts/demo.sh fixed_hawaii_pennstate   # open another analysed video by name
+scripts/demo.sh --check                  # start everything, check it answers, stop
+```
+Ctrl-C stops all three; a worker puts any job it was running back in the queue. Drop a video on the library page to
+analyse it. Running the parts by hand, or with Docker, is described in [webapp/README.md](webapp/README.md#run).
+
 ## Results
 
 Every number comes from a script and a labelled split, or is named a proxy or synthetic. Details and scripts:
@@ -55,16 +66,17 @@ Every number comes from a script and a labelled split, or is named a proxy or sy
 
 | Component | Result | Evidence |
 |---|---|---|
-| Court registration | 0.10 m median court-position error on held-out broadcast clips (96% within 0.3 m); 0.49 m on held-out gym images. Fixed end-line cameras, where both keypoint models fail: the court fitted to the painted lines of an empty-court background plate is measured on hand-labelled floor points: five of six clips right to 0.02-0.06 m (median), one (Quincy) wrong by 1.06 m, stretched in depth. The net tape gives the focal length for 3D. | labelled test images; labelled floor points · [court-keypoints.md](docs/results/court-keypoints.md) |
+| Court registration | Court model v4 (fine-tuned on our own labels): 0.05 m median court-position error on held-out broadcast clips (99% within 0.3 m), 0.35 m on held-out gym images; amateur recordings 1.35 m, not yet usable. The pipeline still runs v2 / v3b (0.10 m / 0.49 m). Fixed end-line cameras, where both keypoint models fail: the court fitted to the painted lines of an empty-court background plate is measured on hand-labelled floor points: five of six clips right to 0.02-0.06 m (median), one (Quincy) wrong by 1.06 m, stretched in depth. The net tape gives the focal length for 3D. | labelled test images; labelled floor points · [court-keypoints.md](docs/results/court-keypoints.md) |
 | Moving cameras | Frame-to-frame camera motion from the video (keyframe registration): the court, user corrections and 3D follow pans and zooms; a still camera stays still. | photometric check · [moving-camera.md](docs/prd/moving-camera.md) |
 | Player tracking | IDF1 0.690, HOTA 0.636, precision 0.970 on SportsMOT volleyball with a detector fine-tuned to box players only (no referees, line judges or spectators). | labelled benchmark · [player-tracking.md](docs/results/player-tracking.md) |
-| Ball tracking | VballNet V4c in the pipeline: 3.08 false jumps per 100 frames, 68.7% of frames detected on 5 broadcast clips. WASB fine-tuned on broadcast + gym data: F1 0.942 (10 px) on held-out gym matches, against 0.859 for VballNet and 0.527 for WASB's published weights; its broadcast test is pending before it replaces VballNet. | labelled test matches · [ball-tracking.md](docs/results/ball-tracking.md) |
+| Ball tracking | VballNet V4c in the pipeline: 3.08 false jumps per 100 frames, 68.7% of frames detected on 5 broadcast clips. WASB fine-tuned on gym data: F1 0.946 (10 px) on held-out gym matches, against 0.859 for VballNet and 0.527 for WASB's published weights; on an amateur side view it finds the ball in more frames (68% vs 52%) but on the fixed NCAA end-line clips in far fewer (23-26% vs 76-79%), so it is an option (`GYM_BALL_FOR_STILL`), not the default. A by-eye check of 48 frames of the demo clip: 19 of 35 ball marks on the ball, 13 wrong, mostly on officials' heads ([visual-check.md](docs/results/visual-check.md)). | labelled test matches · [ball-tracking.md](docs/results/ball-tracking.md) |
 | 3D trajectory | Robust, bounded ballistic fit anchored to the touching player: attack error 0.76 -> 0.31 m (median) on synthetic rallies with 30% missed and 12% false detections when the toucher is unambiguous. A stress test with twelve players shows a wrong anchor makes the attack five times worse, so a touch is anchored only when one player is clearly nearest (never worse than no anchor). On the six fixed clips 45-160 flights per 3 minutes are kept, 25-66% more rejected as impossible (system checks, not accuracy); the 2D ball track is the bottleneck. | synthetic + system checks · [trajectory.md](docs/results/trajectory.md) |
 | Action recognition | Per-player classifier (YOLO26s-cls on player crops) weighted by the ball's position: macro F1 0.678 for block / receive / set / spike on 16 unseen matches of the Volleyball dataset, against 0.303 for the capstone's YOLOv11m detector (which fails on set and receive there); 9-class person action accuracy 72.8%. Serves still come from the detector. | labelled benchmark · [actions.md](docs/results/actions.md) |
 | Shirt numbers | In the pipeline, voted per player over time. Digit mAP@0.5 0.824 on matches whose teams the model never saw; whole numbers read exactly from 63% of single crops. | labelled test split · [actions.md](docs/results/actions.md) |
 | Rally detection | Classifier on the system's own cues (court, players, ball): F1 0.742 at temporal IoU 0.5 on two held-out broadcast matches (220 rallies), against 0.423 for a ball-only rule. It does not transfer to fixed end-line cameras, so a second model is trained on three full fixed-camera matches labelled from the on-screen score (405 points): F1 0.76 on the six fixed clips (80 points, other matches; most share arenas with training). | labelled matches · [rallies.md](docs/results/rallies.md) |
 | Player statistics | Attack efficiency, kill rate, aces and serve errors per player from coach tags, CSV export. | tests · [player-stats.md](docs/prd/player-stats.md) |
 | Speed | A 3-minute fixed-camera clip in 19 minutes on a laptop CPU (court stage 3.7x and 3D 4.6x faster for still cameras). | measured · [analysis-speed.md](docs/results/analysis-speed.md) |
+| Several workers | Leased jobs on one SQLite database: 4 workers on 8 cores run 1.79x the jobs per hour of one (sublinear: the stages are already multi-threaded; ball tracking and rally cues are the bottleneck). A worker killed mid-job loses nothing: another finishes the job with identical results. | measured · [scaling.md](docs/results/scaling.md) |
 
 ## Review app
 
@@ -72,7 +84,8 @@ Every number comes from a script and a labelled split, or is named a proxy or sy
 
 <sub>Match review (React + FastAPI, <a href="webapp/README.md">webapp/</a>) on a fixed end-line clip: the court
 fitted to the painted lines and the tracked players on the video, rally details and list, timeline lanes for rallies,
-ball, actions and tags. The 13 rallies come from the fixed-camera rally model (12 of the score bug's 14 points
+ball, actions and tags. Since 2026-11-12 the timeline shows rallies, action dots and tags (ball, landings and review
+behind "More lanes"), and each rally has a play-by-play list of its actions that jumps the video to a touch. The 13 rallies come from the fixed-camera rally model (12 of the score bug's 14 points
 matched). Footage: NCAA men's volleyball (VolleyballWatchdog), research use.</sub>
 
 <img src="docs/assets/boards-and-stats.png" alt="2D and 3D tactics boards and a player statistics table">
@@ -112,7 +125,7 @@ src/vball/          analysis package
   camera_motion.py    frame-to-frame camera motion (keyframe registration)
   scorebug.py         point changes read from the on-screen score (rally and point-winner labels)
   pipeline/           the staged analysis: one module per stage, model adapters, results folder
-scripts/            entry points (dataset build, evaluation, comparisons)
+scripts/            entry points (dataset build, evaluation, comparisons); demo.sh starts the app, bench_workers.py measures workers
 webapp/             web app: package vball_app (backend/: API, worker, render), React UI (frontend/); see webapp/README.md
 training/           training code: ball detector (WASB), action recognition, jersey numbers
 notebooks/          Kaggle / Colab notebooks (GPU work runs there, never locally)

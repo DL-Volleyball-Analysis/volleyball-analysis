@@ -27,3 +27,11 @@ trash/
 
 # evaluation outputs written to the working directory by ad-hoc runs (they belong in outputs/)
 /*.pt.json
+
+# profiling output of LLVM-instrumented tools (Swift, clang)
+*.profraw
+# local environment files
+.env
+.env.*
+# temporary scripts dropped next to package.json for Playwright runs
+*.tmp.mjs

@@ -88,8 +88,10 @@ React + Vite + TypeScript (strict), TanStack Query, React Router, Tailwind CSS v
   to 200 ms (≤ 5 re-renders per second during playback).
 - **Ball data** is fetched in 30 s windows around the playhead (`/ball?start&end`).
 - **Corrections** are optimistic and rolled back with a notice if the server rejects them.
-- **Editor layout**: the match page is one window: video, a rally inspector, tabs (rallies / landings /
-  analysis) and a multi-lane timeline whose playhead moves in an animation frame, outside React.
+- **Editor layout**: the match page is one window: video, a rally inspector with the rally's play-by-play list, tabs
+  (rallies / board / stats / landings / analysis) and a timeline whose playhead moves in an animation frame, outside
+  React. The timeline shows rallies, action dots and tags; ball, landings and review open with "More lanes" (where on
+  the timeline, what in the lists). The inspector scrolls within the video column's height.
 - **Design tokens** in `src/theme.css` (light by default, dark on request), system fonts, mono only for
   machine-origin strings; team and in/out are never shown by colour alone.
 

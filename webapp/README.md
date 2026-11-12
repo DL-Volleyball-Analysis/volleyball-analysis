@@ -3,21 +3,19 @@
 Upload a match video, get ball tracking, court registration, rallies and the running score,
 and review/correct them in the browser. Continuation of the NTOU capstone (DL-Volleyball-Analysis).
 
-> **Branch `redesign` (work in progress).** Backend rewritten around a staged pipeline; new
-> React frontend (library + match review). Rallies are demo data until rally detection lands.
-> The capstone version is on `main`.
+The capstone version of the web app is archived (DL-Volleyball-Analysis/capstone-webapp); this is the rebuild.
 
 ## Status
 | Stage | State |
 |---|---|
 | `decode` – metadata, camera shot cuts | done |
-| `court` – keypoints → homography per shot, best of the installed court models | done (2 of 5 evaluation clips usable) |
-| `ball` – VballNet V4c tracking | done |
+| `court` – keypoints → homography per shot, best of the installed court models; painted lines for still cameras | done (fixed end-line clips: 5 of 6 within 0.02-0.06 m) |
+| `ball` – VballNet V4c tracking (WASB gym weights optional for still cameras, off by default) | done |
 | `players` – YOLO26s fine-tuned on SportsMOT to box players only + BoT-SORT, court positions, team and role, 12-player cap | done (IDF1 0.690) |
 | `actions` – action events per player, time-local shirt numbers | done (needs `models/action_yolo11m.pt`, `models/jersey_digits_yolo26s.pt`) |
 | `trajectory` – camera calibration, bounded and player-anchored 3D flights | done (flights on real clips still low quality) |
 | `events` – contacts, landing in court metres | todo |
-| `rallies` – rally segmentation, point winner | todo (demo data only) |
+| `rallies` – rally segmentation (classifier on the system's cues; a fixed-camera model for still end-line cameras) | done (F1 0.742 broadcast, 0.76 fixed); point winner todo |
 
 ## Layout
 ```
@@ -26,7 +24,8 @@ backend/        package vball_app (pyproject.toml); the analysis stages are vbal
   vball_app/api/         one router per resource: videos, jobs, court, tracks, rallies, actions, stats
   vball_app/schemas.py   request / response models (the frontend's generated types come from them)
   vball_app/deps.py      database handle, video lookup, cached result tables
-  vball_app/worker.py    runs queued jobs, one at a time (vball.pipeline.run)
+  vball_app/worker.py    runs queued jobs (vball.pipeline.run); --workers N processes, leased jobs
+  vball_app/bench.py     throughput of N workers on a fresh data folder (scripts/bench_workers.py)
   vball_app/db.py        SQLite: videos, jobs, rallies (+ user corrections)
   vball_app/settings.py  data paths (VBALL_WEBAPP_DATA)
   vball_app/render.py    analysis video with every result drawn on it
@@ -47,13 +46,14 @@ All analysis code lives in the `vball` package at the repository root (`src/vbal
 does not keep its own copy. Model weights go in the root `models/` folder.
 
 ## Run
-From the repository root:
+Quickest: `scripts/demo.sh` from the repository root starts the API, two workers and the UI and opens an analysed
+match (`--check` only checks that everything starts). By hand, from the repository root:
 ```bash
 python3.14 -m venv .venv && .venv/bin/python -m pip install -r requirements/lock.txt && .venv/bin/python -m pip install -e ".[ml]" -e webapp/backend
 cd webapp
 
 ../.venv/bin/uvicorn vball_app.main:app --reload              # API on :8000, docs at /docs
-../.venv/bin/python -m vball_app.worker                       # analysis worker
+../.venv/bin/python -m vball_app.worker                       # analysis worker; --workers N for N side by side
 ../.venv/bin/python -m vball_app.demo                         # optional: import sample clips
 
 cd frontend && npm install && npm run dev                     # UI on http://localhost:5173 (proxies /api to :8000)
@@ -114,7 +114,8 @@ survive re-analysis. Rules and tests: `vball.stats` (`tests/test_stats.py`).
 
 ## Actions, shirt numbers and suggested tags
 The actions stage runs the action model at 10 fps and assigns each action box to the player track it overlaps
-most (`vball.actions`); the timeline's Actions lane shows them (Srv, Rec, Set, Spk, Blk) in the team's colour. Shirt
+most (`vball.actions`); the timeline's Actions lane shows them as dots in the team's colour, and the rally's play-by-play list (under the
+rally details) names each one with its time, player and team, filterable by action; a row jumps the video there. Shirt
 numbers are read from digit detections on the upper part of each player box at 2 fps and voted over the readings
 within a second (`vball.jersey`), so a label follows a tracker identity switch; players without a clear vote are
 shown as `ID n`, never a guessed number. Spikes and serves become suggested attack / serve tags, dashed in the
