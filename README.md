@@ -80,14 +80,18 @@ Every number comes from a script and a labelled split, or is named a proxy or sy
 
 ## Review app
 
-<img src="docs/assets/review-app.jpg" alt="Match review app on a fixed end-line clip: court lines and players on the video, rally list, rally details and timeline">
+<img src="docs/assets/review-app.jpg" alt="Match review app on a fixed end-line clip: court lines and players on the video, play-by-play list with action and player filters, rally timeline">
 
-<sub>Match review (React + FastAPI, <a href="webapp/README.md">webapp/</a>) on a fixed end-line clip: the court
-fitted to the painted lines and the tracked players on the video, rally details and list, timeline lanes for rallies,
-ball, actions and tags. Since 2026-11-12 the timeline shows rallies (and coach tags once there are any; ball, landings,
-actions, suggestions and review behind "More lanes"), and a play-by-play list beside the video names the actions of the
-rally or the whole match and jumps the video to one, as in Balltime's actions list. The 13 rallies come from the fixed-camera rally model (12 of the score bug's 14 points
-matched). Footage: NCAA men's volleyball (VolleyballWatchdog), research use.</sub>
+<sub>Match review (React + FastAPI, <a href="webapp/README.md">webapp/</a>) on a fixed end-line clip (Hawaii vs Penn
+State): court lines and tracked players on the video; beside it the play-by-play list of the rally or the whole match,
+filtered by action and player; below, the 16 rallies the fixed-camera rally model found. Footage: NCAA men's volleyball
+(VolleyballWatchdog), research use.</sub>
+
+<img src="docs/assets/review-playlist.gif" width="720" alt="Whole match, Attack filter, Play these: the video plays every attack in turn while the list highlights the one playing">
+
+<sub>"Play these": whole match, attacks only, played one after another (1.5 s before to 2 s after each; overlapping
+clips play through). How the review compares with Balltime, the closest product, and what is still missing (touches
+not yet tied to the ball): [docs/research/balltime-comparison.md](docs/research/balltime-comparison.md).</sub>
 
 <img src="docs/assets/boards-and-stats.png" alt="2D and 3D tactics boards and a player statistics table">
 

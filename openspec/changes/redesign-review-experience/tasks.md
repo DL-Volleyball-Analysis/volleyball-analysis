@@ -21,6 +21,7 @@
 - [ ] 4.4 Timeline density strips, label collision rule, zoom and pan
 - [x] 4.5 Main lanes only (rallies, action dots, tags), others behind "More lanes"; play-by-play list per rally with
       action filters (design, decision 2026-11-12)
+- [x] 4.6 Player filter and "Play these" (filtered actions played in turn), after Balltime's lists and playlists
 
 ## 5. Verify
 - [ ] 5.1 Tests and coverage gates; Lighthouse accessibility 100; keyboard checks with Playwright

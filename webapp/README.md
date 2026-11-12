@@ -115,7 +115,8 @@ survive re-analysis. Rules and tests: `vball.stats` (`tests/test_stats.py`).
 ## Actions, shirt numbers and suggested tags
 The actions stage runs the action model at 10 fps and assigns each action box to the player track it overlaps
 most (`vball.actions`); the play-by-play list beside the video names each one with its time, player and team, for the current rally or the
-whole match, filterable by action; a row jumps the video there (the timeline's Actions lane, under More lanes, shows
+whole match, filterable by action and player; a row jumps the video there, and "Play these" plays the filtered
+actions one after another (1.5 s before to 2 s after each) (the timeline's Actions lane, under More lanes, shows
 them as dots). They are per-player pose recognitions, not yet matched to the ball's touches. Shirt
 numbers are read from digit detections on the upper part of each player box at 2 fps and voted over the readings
 within a second (`vball.jersey`), so a label follows a tracker identity switch; players without a clear vote are

@@ -92,3 +92,8 @@ ones; open suggestions behind "More lanes" with ball, landings, actions and revi
 in the inspector, for this rally or the whole match, and says that actions are per-player pose recognitions not yet
 matched to the ball's touches (several players in a ready position appear together; touch attribution is change
 smooth-rally-playback task 5).
+
+Compared with Balltime (docs/research/balltime-comparison.md), two of its list features were added: a player filter
+and "Play these", which plays the filtered actions in turn (clip from 1.5 s before to 2 s after; overlapping clips play
+through, a gap seeks; pausing stops). The playing list is frozen when Play is pressed, because playback re-renders the
+page and moves the current rally.
