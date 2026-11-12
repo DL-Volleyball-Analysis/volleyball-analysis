@@ -30,7 +30,7 @@ SOURCES = (
 )
 TRAIN_ONLY = {"jersey-number-cogss-v1"}  # other sports: never in valid or test
 OUT = DATASETS / "jersey_digits"
-DRIVE_RELPATH = "volleyball/datasets/jersey_digits.zip"  # Colab: /content/drive/MyDrive/<this>
+DRIVE_RELPATH = "畢業專題/排球分析系統/datasets/jersey_digits.zip"  # Colab: /content/drive/MyDrive/<this>
 # Whole matches per split; every other match is training data. Test teams (Japan, Poland, Thailand) appear in no
 # training match; valid needs two matches to contain every digit (one match has only its roster's numbers).
 SPLIT = {

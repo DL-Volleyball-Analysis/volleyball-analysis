@@ -235,7 +235,8 @@ def main():
     zip_path = Path(shutil.make_archive(str(out), "zip", out.parent, out.name))
     print(f"zip: {zip_path} ({zip_path.stat().st_size / 1e6:.0f} MB)")
     if not args.no_drive:
-        dst = drive_root() / "volleyball/datasets" / f"{name}.zip"  # Colab: /content/drive/MyDrive/volleyball/...
+        # Colab: /content/drive/MyDrive/畢業專題/排球分析系統/datasets/...
+        dst = drive_root() / "畢業專題/排球分析系統/datasets" / f"{name}.zip"
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(zip_path, dst)
         print(f"copied to Drive: {dst}")
