@@ -19,6 +19,8 @@
 - [ ] 4.2 Overlay chips on the video, defaults from available results, disabled chips with reasons
 - [ ] 4.3 Health panel with "Set court" opening the court picker on the shot
 - [ ] 4.4 Timeline density strips, label collision rule, zoom and pan
+- [x] 4.5 Main lanes only (rallies, action dots, tags), others behind "More lanes"; play-by-play list per rally with
+      action filters (design, decision 2026-11-12)
 
 ## 5. Verify
 - [ ] 5.1 Tests and coverage gates; Lighthouse accessibility 100; keyboard checks with Playwright

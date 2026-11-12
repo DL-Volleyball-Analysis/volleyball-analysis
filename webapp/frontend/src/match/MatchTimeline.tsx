@@ -9,6 +9,9 @@ import { needsReview, reasonText } from './rallyText'
 import { labelRows, rulerStep, timeAt } from './timeline'
 
 const LANES = ['Rallies', 'Ball', 'Landings', 'Actions', 'Tags', 'Review'] as const
+// Shown by default; the others open with "More lanes". A timeline says where things happen; what happened is in
+// the rally's play-by-play list (as in Veo, Hudl / Volleymetrics), so lanes stay few and marks carry no text.
+const MAIN_LANES: readonly string[] = ['Rallies', 'Actions', 'Tags']
 const ACTION_SHORT: Record<ActionEvent['action'], string> = { serve: 'Srv', receive: 'Rec', set: 'Set', spike: 'Spk', block: 'Blk' }
 const LABEL_PX = 56 // room per ruler label, so labels never overlap on narrow screens
 
@@ -38,8 +41,9 @@ export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSele
   const dragging = useRef(false)
   const coverage = useBallCoverage(videoId)
   const [trackWidth, setTrackWidth] = useState(800)
-  // action labels about 30 px wide (three letters at 12 px with a gap): two rows, then ticks, so dense moments stay readable
-  const actionRows = labelRows(actions.map((a) => a.start_s), duration, 30 / Math.max(trackWidth, 1))
+  const [more, setMore] = useState(false)
+  // action dots about 8 px wide: two rows when close, so neighbouring touches stay separate
+  const actionRows = labelRows(actions.map((a) => a.start_s), duration, 8 / Math.max(trackWidth, 1))
 
   // Re-measure on resize only (not during playback) to choose how many ruler labels fit.
   useEffect(() => {
@@ -80,7 +84,7 @@ export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSele
     <div className="grid grid-cols-[4.5rem_minmax(0,1fr)] text-[12px]" role="group" aria-label="Match timeline">
       <div className="border-r border-line bg-panel">
         <div className="h-5" />
-        {LANES.map((l) => (
+        {LANES.filter((l) => more || MAIN_LANES.includes(l)).map((l) => (
           <div key={l} className="flex h-6 items-center px-2 text-ink-muted">{l}</div>
         ))}
       </div>
@@ -124,6 +128,7 @@ export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSele
           })}
         </div>
 
+        {more && (<>
         {/* Ball: share of frames with a detection, per bin */}
         <div className="relative h-6 border-b border-line" data-testid="lane-ball">
           {coverage.data && (
@@ -154,6 +159,8 @@ export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSele
           })}
         </div>
 
+        </>)}
+
         {/* Actions: recognised by the action model, in the team's colour when known; click to seek */}
         <div className="relative h-6 border-b border-line" data-testid="lane-actions">
           {actions.map((a, i) => {
@@ -168,11 +175,10 @@ export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSele
                 title={label}
                 aria-label={label}
                 onClick={() => clock.seek(a.start_s)}
-                className={`absolute rounded-[2px] font-mono text-[9px] leading-none ${row === null ? 'top-1/2 h-2 w-px -translate-y-1/2 bg-current' : 'px-0.5'} ${a.team === 'a' ? 'text-team-a' : a.team === 'b' ? 'text-team-b' : 'text-ink-muted'}`}
-                style={{ left: pct(a.start_s), ...(row === null ? {} : { top: row === 0 ? 1 : 12 }) }}
-              >
-                {row === null ? null : ACTION_SHORT[a.action]}
-              </button>
+                data-action={ACTION_SHORT[a.action]}
+                className={`absolute size-1.5 -translate-x-1/2 rounded-full bg-current ${a.team === 'a' ? 'text-team-a' : a.team === 'b' ? 'text-team-b' : 'text-ink-muted'}`}
+                style={{ left: pct(a.start_s), top: row === 1 ? 14 : row === 0 ? 5 : 9 }}
+              />
             )
           })}
         </div>
@@ -215,7 +221,8 @@ export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSele
           ))}
         </div>
 
-        {/* Review: low-confidence rallies */}
+        {more && (
+        /* Review: low-confidence rallies */
         <div className="relative h-6">
           {rallies.filter(needsReview).map((r) => (
             <button
@@ -231,9 +238,15 @@ export function MatchTimeline({ videoId, rallies, duration, currentIndex, onSele
             </button>
           ))}
         </div>
+        )}
 
         <div ref={playhead} aria-hidden data-testid="playhead" className="pointer-events-none absolute inset-y-0 w-px bg-ink" style={{ left: 0 }} />
       </div>
+      <div className="border-r border-line bg-panel" />
+      <button type="button" aria-expanded={more} onClick={() => setMore((m) => !m)}
+        className="justify-self-start px-2 py-1 text-ink-muted hover:text-ink">
+        {more ? '▾ Fewer lanes' : '▸ More lanes: ball, landings, review'}
+      </button>
     </div>
   )
 }

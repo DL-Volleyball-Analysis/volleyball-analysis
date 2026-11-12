@@ -51,8 +51,10 @@ function mount(onSelect = vi.fn()) {
 }
 
 describe('MatchTimeline', () => {
-  test('lanes show rallies, ball coverage, landings and review marks', async () => {
+  test('ball, landings and review open with More lanes', async () => {
     mount()
+    expect(screen.queryByTestId('lane-ball')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /More lanes/ }))
     expect(screen.getByRole('button', { name: /Rally 2, won by B, .*needs review/ })).toHaveAttribute('aria-current', 'true')
     expect(screen.getByRole('button', { name: /Rally 3, winner unknown/ })).toBeInTheDocument()
     expect(await screen.findAllByTestId('landing-in')).toHaveLength(1)
@@ -63,6 +65,7 @@ describe('MatchTimeline', () => {
 
   test('selecting a rally block or a review mark hands over the rally', async () => {
     const { list, onSelect } = mount()
+    await userEvent.click(screen.getByRole('button', { name: /More lanes/ }))
     await userEvent.click(screen.getByRole('button', { name: /Rally 1/ }))
     await userEvent.click(screen.getByRole('button', { name: 'Review rally 2' }))
     expect(onSelect.mock.calls.map(([r]) => r.idx)).toEqual([list[0].idx, list[1].idx])
@@ -103,6 +106,7 @@ describe('MatchTimeline rendering cost', () => {
         </Profiler>
       </ClockContext.Provider>,
     )
+    await userEvent.click(screen.getByRole('button', { name: /More lanes/ }))
     await vi.waitFor(() => expect(screen.getByTestId('lane-ball').querySelectorAll('rect')).toHaveLength(4))
     const before = commits.mock.calls.length
     for (let i = 1; i <= 60; i++) {
@@ -135,7 +139,7 @@ describe('MatchTimeline rendering cost', () => {
       </ClockContext.Provider>,
     )
     const marks = screen.getAllByTestId('action-mark')
-    expect(marks.map((m) => m.textContent)).toEqual(['Spk', 'Rec'])
+    expect(marks.map((m) => m.dataset.action)).toEqual(['Spk', 'Rec']) // dots: the text is in the name
     expect(marks[0]).toHaveAccessibleName('spike by #10 (A) at 4.0 s')
     expect(marks[1]).toHaveAccessibleName('receive by ID 7 at 8.0 s')
     await userEvent.click(marks[1])

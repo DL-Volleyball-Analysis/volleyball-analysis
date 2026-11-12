@@ -23,6 +23,7 @@ import { LayerMenu } from './LayerMenu'
 import type { Layers } from './OverlayCanvas'
 import { RallyList } from './RallyList'
 import { MatchTimeline } from './MatchTimeline'
+import { PlayByPlay } from './PlayByPlay'
 import { RallyInspector } from './RallyInspector'
 import { Scoreboard } from './Scoreboard'
 import { StagePanel } from './StagePanel'
@@ -183,6 +184,7 @@ function MatchView({ id }: { id: string }) {
             <div className="px-4 pt-3 pb-4">
               <h2 className="mb-1 text-[13px] font-semibold">Rally</h2>
               <RallyInspector rallies={rallies} index={pos.index} onCorrect={correct} />
+              {actionsQ.data && <PlayByPlay rally={rallies[pos.index]} actions={actionsQ.data.events} />}
             </div>
             <div className="border-t border-line px-4 pb-4">
               <Tabs tabs={PANELS} value={panel} onChange={setPanel} label="Match details" />

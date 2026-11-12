@@ -76,3 +76,11 @@ Match
 ## Risks
 - Visual change breaks the screenshot-based figures in the papers: regenerate them after the change.
 - More requests on the library (health per card): one batched endpoint `GET /videos?with=health`.
+
+## Decision 2026-11-12: few lanes, details in a play-by-play list
+Owner review: the action and ball lanes ran together. Similar products keep the timeline for "where" and a list for
+"what": Veo lists match events in a right-hand menu in time order with small markers above the progress bar and filters
+by team; Hudl / Volleymetrics filter clips by player, rotation and action and step through filtered events; Balltime
+organises review by rally and touch. So: the timeline shows Rallies, Actions (dots in the team colour, the action in the
+tooltip) and Tags; Ball, Landings and Review open with "More lanes". The rally inspector gains a play-by-play list of
+the rally's actions (time, action, player, team) with filters by action; a row seeks the video.
